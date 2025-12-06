@@ -1,0 +1,14 @@
+# Supabase local development files
+.branches
+.temp
+config.toml
+
+# Generated files
+types/supabase.ts
+
+# Backup files
+*.backup
+*.dump
+
+# OS files
+.DS_Store
