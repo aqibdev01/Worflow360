@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -10,21 +10,16 @@ import {
   BarChart3,
   Menu,
   X,
-  Search,
-  Bell,
   LogOut,
   Settings,
   User,
-  ChevronRight,
-  Sparkles,
+  PanelLeftClose,
+  PanelLeft,
+  Home,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { signOut } from "@/lib/auth";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Avatar } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -34,29 +29,33 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
-import { getOrganization, getProjectDetails } from "@/lib/database";
 import { AlertBanner, AlertItem } from "@/components/dismissible-alert";
+import { Logo } from "@/components/Logo";
 
 const navigation = [
   {
-    name: "Dashboard",
+    name: "Home",
     href: "/dashboard",
     icon: LayoutDashboard,
-  },
-  {
-    name: "Organizations",
-    href: "/dashboard/organizations",
-    icon: Building2,
+    comingSoon: false,
   },
   {
     name: "Calendar",
     href: "/dashboard/calendar",
     icon: Calendar,
+    comingSoon: true,
   },
   {
-    name: "Analytics",
+    name: "Reports",
     href: "/dashboard/analytics",
     icon: BarChart3,
+    comingSoon: true,
+  },
+  {
+    name: "Dashboard",
+    href: "/dashboard/organizations",
+    icon: Building2,
+    comingSoon: false,
   },
 ];
 
@@ -69,7 +68,7 @@ export default function DashboardLayout({
   const router = useRouter();
   const { user, userProfile } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [notificationCount] = useState(3);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   // System alerts - these can be dynamically updated from backend or state
   const [alerts] = useState<AlertItem[]>([
@@ -105,80 +104,8 @@ export default function DashboardLayout({
     }
   };
 
-  // State for resolved breadcrumb names (for IDs)
-  const [resolvedNames, setResolvedNames] = useState<Record<string, string>>({});
-
-  // Helper to check if a string is a UUID
-  const isUUID = (str: string) => {
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    return uuidRegex.test(str);
-  };
-
-  // Resolve names for UUIDs in the path
-  useEffect(() => {
-    const paths = pathname.split("/").filter(Boolean);
-
-    const resolveNames = async () => {
-      const newNames: Record<string, string> = {};
-
-      for (let i = 0; i < paths.length; i++) {
-        const path = paths[i];
-        const prevPath = paths[i - 1];
-
-        if (isUUID(path)) {
-          try {
-            // Check what type of ID this is based on previous path segment
-            if (prevPath === "organizations") {
-              const org = await getOrganization(path) as { name?: string } | null;
-              if (org?.name) newNames[path] = org.name;
-            } else if (prevPath === "projects") {
-              const project = await getProjectDetails(path) as { name?: string } | null;
-              if (project?.name) newNames[path] = project.name;
-            }
-          } catch (error) {
-            // If fetch fails, we'll just show a shortened ID
-            console.error("Error resolving breadcrumb name:", error);
-          }
-        }
-      }
-
-      setResolvedNames((prev) => ({ ...prev, ...newNames }));
-    };
-
-    resolveNames();
-  }, [pathname]);
-
-  // Get breadcrumb items based on current path
-  const getBreadcrumbs = () => {
-    const paths = pathname.split("/").filter(Boolean);
-    const breadcrumbs = paths.map((path, index) => {
-      const href = `/${paths.slice(0, index + 1).join("/")}`;
-
-      // Check if we have a resolved name for this path (for UUIDs)
-      let name = resolvedNames[path];
-
-      if (!name) {
-        if (isUUID(path)) {
-          // Show shortened UUID while loading or if not resolved
-          name = `${path.slice(0, 8)}...`;
-        } else {
-          // Capitalize and format regular path segments
-          name = path
-            .split("-")
-            .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-            .join(" ");
-        }
-      }
-
-      return { name, href };
-    });
-    return breadcrumbs;
-  };
-
-  const breadcrumbs = getBreadcrumbs();
-
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-[#F8F9FC]">
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div
@@ -187,138 +114,109 @@ export default function DashboardLayout({
         />
       )}
 
-      {/* Sidebar */}
+      {/* Sidebar - Dark Navy Theme */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-64 transform bg-card border-r transition-transform duration-300 ease-in-out lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-50 ${sidebarCollapsed ? 'w-20' : 'w-64'} transform bg-navy-900 transition-all duration-300 ease-in-out lg:translate-x-0 ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
         <div className="flex h-full flex-col">
-          {/* Logo */}
-          <div className="flex h-16 items-center gap-2 border-b px-6">
-            <div className="h-8 w-8 bg-primary/10 rounded-lg flex items-center justify-center">
-              <Sparkles className="h-5 w-5 text-primary" />
-            </div>
-            <span className="text-xl font-bold">Workflow360</span>
+          {/* Logo - Links to Landing Page */}
+          <div className={`flex h-16 items-center ${sidebarCollapsed ? 'justify-center px-2' : 'gap-3 px-6'} border-b border-white/10`}>
+            <Link href="/" className="flex-shrink-0 hover:opacity-80 transition-opacity" title="Go to Landing Page">
+              <Logo className="h-12 w-auto" />
+            </Link>
             <button
               onClick={() => setSidebarOpen(false)}
-              className="ml-auto lg:hidden text-muted-foreground hover:text-foreground"
+              className="ml-auto lg:hidden text-white/60 hover:text-white"
             >
               <X className="h-5 w-5" />
             </button>
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 space-y-1 px-3 py-4">
+          <nav className="flex-1 space-y-1 px-3 py-6">
             {navigation.map((item) => {
-              const isActive = pathname === item.href;
+              const isActive = pathname === item.href ||
+                (item.href !== "/dashboard" && pathname.startsWith(item.href));
               const Icon = item.icon;
+
+              // For coming soon items, render a div instead of a link
+              if (item.comingSoon) {
+                return (
+                  <div
+                    key={item.name}
+                    className={`flex items-center ${sidebarCollapsed ? 'justify-center' : 'justify-between'} gap-3 rounded-xl px-3 py-3 text-sm font-medium text-white/40 cursor-not-allowed`}
+                    title={sidebarCollapsed ? `${item.name} - Coming Soon` : undefined}
+                  >
+                    <div className="flex items-center gap-3">
+                      <Icon className="h-5 w-5 flex-shrink-0" />
+                      {!sidebarCollapsed && item.name}
+                    </div>
+                    {!sidebarCollapsed && (
+                      <span className="text-[10px] bg-brand-purple/30 text-brand-purple px-2 py-0.5 rounded-full font-semibold">
+                        Soon
+                      </span>
+                    )}
+                  </div>
+                );
+              }
 
               return (
                 <Link
                   key={item.name}
                   href={item.href}
                   onClick={() => setSidebarOpen(false)}
-                  className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                  className={`flex items-center ${sidebarCollapsed ? 'justify-center' : ''} gap-3 rounded-xl px-3 py-3 text-sm font-medium transition-all duration-200 ${
                     isActive
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                      ? "bg-brand-blue text-white shadow-lg shadow-brand-blue/30"
+                      : "text-white/70 hover:bg-white/10 hover:text-white"
                   }`}
+                  title={sidebarCollapsed ? item.name : undefined}
                 >
-                  <Icon className="h-5 w-5" />
-                  {item.name}
+                  <Icon className="h-5 w-5 flex-shrink-0" />
+                  {!sidebarCollapsed && item.name}
                 </Link>
               );
             })}
           </nav>
-
-          {/* User section */}
-          <div className="border-t p-4">
-            <div className="flex items-center gap-3">
-              <Avatar
-                src={userProfile?.avatar_url || undefined}
-                alt={userProfile?.full_name || user?.email || "User"}
-                fallback={
-                  userProfile?.full_name?.[0]?.toUpperCase() ||
-                  user?.email?.[0]?.toUpperCase() ||
-                  "U"
-                }
-                className="h-10 w-10"
-              />
-              <div className="flex-1 overflow-hidden">
-                <p className="text-sm font-medium truncate">
-                  {userProfile?.full_name || "User"}
-                </p>
-                <p className="text-xs text-muted-foreground truncate">
-                  {user?.email}
-                </p>
-              </div>
-            </div>
-          </div>
         </div>
       </aside>
 
       {/* Main content */}
-      <div className="lg:pl-64">
+      <div className={`${sidebarCollapsed ? 'lg:pl-20' : 'lg:pl-64'} transition-all duration-300`}>
         {/* Top navbar */}
-        <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4 lg:px-6">
+        <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-border/50 bg-white px-4 lg:px-6 shadow-sm">
           {/* Mobile menu button */}
           <button
             onClick={() => setSidebarOpen(true)}
-            className="lg:hidden text-muted-foreground hover:text-foreground"
+            className="lg:hidden text-muted-foreground hover:text-brand-blue transition-colors"
           >
             <Menu className="h-6 w-6" />
           </button>
 
-          {/* Breadcrumbs */}
-          <div className="hidden md:flex items-center gap-2 text-sm">
-            {breadcrumbs.map((crumb, index) => (
-              <div key={crumb.href} className="flex items-center gap-2">
-                {index > 0 && (
-                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                )}
-                <Link
-                  href={crumb.href}
-                  className={`${
-                    index === breadcrumbs.length - 1
-                      ? "text-foreground font-medium"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  {crumb.name}
-                </Link>
-              </div>
-            ))}
-          </div>
+          {/* Hide/Show Menu Toggle */}
+          <button
+            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+            className="hidden lg:flex items-center gap-2 text-muted-foreground hover:text-navy-900 transition-colors"
+          >
+            {sidebarCollapsed ? (
+              <PanelLeft className="h-5 w-5" />
+            ) : (
+              <PanelLeftClose className="h-5 w-5" />
+            )}
+            <span className="text-sm font-medium">{sidebarCollapsed ? 'Show Menu' : 'Hide Menu'}</span>
+          </button>
 
-          {/* Search bar */}
+          {/* Right side - User profile */}
           <div className="ml-auto flex items-center gap-4">
-            <div className="relative hidden sm:block">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                type="search"
-                placeholder="Search..."
-                className="w-64 pl-10"
-              />
-            </div>
-
-            {/* Notifications */}
-            <button className="relative text-muted-foreground hover:text-foreground">
-              <Bell className="h-5 w-5" />
-              {notificationCount > 0 && (
-                <Badge
-                  variant="destructive"
-                  className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-[10px]"
-                >
-                  {notificationCount}
-                </Badge>
-              )}
-            </button>
-
             {/* User menu */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="flex items-center gap-2 rounded-lg hover:bg-accent px-2 py-1.5">
+                <button className="flex items-center gap-3 rounded-xl hover:bg-muted/50 px-3 py-2 transition-colors">
+                  <span className="hidden md:block text-sm font-medium text-navy-900">
+                    {userProfile?.full_name || user?.email?.split("@")[0] || "User"}
+                  </span>
                   <Avatar
                     src={userProfile?.avatar_url || undefined}
                     alt={userProfile?.full_name || user?.email || "User"}
@@ -327,28 +225,29 @@ export default function DashboardLayout({
                       user?.email?.[0]?.toUpperCase() ||
                       "U"
                     }
-                    className="h-8 w-8"
+                    className="h-10 w-10 ring-2 ring-brand-blue/20"
                   />
-                  <span className="hidden md:block text-sm font-medium">
-                    {userProfile?.full_name || user?.email}
-                  </span>
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuLabel>My Account</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>
+                <DropdownMenuItem className="cursor-pointer" onSelect={() => router.push("/")}>
+                  <Home className="mr-2 h-4 w-4" />
+                  Landing Page
+                </DropdownMenuItem>
+                <DropdownMenuItem className="cursor-pointer">
                   <User className="mr-2 h-4 w-4" />
                   Profile
                 </DropdownMenuItem>
-                <DropdownMenuItem>
+                <DropdownMenuItem className="cursor-pointer">
                   <Settings className="mr-2 h-4 w-4" />
                   Settings
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   onSelect={handleLogout}
-                  className="cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50"
+                  className="cursor-pointer text-destructive focus:text-destructive focus:bg-destructive/10"
                 >
                   <LogOut className="mr-2 h-4 w-4" />
                   Logout

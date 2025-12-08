@@ -71,44 +71,37 @@ export default function LoginPage() {
       }
 
       if (data) {
-        // Double-check email verification status
-        if (!data.email_confirmed_at) {
-          // Sign out and redirect to verification
-          await supabase.auth.signOut();
-          router.push(`/auth/verify-email?email=${encodeURIComponent(email)}`);
-          return;
-        }
-
+        // Redirect to dashboard
         router.push(redirectTo);
-        router.refresh();
       }
     } catch (err) {
+      console.error("Login error:", err);
       setError("An unexpected error occurred");
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-gradient-to-br from-navy-900 via-navy-800 to-navy-900">
       {/* Header */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100">
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-navy-900/80 backdrop-blur-md border-b border-white/10">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <Link href="/" className="flex items-center space-x-3">
               <Logo className="h-9 w-9" />
-              <span className="text-xl font-bold text-gray-900">
-                Workflow<span className="text-blue-600">360</span>
+              <span className="text-xl font-bold text-white">
+                Workflow<span className="text-brand-blue">360</span>
               </span>
             </Link>
             <div className="flex items-center space-x-4">
               <Link href="/">
-                <Button variant="ghost" size="sm" className="text-gray-600 hover:text-blue-600">
+                <Button variant="ghost" size="sm" className="text-white/70 hover:text-brand-blue hover:bg-white/5">
                   <ArrowLeft className="h-4 w-4 mr-2" />
                   Back
                 </Button>
               </Link>
               <Link href="/auth/signup">
-                <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white">
+                <Button size="sm" className="bg-brand-blue hover:bg-brand-blue-600 text-white shadow-lg shadow-brand-blue/25">
                   Sign Up
                 </Button>
               </Link>
@@ -119,33 +112,33 @@ export default function LoginPage() {
 
       {/* Login Form */}
       <div className="flex items-center justify-center min-h-screen pt-16 pb-12 px-4 sm:px-6 lg:px-8">
-        <Card className="w-full max-w-md bg-white border-gray-100 shadow-lg p-8 space-y-6">
+        <Card className="w-full max-w-md bg-white border-0 shadow-2xl p-8 space-y-6">
           <div className="text-center space-y-2">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-50 border border-blue-100 mb-4">
-              <Lock className="h-4 w-4 text-blue-600" />
-              <span className="text-sm text-blue-700 font-medium">Secure Login</span>
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-brand-blue/10 border border-brand-blue/20 mb-4">
+              <Lock className="h-4 w-4 text-brand-blue" />
+              <span className="text-sm text-brand-blue font-medium">Secure Login</span>
             </div>
 
-            <h1 className="text-3xl font-bold text-gray-900">
+            <h1 className="text-3xl font-bold text-navy-900">
               Welcome Back
             </h1>
-            <p className="text-gray-600">
+            <p className="text-muted-foreground">
               Sign in to continue to Workflow360
             </p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
-              <div className="p-4 rounded-lg bg-red-50 border border-red-100 flex items-start gap-3">
-                <AlertCircle className="h-5 w-5 text-red-600 mt-0.5 flex-shrink-0" />
-                <div className="text-sm text-red-700">{error}</div>
+              <div className="p-4 rounded-lg bg-destructive/10 border border-destructive/20 flex items-start gap-3">
+                <AlertCircle className="h-5 w-5 text-destructive mt-0.5 flex-shrink-0" />
+                <div className="text-sm text-destructive">{error}</div>
               </div>
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-gray-700">Email address</Label>
+              <Label htmlFor="email" className="text-navy-900">Email address</Label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 <Input
                   id="email"
                   name="email"
@@ -156,41 +149,41 @@ export default function LoginPage() {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="name@example.com"
                   disabled={loading}
-                  className={`pl-10 pr-10 border-gray-200 focus:border-blue-500 focus:ring-blue-500 ${
+                  className={`pl-10 pr-10 border-border focus:border-brand-blue focus:ring-brand-blue/20 ${
                     email.length > 0
                       ? emailValid
-                        ? "border-green-500 focus:border-green-500"
-                        : "border-red-500 focus:border-red-500"
+                        ? "border-success focus:border-success"
+                        : "border-destructive focus:border-destructive"
                       : ""
                   }`}
                 />
                 {email.length > 0 && (
                   <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
                     {emailValid ? (
-                      <Check className="h-5 w-5 text-green-600" />
+                      <Check className="h-5 w-5 text-success" />
                     ) : (
-                      <X className="h-5 w-5 text-red-500" />
+                      <X className="h-5 w-5 text-destructive" />
                     )}
                   </div>
                 )}
               </div>
               {email.length > 0 && !emailValid && (
-                <p className="text-xs text-red-600">Please enter a valid email address</p>
+                <p className="text-xs text-destructive">Please enter a valid email address</p>
               )}
             </div>
 
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label htmlFor="password" className="text-gray-700">Password</Label>
+                <Label htmlFor="password" className="text-navy-900">Password</Label>
                 <Link
                   href="/auth/reset-password"
-                  className="text-sm text-blue-600 hover:text-blue-700 transition-colors"
+                  className="text-sm text-brand-blue hover:text-brand-blue-600 transition-colors"
                 >
                   Forgot password?
                 </Link>
               </div>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 <Input
                   id="password"
                   name="password"
@@ -201,14 +194,14 @@ export default function LoginPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Enter your password"
                   disabled={loading}
-                  className="pl-10 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
+                  className="pl-10 border-border focus:border-brand-blue focus:ring-brand-blue/20"
                 />
               </div>
             </div>
 
             <Button
               type="submit"
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+              className="w-full bg-brand-blue hover:bg-brand-blue-600 text-white shadow-lg shadow-brand-blue/25"
               disabled={loading}
             >
               {loading ? (
@@ -223,17 +216,17 @@ export default function LoginPage() {
 
             <div className="relative my-6">
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-200" />
+                <div className="w-full border-t border-border" />
               </div>
               <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-white px-2 text-gray-500">
+                <span className="bg-white px-2 text-muted-foreground">
                   Don't have an account?
                 </span>
               </div>
             </div>
 
             <Link href="/auth/signup" className="block">
-              <Button type="button" variant="outline" className="w-full border-gray-200 text-gray-700 hover:bg-gray-50">
+              <Button type="button" variant="outline" className="w-full border-brand-purple/30 text-brand-purple hover:bg-brand-purple/5 hover:border-brand-purple">
                 Create an account
               </Button>
             </Link>

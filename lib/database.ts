@@ -24,7 +24,7 @@ import type {
 /**
  * Create a new organization
  */
-export async function createOrganization(data: OrganizationInsert) {
+export async function createOrganization(data: OrganizationInsert): Promise<Organization> {
   console.log("createOrganization called with data:", data);
 
   const { data: org, error } = await supabase
@@ -39,22 +39,28 @@ export async function createOrganization(data: OrganizationInsert) {
   }
 
   console.log("Organization created successfully:", org);
-  return org;
+  return org as unknown as Organization;
 }
 
 /**
  * Get organizations for the current user
  */
-export async function getUserOrganizations() {
-  const { data, error } = await supabase
+export async function getUserOrganizations(userId?: string) {
+  let query = supabase
     .from("organizations")
     .select(
       `
       *,
-      organization_members!inner(role)
+      organization_members!inner(role, user_id)
     `
-    )
-    .order("created_at", { ascending: false });
+    );
+
+  // If userId provided, filter by that user's memberships
+  if (userId) {
+    query = query.eq("organization_members.user_id", userId);
+  }
+
+  const { data, error } = await query.order("created_at", { ascending: false });
 
   if (error) throw error;
   return data;
@@ -206,7 +212,7 @@ export async function getOrganizationMembers(orgId: string) {
 /**
  * Create a new project
  */
-export async function createProject(data: ProjectInsert) {
+export async function createProject(data: ProjectInsert): Promise<Project> {
   const { data: project, error } = await supabase
     .from("projects")
     .insert(data)
@@ -214,7 +220,7 @@ export async function createProject(data: ProjectInsert) {
     .single();
 
   if (error) throw error;
-  return project;
+  return project as unknown as Project;
 }
 
 /**
@@ -658,7 +664,7 @@ export async function updateSprint(
     end_date?: string;
     status?: "planned" | "active" | "completed" | "cancelled";
   }
-) {
+): Promise<Sprint> {
   const { data, error } = await (supabase.from("sprints") as any)
     .update(updates)
     .eq("id", sprintId)
@@ -666,7 +672,7 @@ export async function updateSprint(
     .single();
 
   if (error) throw error;
-  return data;
+  return data as Sprint;
 }
 
 /**
@@ -1175,7 +1181,15 @@ export async function deleteCustomRole(roleId: string) {
 /**
  * Get a single organization by ID
  */
-export async function getOrganization(orgId: string) {
+export async function getOrganization(orgId: string): Promise<{
+  id: string;
+  name: string;
+  description: string | null;
+  owner_id: string;
+  invite_code: string;
+  created_at: string;
+  updated_at: string;
+}> {
   const { data, error } = await supabase
     .from("organizations")
     .select("*")
@@ -1183,7 +1197,7 @@ export async function getOrganization(orgId: string) {
     .single();
 
   if (error) throw error;
-  return data;
+  return data as any;
 }
 
 /**

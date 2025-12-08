@@ -4,48 +4,104 @@
 
 @layer base {
   :root {
+    /* Main backgrounds */
     --background: 0 0% 100%;
-    --foreground: 240 10% 3.9%;
+    --foreground: 235 63% 15%;
+
+    /* Card colors */
     --card: 0 0% 100%;
-    --card-foreground: 240 10% 3.9%;
+    --card-foreground: 235 63% 15%;
+
+    /* Popover */
     --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 3.9%;
-    --primary: 221 83% 53%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 240 4.8% 95.9%;
-    --secondary-foreground: 240 5.9% 10%;
-    --muted: 240 4.8% 95.9%;
-    --muted-foreground: 240 3.8% 46.1%;
-    --accent: 240 4.8% 95.9%;
-    --accent-foreground: 240 5.9% 10%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 240 5.9% 90%;
-    --input: 240 5.9% 90%;
-    --ring: 221 83% 53%;
-    --radius: 0.5rem;
+    --popover-foreground: 235 63% 15%;
+
+    /* Primary - Bright Blue #00A6FF */
+    --primary: 200 100% 50%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Secondary */
+    --secondary: 228 14% 93%;
+    --secondary-foreground: 235 63% 15%;
+
+    /* Muted */
+    --muted: 228 14% 93%;
+    --muted-foreground: 0 0% 48%;
+
+    /* Accent - Purple */
+    --accent: 258 100% 67%;
+    --accent-foreground: 0 0% 100%;
+
+    /* Destructive - Red #E74C3C */
+    --destructive: 6 78% 57%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Borders */
+    --border: 228 14% 93%;
+    --input: 228 14% 93%;
+    --ring: 200 100% 50%;
+    --radius: 0.625rem;
+
+    /* Sidebar - Dark Navy #0B0F3F */
+    --sidebar: 235 70% 15%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-accent: 200 100% 50%;
+
+    /* Success - Green #2ECC71 */
+    --success: 145 63% 49%;
+    --success-foreground: 0 0% 100%;
+
+    /* Warning - Yellow #F1C40F */
+    --warning: 48 96% 50%;
+    --warning-foreground: 235 63% 15%;
+
+    /* Chart colors */
+    --chart-cyan-light: 195 100% 66%;
+    --chart-cyan-dark: 210 100% 50%;
+    --chart-purple-light: 258 100% 67%;
+    --chart-purple-dark: 264 96% 34%;
   }
 
   .dark {
-    --background: 240 10% 3.9%;
+    /* Dark mode - Dark Navy as base */
+    --background: 235 70% 15%;
     --foreground: 0 0% 98%;
-    --card: 240 10% 3.9%;
+
+    --card: 235 60% 18%;
     --card-foreground: 0 0% 98%;
-    --popover: 240 10% 3.9%;
+
+    --popover: 235 60% 18%;
     --popover-foreground: 0 0% 98%;
-    --primary: 221 83% 53%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 240 3.7% 15.9%;
+
+    /* Primary - Bright Blue */
+    --primary: 200 100% 50%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 235 50% 22%;
     --secondary-foreground: 0 0% 98%;
-    --muted: 240 3.7% 15.9%;
-    --muted-foreground: 240 5% 64.9%;
-    --accent: 240 3.7% 15.9%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 240 3.7% 15.9%;
-    --input: 240 3.7% 15.9%;
-    --ring: 221 83% 53%;
+
+    --muted: 235 50% 22%;
+    --muted-foreground: 228 14% 70%;
+
+    --accent: 258 100% 67%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 6 78% 57%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 235 50% 25%;
+    --input: 235 50% 25%;
+    --ring: 200 100% 50%;
+
+    --sidebar: 235 75% 12%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-accent: 200 100% 50%;
+
+    --success: 145 63% 49%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 48 96% 50%;
+    --warning-foreground: 235 63% 15%;
   }
 }
 

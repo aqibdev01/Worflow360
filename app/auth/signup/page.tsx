@@ -39,21 +39,21 @@ function getPasswordStrengthScore(strength: PasswordStrength): number {
 }
 
 function getPasswordStrengthLabel(score: number): { label: string; color: string } {
-  if (score <= 2) return { label: "Weak", color: "text-red-600" };
-  if (score <= 3) return { label: "Fair", color: "text-orange-500" };
-  if (score <= 4) return { label: "Good", color: "text-yellow-600" };
-  return { label: "Strong", color: "text-green-600" };
+  if (score <= 2) return { label: "Weak", color: "text-destructive" };
+  if (score <= 3) return { label: "Fair", color: "text-warning" };
+  if (score <= 4) return { label: "Good", color: "text-brand-blue" };
+  return { label: "Strong", color: "text-success" };
 }
 
 function PasswordRequirement({ met, text }: { met: boolean; text: string }) {
   return (
     <div className="flex items-center gap-2">
       {met ? (
-        <Check className="h-3.5 w-3.5 text-green-600" />
+        <Check className="h-3.5 w-3.5 text-success" />
       ) : (
-        <X className="h-3.5 w-3.5 text-gray-400" />
+        <X className="h-3.5 w-3.5 text-muted-foreground" />
       )}
-      <span className={`text-xs ${met ? "text-green-700" : "text-gray-500"}`}>
+      <span className={`text-xs ${met ? "text-success" : "text-muted-foreground"}`}>
         {text}
       </span>
     </div>
@@ -165,14 +165,14 @@ export default function SignupPage() {
 
   if (success) {
     return (
-      <div className="min-h-screen bg-white">
-        <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100">
+      <div className="min-h-screen bg-gradient-to-br from-navy-900 via-navy-800 to-navy-900">
+        <nav className="fixed top-0 left-0 right-0 z-50 bg-navy-900/80 backdrop-blur-md border-b border-white/10">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between items-center h-16">
               <Link href="/" className="flex items-center space-x-3">
                 <Logo className="h-9 w-9" />
-                <span className="text-xl font-bold text-gray-900">
-                  Workflow<span className="text-blue-600">360</span>
+                <span className="text-xl font-bold text-white">
+                  Workflow<span className="text-brand-blue">360</span>
                 </span>
               </Link>
             </div>
@@ -180,17 +180,17 @@ export default function SignupPage() {
         </nav>
 
         <div className="flex items-center justify-center min-h-screen pt-16">
-          <Card className="w-full max-w-md bg-white border-gray-100 shadow-lg p-8">
+          <Card className="w-full max-w-md bg-white border-0 shadow-2xl p-8">
             <div className="text-center space-y-4">
-              <div className="mx-auto w-16 h-16 bg-green-50 rounded-full flex items-center justify-center border border-green-100">
-                <Mail className="h-8 w-8 text-green-600" />
+              <div className="mx-auto w-16 h-16 bg-success/10 rounded-full flex items-center justify-center border border-success/20">
+                <Mail className="h-8 w-8 text-success" />
               </div>
               <div>
-                <h3 className="text-2xl font-bold text-gray-900">Verify Your Email</h3>
-                <p className="text-gray-600 mt-2">
-                  We've sent a 6-digit code to <span className="font-medium text-blue-600">{email}</span>
+                <h3 className="text-2xl font-bold text-navy-900">Verify Your Email</h3>
+                <p className="text-muted-foreground mt-2">
+                  We've sent a 6-digit code to <span className="font-medium text-brand-blue">{email}</span>
                 </p>
-                <p className="text-gray-500 text-sm mt-1">
+                <p className="text-muted-foreground text-sm mt-1">
                   Redirecting to verification page...
                 </p>
               </div>
@@ -202,26 +202,26 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-gradient-to-br from-navy-900 via-navy-800 to-navy-900">
       {/* Header */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100">
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-navy-900/80 backdrop-blur-md border-b border-white/10">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <Link href="/" className="flex items-center space-x-3">
               <Logo className="h-9 w-9" />
-              <span className="text-xl font-bold text-gray-900">
-                Workflow<span className="text-blue-600">360</span>
+              <span className="text-xl font-bold text-white">
+                Workflow<span className="text-brand-blue">360</span>
               </span>
             </Link>
             <div className="flex items-center space-x-4">
               <Link href="/">
-                <Button variant="ghost" size="sm" className="text-gray-600 hover:text-blue-600">
+                <Button variant="ghost" size="sm" className="text-white/70 hover:text-brand-blue hover:bg-white/5">
                   <ArrowLeft className="h-4 w-4 mr-2" />
                   Back
                 </Button>
               </Link>
               <Link href="/auth/login">
-                <Button variant="outline" size="sm" className="border-gray-200 text-gray-700 hover:bg-gray-50">
+                <Button variant="outline" size="sm" className="border-white/20 text-white hover:bg-white/10">
                   Sign In
                 </Button>
               </Link>
@@ -232,33 +232,33 @@ export default function SignupPage() {
 
       {/* Signup Form */}
       <div className="flex items-center justify-center min-h-screen pt-16 pb-12 px-4 sm:px-6 lg:px-8">
-        <Card className="w-full max-w-md bg-white border-gray-100 shadow-lg p-8 space-y-6">
+        <Card className="w-full max-w-md bg-white border-0 shadow-2xl p-8 space-y-6">
           <div className="text-center space-y-2">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-violet-50 border border-violet-100 mb-4">
-              <div className="w-2 h-2 rounded-full bg-violet-600 animate-pulse" />
-              <span className="text-sm text-violet-700 font-medium">Start Your Free Trial</span>
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-brand-purple/10 border border-brand-purple/20 mb-4">
+              <div className="w-2 h-2 rounded-full bg-brand-purple animate-pulse" />
+              <span className="text-sm text-brand-purple font-medium">Start Your Free Trial</span>
             </div>
 
-            <h1 className="text-3xl font-bold text-gray-900">
+            <h1 className="text-3xl font-bold text-navy-900">
               Create Account
             </h1>
-            <p className="text-gray-600">
+            <p className="text-muted-foreground">
               Get started with Workflow360 today
             </p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
-              <div className="p-4 rounded-lg bg-red-50 border border-red-100 flex items-start gap-3">
-                <AlertCircle className="h-5 w-5 text-red-600 mt-0.5 flex-shrink-0" />
-                <div className="text-sm text-red-700">{error}</div>
+              <div className="p-4 rounded-lg bg-destructive/10 border border-destructive/20 flex items-start gap-3">
+                <AlertCircle className="h-5 w-5 text-destructive mt-0.5 flex-shrink-0" />
+                <div className="text-sm text-destructive">{error}</div>
               </div>
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="fullName" className="text-gray-700">Full Name <span className="text-red-500">*</span></Label>
+              <Label htmlFor="fullName" className="text-navy-900">Full Name <span className="text-destructive">*</span></Label>
               <div className="relative">
-                <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 <Input
                   id="fullName"
                   name="fullName"
@@ -268,15 +268,15 @@ export default function SignupPage() {
                   onChange={(e) => setFullName(e.target.value)}
                   placeholder="John Doe"
                   disabled={loading}
-                  className="pl-10 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
+                  className="pl-10 border-border focus:border-brand-blue focus:ring-brand-blue/20"
                 />
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-gray-700">Email address</Label>
+              <Label htmlFor="email" className="text-navy-900">Email address</Label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 <Input
                   id="email"
                   name="email"
@@ -287,33 +287,33 @@ export default function SignupPage() {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="name@example.com"
                   disabled={loading}
-                  className={`pl-10 pr-10 border-gray-200 focus:border-blue-500 focus:ring-blue-500 ${
+                  className={`pl-10 pr-10 border-border focus:border-brand-blue focus:ring-brand-blue/20 ${
                     email.length > 0
                       ? emailValid
-                        ? "border-green-500 focus:border-green-500"
-                        : "border-red-500 focus:border-red-500"
+                        ? "border-success focus:border-success"
+                        : "border-destructive focus:border-destructive"
                       : ""
                   }`}
                 />
                 {email.length > 0 && (
                   <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
                     {emailValid ? (
-                      <Check className="h-5 w-5 text-green-600" />
+                      <Check className="h-5 w-5 text-success" />
                     ) : (
-                      <X className="h-5 w-5 text-red-500" />
+                      <X className="h-5 w-5 text-destructive" />
                     )}
                   </div>
                 )}
               </div>
               {email.length > 0 && !emailValid && (
-                <p className="text-xs text-red-600">Please enter a valid email address</p>
+                <p className="text-xs text-destructive">Please enter a valid email address</p>
               )}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-gray-700">Password</Label>
+              <Label htmlFor="password" className="text-navy-900">Password</Label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 <Input
                   id="password"
                   name="password"
@@ -325,7 +325,7 @@ export default function SignupPage() {
                   onFocus={() => setShowPasswordRequirements(true)}
                   placeholder="Create a strong password"
                   disabled={loading}
-                  className="pl-10 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
+                  className="pl-10 border-border focus:border-brand-blue focus:ring-brand-blue/20"
                 />
               </div>
 
@@ -333,21 +333,21 @@ export default function SignupPage() {
               {password.length > 0 && (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-gray-500">Password strength:</span>
+                    <span className="text-xs text-muted-foreground">Password strength:</span>
                     <span className={`text-xs font-medium ${getPasswordStrengthLabel(passwordScore).color}`}>
                       {getPasswordStrengthLabel(passwordScore).label}
                     </span>
                   </div>
-                  <div className="h-1.5 w-full bg-gray-200 rounded-full overflow-hidden">
+                  <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
                     <div
                       className={`h-full transition-all duration-300 ${
                         passwordScore <= 2
-                          ? "bg-red-500"
+                          ? "bg-destructive"
                           : passwordScore <= 3
-                          ? "bg-orange-500"
+                          ? "bg-warning"
                           : passwordScore <= 4
-                          ? "bg-yellow-500"
-                          : "bg-green-500"
+                          ? "bg-brand-blue"
+                          : "bg-success"
                       }`}
                       style={{ width: `${(passwordScore / 5) * 100}%` }}
                     />
@@ -357,8 +357,8 @@ export default function SignupPage() {
 
               {/* Password Requirements */}
               {(showPasswordRequirements || password.length > 0) && (
-                <div className="p-3 rounded-lg bg-gray-50 border border-gray-100 space-y-1.5">
-                  <p className="text-xs font-medium text-gray-600 mb-2">Password must have:</p>
+                <div className="p-3 rounded-lg bg-muted/50 border border-border space-y-1.5">
+                  <p className="text-xs font-medium text-navy-900 mb-2">Password must have:</p>
                   <PasswordRequirement met={passwordStrength.hasMinLength} text="At least 8 characters" />
                   <PasswordRequirement met={passwordStrength.hasUppercase} text="One uppercase letter" />
                   <PasswordRequirement met={passwordStrength.hasLowercase} text="One lowercase letter" />
@@ -369,9 +369,9 @@ export default function SignupPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="confirmPassword" className="text-gray-700">Confirm Password</Label>
+              <Label htmlFor="confirmPassword" className="text-navy-900">Confirm Password</Label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 <Input
                   id="confirmPassword"
                   name="confirmPassword"
@@ -382,32 +382,32 @@ export default function SignupPage() {
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="Re-enter your password"
                   disabled={loading}
-                  className={`pl-10 border-gray-200 focus:border-blue-500 focus:ring-blue-500 ${
+                  className={`pl-10 border-border focus:border-brand-blue focus:ring-brand-blue/20 ${
                     confirmPassword.length > 0
                       ? passwordsMatch
-                        ? "border-green-500 focus:border-green-500"
-                        : "border-red-500 focus:border-red-500"
+                        ? "border-success focus:border-success"
+                        : "border-destructive focus:border-destructive"
                       : ""
                   }`}
                 />
                 {confirmPassword.length > 0 && (
                   <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
                     {passwordsMatch ? (
-                      <Check className="h-5 w-5 text-green-600" />
+                      <Check className="h-5 w-5 text-success" />
                     ) : (
-                      <X className="h-5 w-5 text-red-500" />
+                      <X className="h-5 w-5 text-destructive" />
                     )}
                   </div>
                 )}
               </div>
               {confirmPassword.length > 0 && !passwordsMatch && (
-                <p className="text-xs text-red-600">Passwords do not match</p>
+                <p className="text-xs text-destructive">Passwords do not match</p>
               )}
             </div>
 
             <Button
               type="submit"
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+              className="w-full bg-brand-purple hover:bg-brand-purple-dark text-white shadow-lg shadow-brand-purple/25"
               disabled={loading}
             >
               {loading ? (
@@ -420,30 +420,30 @@ export default function SignupPage() {
               )}
             </Button>
 
-            <p className="text-xs text-center text-gray-500">
+            <p className="text-xs text-center text-muted-foreground">
               By creating an account, you agree to our{" "}
-              <Link href="#" className="text-blue-600 hover:text-blue-700">
+              <Link href="#" className="text-brand-blue hover:text-brand-blue-600">
                 Terms of Service
               </Link>{" "}
               and{" "}
-              <Link href="#" className="text-blue-600 hover:text-blue-700">
+              <Link href="#" className="text-brand-blue hover:text-brand-blue-600">
                 Privacy Policy
               </Link>
             </p>
 
             <div className="relative my-6">
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-200" />
+                <div className="w-full border-t border-border" />
               </div>
               <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-white px-2 text-gray-500">
+                <span className="bg-white px-2 text-muted-foreground">
                   Already have an account?
                 </span>
               </div>
             </div>
 
             <Link href="/auth/login" className="block">
-              <Button type="button" variant="outline" className="w-full border-gray-200 text-gray-700 hover:bg-gray-50">
+              <Button type="button" variant="outline" className="w-full border-brand-blue/30 text-brand-blue hover:bg-brand-blue/5 hover:border-brand-blue">
                 Sign in instead
               </Button>
             </Link>

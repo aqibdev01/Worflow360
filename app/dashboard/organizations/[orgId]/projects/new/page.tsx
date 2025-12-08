@@ -254,10 +254,14 @@ export default function NewProjectPage() {
     }
 
     // Check if role already exists
-    const exists = [...DEFAULT_ROLES, ...customRoles].some(
-      r => r.name?.toLowerCase() === newCustomRoleName.toLowerCase() ||
-          r.label?.toLowerCase() === newCustomRoleName.toLowerCase()
+    const existsInDefaults = DEFAULT_ROLES.some(
+      r => r.label.toLowerCase() === newCustomRoleName.toLowerCase() ||
+           r.value.toLowerCase() === newCustomRoleName.toLowerCase()
     );
+    const existsInCustom = customRoles.some(
+      r => r.name.toLowerCase() === newCustomRoleName.toLowerCase()
+    );
+    const exists = existsInDefaults || existsInCustom;
 
     if (exists) {
       toast.error("This role already exists");

@@ -251,7 +251,7 @@ export function SprintDialog({
                   render={({ field }) => (
                     <FormItem className="flex flex-col">
                       <FormLabel>Start Date *</FormLabel>
-                      <Popover>
+                      <Popover modal={true}>
                         <PopoverTrigger asChild>
                           <FormControl>
                             <Button
@@ -271,11 +271,24 @@ export function SprintDialog({
                             </Button>
                           </FormControl>
                         </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
+                        <PopoverContent className="w-auto p-0 z-[200]" align="start">
                           <Calendar
                             mode="single"
                             selected={field.value}
-                            onSelect={field.onChange}
+                            onSelect={(date) => {
+                              field.onChange(date);
+                              // If new start date is after current end date, reset end date
+                              const currentEndDate = form.getValues("end_date");
+                              if (date && currentEndDate && date >= currentEndDate) {
+                                form.setValue("end_date", addDays(date, 14));
+                              }
+                            }}
+                            disabled={(date) => {
+                              const yesterday = new Date();
+                              yesterday.setDate(yesterday.getDate() - 1);
+                              yesterday.setHours(23, 59, 59, 999);
+                              return date < yesterday;
+                            }}
                             initialFocus
                           />
                         </PopoverContent>
@@ -291,7 +304,7 @@ export function SprintDialog({
                   render={({ field }) => (
                     <FormItem className="flex flex-col">
                       <FormLabel>End Date *</FormLabel>
-                      <Popover>
+                      <Popover modal={true}>
                         <PopoverTrigger asChild>
                           <FormControl>
                             <Button
@@ -311,12 +324,18 @@ export function SprintDialog({
                             </Button>
                           </FormControl>
                         </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
+                        <PopoverContent className="w-auto p-0 z-[200]" align="start">
                           <Calendar
                             mode="single"
                             selected={field.value}
                             onSelect={field.onChange}
-                            disabled={(date) => date < startDate}
+                            disabled={(date) => {
+                              // End date must be at least 1 day after start date
+                              const minEndDate = new Date(startDate);
+                              minEndDate.setDate(minEndDate.getDate() + 1);
+                              minEndDate.setHours(0, 0, 0, 0);
+                              return date < minEndDate;
+                            }}
                             initialFocus
                           />
                         </PopoverContent>

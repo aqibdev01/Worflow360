@@ -43,6 +43,57 @@ const config: Config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        // Custom brand colors
+        sidebar: {
+          DEFAULT: "hsl(var(--sidebar))",
+          foreground: "hsl(var(--sidebar-foreground))",
+          accent: "hsl(var(--sidebar-accent))",
+        },
+        success: {
+          DEFAULT: "hsl(var(--success))",
+          foreground: "hsl(var(--success-foreground))",
+        },
+        warning: {
+          DEFAULT: "hsl(var(--warning))",
+          foreground: "hsl(var(--warning-foreground))",
+        },
+        // Brand specific colors
+        navy: {
+          DEFAULT: "#0B0F3F",
+          50: "#E8E9F4",
+          100: "#C5C8E3",
+          200: "#9EA4D1",
+          300: "#777FBF",
+          400: "#5A63B2",
+          500: "#3D47A5",
+          600: "#2F3894",
+          700: "#202980",
+          800: "#141B67",
+          900: "#0B0F3F",
+        },
+        "brand-blue": {
+          DEFAULT: "#00A6FF",
+          50: "#E6F6FF",
+          100: "#B3E3FF",
+          200: "#80D0FF",
+          300: "#4DBDFF",
+          400: "#1AAAFF",
+          500: "#00A6FF",
+          600: "#0085CC",
+          700: "#006499",
+          800: "#004366",
+          900: "#002133",
+        },
+        "brand-purple": {
+          DEFAULT: "#7F57FF",
+          light: "#7F57FF",
+          dark: "#3A0CA3",
+        },
+        "brand-cyan": {
+          DEFAULT: "#4FD1FF",
+          light: "#4FD1FF",
+          dark: "#0077FF",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",

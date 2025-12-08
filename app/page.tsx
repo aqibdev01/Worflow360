@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Logo } from "@/components/Logo";
+import { useAuth } from "@/app/providers/AuthProvider";
 import {
   Users,
   BarChart3,
@@ -18,12 +19,14 @@ import {
   TrendingUp,
   Clock,
   Layers,
+  LayoutDashboard,
 } from "lucide-react";
 
 export default function Home() {
   const [isVisible, setIsVisible] = useState(false);
   const featuresRef = useRef<HTMLElement>(null);
   const benefitsRef = useRef<HTMLElement>(null);
+  const { user, loading } = useAuth();
 
   useEffect(() => {
     setIsVisible(true);
@@ -76,16 +79,27 @@ export default function Home() {
               </a>
             </div>
             <div className="flex items-center space-x-4">
-              <Link href="/auth/login">
-                <Button variant="ghost" size="sm" className="text-gray-600 hover:text-blue-600">
-                  Sign In
-                </Button>
-              </Link>
-              <Link href="/auth/signup">
-                <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white">
-                  Get Started
-                </Button>
-              </Link>
+              {!loading && user ? (
+                <Link href="/dashboard">
+                  <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white">
+                    <LayoutDashboard className="mr-2 h-4 w-4" />
+                    Go to Dashboard
+                  </Button>
+                </Link>
+              ) : (
+                <>
+                  <Link href="/auth/login">
+                    <Button variant="ghost" size="sm" className="text-gray-600 hover:text-blue-600">
+                      Sign In
+                    </Button>
+                  </Link>
+                  <Link href="/auth/signup">
+                    <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white">
+                      Get Started
+                    </Button>
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -278,12 +292,21 @@ export default function Home() {
             ))}
           </div>
 
-          <Link href="/auth/signup">
-            <Button size="lg" className="bg-white hover:bg-gray-100 text-blue-600 px-12 mt-8">
-              Get Started Free
-              <ArrowRight className="ml-2 h-5 w-5" />
-            </Button>
-          </Link>
+          {!loading && user ? (
+            <Link href="/dashboard">
+              <Button size="lg" className="bg-white hover:bg-gray-100 text-blue-600 px-12 mt-8">
+                <LayoutDashboard className="mr-2 h-5 w-5" />
+                Go to Dashboard
+              </Button>
+            </Link>
+          ) : (
+            <Link href="/auth/signup">
+              <Button size="lg" className="bg-white hover:bg-gray-100 text-blue-600 px-12 mt-8">
+                Get Started Free
+                <ArrowRight className="ml-2 h-5 w-5" />
+              </Button>
+            </Link>
+          )}
         </div>
       </section>
 

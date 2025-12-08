@@ -113,6 +113,8 @@ export interface Database {
           name: string;
           description: string | null;
           status: ProjectStatus;
+          start_date: string | null;
+          end_date: string | null;
           created_by: string;
           created_at: string;
           updated_at: string;
@@ -123,6 +125,8 @@ export interface Database {
           name: string;
           description?: string | null;
           status?: ProjectStatus;
+          start_date?: string | null;
+          end_date?: string | null;
           created_by: string;
           created_at?: string;
           updated_at?: string;
@@ -133,6 +137,8 @@ export interface Database {
           name?: string;
           description?: string | null;
           status?: ProjectStatus;
+          start_date?: string | null;
+          end_date?: string | null;
           created_by?: string;
           created_at?: string;
           updated_at?: string;
@@ -144,6 +150,7 @@ export interface Database {
           project_id: string;
           user_id: string;
           role: ProjectRole;
+          custom_role: string | null;
           assigned_at: string;
         };
         Insert: {
@@ -151,6 +158,7 @@ export interface Database {
           project_id: string;
           user_id: string;
           role?: ProjectRole;
+          custom_role?: string | null;
           assigned_at?: string;
         };
         Update: {
@@ -158,6 +166,7 @@ export interface Database {
           project_id?: string;
           user_id?: string;
           role?: ProjectRole;
+          custom_role?: string | null;
           assigned_at?: string;
         };
       };

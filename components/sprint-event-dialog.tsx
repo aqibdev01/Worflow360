@@ -74,6 +74,15 @@ const sprintEventFormSchema = z.object({
   event_date: z.date({ required_error: "Date is required" }),
   start_time: z.string().optional(),
   end_time: z.string().optional(),
+}).refine((data) => {
+  // If both times are provided, end time must be after start time
+  if (data.start_time && data.end_time) {
+    return data.end_time > data.start_time;
+  }
+  return true;
+}, {
+  message: "End time must be after start time",
+  path: ["end_time"],
 });
 
 type SprintEventFormValues = z.infer<typeof sprintEventFormSchema>;
