@@ -34,6 +34,8 @@ export interface Database {
           email: string;
           full_name: string | null;
           avatar_url: string | null;
+          security_question: string | null;
+          security_answer: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -42,6 +44,8 @@ export interface Database {
           email: string;
           full_name?: string | null;
           avatar_url?: string | null;
+          security_question?: string | null;
+          security_answer?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -50,6 +54,8 @@ export interface Database {
           email?: string;
           full_name?: string | null;
           avatar_url?: string | null;
+          security_question?: string | null;
+          security_answer?: string | null;
           created_at?: string;
           updated_at?: string;
         };

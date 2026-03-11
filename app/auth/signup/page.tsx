@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Logo } from "@/components/Logo";
-import { ArrowLeft, Loader2, AlertCircle, CheckCircle2, User, Mail, Lock, Check, X } from "lucide-react";
+import { ArrowLeft, Loader2, AlertCircle, CheckCircle2, User, Mail, Lock, Check, X, ShieldQuestion } from "lucide-react";
 
 // Email validation regex
 const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
@@ -45,6 +45,14 @@ function getPasswordStrengthLabel(score: number): { label: string; color: string
   return { label: "Strong", color: "text-success" };
 }
 
+const SECURITY_QUESTIONS = [
+  "What was the name of your first pet?",
+  "What city were you born in?",
+  "What is your mother's maiden name?",
+  "What was the name of your first school?",
+  "What is your favorite movie?",
+];
+
 function PasswordRequirement({ met, text }: { met: boolean; text: string }) {
   return (
     <div className="flex items-center gap-2">
@@ -67,6 +75,8 @@ export default function SignupPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [securityQuestion, setSecurityQuestion] = useState("");
+  const [securityAnswer, setSecurityAnswer] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -124,6 +134,18 @@ export default function SignupPage() {
       return;
     }
 
+    // Validate security question
+    if (!securityQuestion) {
+      setError("Please select a security question");
+      return;
+    }
+
+    // Validate security answer
+    if (!securityAnswer.trim() || securityAnswer.trim().length < 2) {
+      setError("Please enter an answer to your security question (at least 2 characters)");
+      return;
+    }
+
     setLoading(true);
     setError("");
 
@@ -137,6 +159,22 @@ export default function SignupPage() {
         if (event === "SIGNED_IN" && session) {
           console.log("✅ SIGNED_IN detected, redirecting...");
           subscription.unsubscribe();
+
+          // Save security question/answer to user profile
+          (supabase as any)
+            .from("users")
+            .update({
+              security_question: securityQuestion,
+              security_answer: securityAnswer.trim().toLowerCase(),
+            })
+            .eq("id", session.user.id)
+            .then(() => {
+              console.log("✅ Security question saved");
+            })
+            .catch((err: any) => {
+              console.error("Failed to save security question:", err);
+            });
+
           setSuccess(true);
           setTimeout(() => {
             window.location.href = "/dashboard";
@@ -157,6 +195,22 @@ export default function SignupPage() {
         clearTimeout(timeout);
         if (res.data && !success) {
           subscription.unsubscribe();
+
+          // Save security question/answer to user profile
+          (supabase as any)
+            .from("users")
+            .update({
+              security_question: securityQuestion,
+              security_answer: securityAnswer.trim().toLowerCase(),
+            })
+            .eq("id", res.data.id)
+            .then(() => {
+              console.log("✅ Security question saved (from signUp resolve)");
+            })
+            .catch((err: any) => {
+              console.error("Failed to save security question:", err);
+            });
+
           setSuccess(true);
           setTimeout(() => {
             window.location.href = "/dashboard";
@@ -415,6 +469,47 @@ export default function SignupPage() {
                 <p className="text-xs text-destructive">Passwords do not match</p>
               )}
             </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="securityQuestion" className="text-navy-900">Security Question <span className="text-destructive">*</span></Label>
+              <div className="relative">
+                <ShieldQuestion className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                <select
+                  id="securityQuestion"
+                  value={securityQuestion}
+                  onChange={(e) => setSecurityQuestion(e.target.value)}
+                  disabled={loading}
+                  className="flex h-10 w-full rounded-md border border-border bg-background pl-10 pr-3 py-2 text-sm ring-offset-background focus:border-brand-blue focus:outline-none focus:ring-2 focus:ring-brand-blue/20 disabled:cursor-not-allowed disabled:opacity-50 appearance-none"
+                >
+                  <option value="">Select a security question...</option>
+                  {SECURITY_QUESTIONS.map((q) => (
+                    <option key={q} value={q}>{q}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {securityQuestion && (
+              <div className="space-y-2">
+                <Label htmlFor="securityAnswer" className="text-navy-900">Security Answer <span className="text-destructive">*</span></Label>
+                <div className="relative">
+                  <ShieldQuestion className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                  <Input
+                    id="securityAnswer"
+                    name="securityAnswer"
+                    type="text"
+                    value={securityAnswer}
+                    onChange={(e) => setSecurityAnswer(e.target.value)}
+                    placeholder="Enter your answer"
+                    disabled={loading}
+                    className="pl-10 border-border focus:border-brand-blue focus:ring-brand-blue/20"
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  This will be used to verify your identity if you forget your password
+                </p>
+              </div>
+            )}
 
             <Button
               type="submit"

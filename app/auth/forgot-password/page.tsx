@@ -1,9 +1,7 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,31 +11,42 @@ import {
   ArrowLeft,
   Loader2,
   AlertCircle,
-  Mail,
-  CheckCircle2,
   KeyRound,
   Lock,
   Check,
   X,
   Eye,
   EyeOff,
+  Mail,
+  ShieldQuestion,
+  CheckCircle2,
+  User,
 } from "lucide-react";
 
-type Step = "email" | "sent" | "otp" | "password" | "success";
+const SECURITY_QUESTIONS = [
+  "What was the name of your first pet?",
+  "What city were you born in?",
+  "What is your mother's maiden name?",
+  "What was the name of your first school?",
+  "What is your favorite movie?",
+];
 
-function ForgotPasswordContent() {
-  const searchParams = useSearchParams();
-  // If arriving from callback with ?step=password, skip straight to password step
-  const initialStep = searchParams.get("step") === "password" ? "password" : "email";
+type Step = "email" | "question" | "password" | "success";
 
-  const [step, setStep] = useState<Step>(initialStep as Step);
+export default function ForgotPasswordPage() {
+  const [step, setStep] = useState<Step>("email");
   const [email, setEmail] = useState("");
+  const [securityQuestion, setSecurityQuestion] = useState("");
+  const [securityAnswer, setSecurityAnswer] = useState("");
+  const [isFallback, setIsFallback] = useState(false); // true for legacy accounts (no security question)
+  const [fullName, setFullName] = useState(""); // fallback verification
+  const [newSecurityQuestion, setNewSecurityQuestion] = useState(""); // legacy users must set one
+  const [newSecurityAnswer, setNewSecurityAnswer] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [resendTimer, setResendTimer] = useState(0);
 
   // Password requirements
   const hasMinLength = password.length >= 8;
@@ -47,16 +56,18 @@ function ForgotPasswordContent() {
   const passwordsMatch = password === confirmPassword && confirmPassword.length > 0;
   const isValidPassword = hasMinLength && hasUppercase && hasLowercase && hasNumber;
 
-  // Resend timer countdown
+  // Auto-redirect on success
   useEffect(() => {
-    if (resendTimer > 0) {
-      const timer = setTimeout(() => setResendTimer(resendTimer - 1), 1000);
+    if (step === "success") {
+      const timer = setTimeout(() => {
+        window.location.href = "/auth/login";
+      }, 2000);
       return () => clearTimeout(timer);
     }
-  }, [resendTimer]);
+  }, [step]);
 
-  // Step 1: Send password reset email
-  const handleSendReset = async (e: React.FormEvent) => {
+  // Step 1: Enter email, fetch security question
+  const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
@@ -68,19 +79,28 @@ function ForgotPasswordContent() {
     setLoading(true);
 
     try {
-      // Send password reset email with redirect to our callback
-      // The callback will detect type=recovery and redirect to this page with ?step=password
-      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth/callback?type=recovery`,
+      const res = await fetch("/api/get-security-question", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim() }),
       });
 
-      if (resetError) {
-        setError(resetError.message);
-      } else {
-        // Show "check your email" confirmation
-        setStep("sent");
-        setResendTimer(60);
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error || "Failed to find account");
+        return;
       }
+
+      if (data.fallback) {
+        // Legacy account — no security question, use name verification
+        setIsFallback(true);
+        setSecurityQuestion("");
+      } else {
+        setIsFallback(false);
+        setSecurityQuestion(data.question);
+      }
+      setStep("question");
     } catch (err) {
       setError("Something went wrong. Please try again.");
     } finally {
@@ -88,8 +108,28 @@ function ForgotPasswordContent() {
     }
   };
 
-  // Step 2: Update password (user arrives here via email link → callback → redirect)
-  const handleUpdatePassword = async (e: React.FormEvent) => {
+  // Step 2: Verify identity and move to password step
+  const handleVerifyIdentity = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+
+    if (isFallback) {
+      if (!fullName.trim() || fullName.trim().length < 2) {
+        setError("Please enter your full name");
+        return;
+      }
+    } else {
+      if (!securityAnswer.trim() || securityAnswer.trim().length < 2) {
+        setError("Please enter your security answer");
+        return;
+      }
+    }
+
+    setStep("password");
+  };
+
+  // Step 3: Reset password via API
+  const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
@@ -103,82 +143,68 @@ function ForgotPasswordContent() {
       return;
     }
 
+    // For legacy fallback, require setting a security question for future resets
+    if (isFallback) {
+      if (!newSecurityQuestion) {
+        setError("Please select a security question for future use");
+        return;
+      }
+      if (!newSecurityAnswer.trim() || newSecurityAnswer.trim().length < 2) {
+        setError("Please enter an answer for your security question");
+        return;
+      }
+    }
+
     setLoading(true);
-    console.log("Starting password update...");
 
     try {
-      // First check if we have a valid session
-      const { data: sessionData } = await supabase.auth.getSession();
-      console.log("Current session:", sessionData?.session ? "exists" : "none");
+      const body: Record<string, string> = {
+        email: email.trim(),
+        newPassword: password,
+      };
 
-      if (!sessionData?.session) {
-        console.error("No session found - cannot update password");
-        setError("Session expired. Please restart the password reset process.");
-        setLoading(false);
-        return;
+      if (isFallback) {
+        body.fullName = fullName.trim();
+        body.securityQuestion = newSecurityQuestion;
+        body.newSecurityAnswer = newSecurityAnswer.trim();
+      } else {
+        body.securityAnswer = securityAnswer.trim();
       }
 
-      console.log("Calling updateUser...");
-      const { data, error: updateError } = await supabase.auth.updateUser({
-        password: password,
+      const res = await fetch("/api/reset-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
       });
 
-      console.log("updateUser response:", { data, updateError });
+      const data = await res.json();
 
-      if (updateError) {
-        console.error("Password update error:", updateError);
-        setError(updateError.message);
-        setLoading(false);
+      if (!res.ok) {
+        if (res.status === 403) {
+          setStep("question");
+          if (isFallback) setFullName("");
+          else setSecurityAnswer("");
+        }
+        setError(data.error || "Failed to reset password");
         return;
       }
 
-      console.log("Password updated successfully!");
-
-      // Password updated successfully - sign out and redirect
-      await supabase.auth.signOut();
-
-      setLoading(false);
       setStep("success");
     } catch (err) {
-      console.error("Unexpected error:", err);
       setError("Something went wrong. Please try again.");
-      setLoading(false);
-    }
-  };
-
-  // Resend reset email
-  const handleResendEmail = async () => {
-    if (resendTimer > 0) return;
-
-    setError("");
-    setLoading(true);
-
-    try {
-      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth/callback?type=recovery`,
-      });
-
-      if (!resetError) {
-        setResendTimer(60);
-      } else {
-        setError("Failed to resend email. Please try again.");
-      }
-    } catch (err) {
-      setError("Failed to resend email. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
-  // Auto-redirect on success
-  useEffect(() => {
-    if (step === "success") {
-      const timer = setTimeout(() => {
-        window.location.href = "/auth/login";
-      }, 2000);
-      return () => clearTimeout(timer);
-    }
-  }, [step]);
+  // Step indicators config
+  const steps = [
+    { key: "email", label: "1" },
+    { key: "question", label: "2" },
+    { key: "password", label: "3" },
+  ];
+  const stepOrder = ["email", "question", "password"];
+  const currentStepIndex = stepOrder.indexOf(step);
 
   // Success Screen
   if (step === "success") {
@@ -247,43 +273,38 @@ function ForgotPasswordContent() {
       <div className="flex items-center justify-center min-h-screen pt-16 pb-12 px-4">
         <Card className="w-full max-w-md bg-white border-0 shadow-2xl p-8">
           {/* Step Indicator */}
-          {step !== "password" && (
-            <div className="flex items-center justify-center gap-2 mb-6">
-              {[
-                { key: "email", label: "1" },
-                { key: "sent", label: "2" },
-              ].map((s, i) => (
-                <div key={s.key} className="flex items-center">
-                  <div
-                    className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                      step === s.key
-                        ? "bg-brand-blue text-white"
-                        : ["email", "sent"].indexOf(step) > i
-                        ? "bg-green-500 text-white"
-                        : "bg-gray-200 text-gray-500"
-                    }`}
-                  >
-                    {["email", "sent"].indexOf(step) > i ? (
-                      <Check className="h-4 w-4" />
-                    ) : (
-                      s.label
-                    )}
-                  </div>
-                  {i < 1 && (
-                    <div
-                      className={`w-12 h-1 mx-1 ${
-                        ["email", "sent"].indexOf(step) > i
-                          ? "bg-green-500"
-                          : "bg-gray-200"
-                      }`}
-                    />
+          <div className="flex items-center justify-center gap-2 mb-6">
+            {steps.map((s, i) => (
+              <div key={s.key} className="flex items-center">
+                <div
+                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                    currentStepIndex === i
+                      ? "bg-brand-blue text-white"
+                      : currentStepIndex > i
+                      ? "bg-green-500 text-white"
+                      : "bg-gray-200 text-gray-500"
+                  }`}
+                >
+                  {currentStepIndex > i ? (
+                    <Check className="h-4 w-4" />
+                  ) : (
+                    s.label
                   )}
                 </div>
-              ))}
-            </div>
-          )}
+                {i < steps.length - 1 && (
+                  <div
+                    className={`w-12 h-1 mx-1 ${
+                      currentStepIndex > i
+                        ? "bg-green-500"
+                        : "bg-gray-200"
+                    }`}
+                  />
+                )}
+              </div>
+            ))}
+          </div>
 
-          {/* Step 1: Email */}
+          {/* Step 1: Enter Email */}
           {step === "email" && (
             <>
               <div className="text-center space-y-2 mb-6">
@@ -291,13 +312,13 @@ function ForgotPasswordContent() {
                   <KeyRound className="h-4 w-4 text-brand-blue" />
                   <span className="text-sm text-brand-blue font-medium">Reset Password</span>
                 </div>
-                <h1 className="text-2xl font-bold text-navy-900 mt-4">Forgot Password?</h1>
+                <h1 className="text-2xl font-bold text-navy-900 mt-4">Find Your Account</h1>
                 <p className="text-gray-600 text-sm">
-                  Enter your email and we&apos;ll send you a reset link
+                  Enter the email address associated with your account
                 </p>
               </div>
 
-              <form onSubmit={handleSendReset} className="space-y-4">
+              <form onSubmit={handleEmailSubmit} className="space-y-4">
                 {error && (
                   <div className="p-3 rounded-lg bg-red-50 border border-red-200 flex items-start gap-2">
                     <AlertCircle className="h-5 w-5 text-red-500 mt-0.5 flex-shrink-0" />
@@ -329,58 +350,48 @@ function ForgotPasswordContent() {
                   {loading ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Sending...
+                      Looking up account...
                     </>
                   ) : (
-                    "Send Reset Link"
+                    "Continue"
                   )}
                 </Button>
               </form>
+
+              <div className="mt-6 text-center">
+                <p className="text-sm text-gray-500">
+                  Remember your password?{" "}
+                  <Link href="/auth/login" className="text-brand-blue hover:underline font-medium">
+                    Sign in
+                  </Link>
+                </p>
+              </div>
             </>
           )}
 
-          {/* Step 2: Check your email */}
-          {step === "sent" && (
+          {/* Step 2: Verify Identity */}
+          {step === "question" && (
             <>
               <div className="text-center space-y-2 mb-6">
-                <div className="mx-auto w-16 h-16 bg-brand-blue/10 rounded-full flex items-center justify-center border border-brand-blue/20">
-                  <Mail className="h-8 w-8 text-brand-blue" />
+                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-brand-blue/10 border border-brand-blue/20">
+                  {isFallback ? (
+                    <User className="h-4 w-4 text-brand-blue" />
+                  ) : (
+                    <ShieldQuestion className="h-4 w-4 text-brand-blue" />
+                  )}
+                  <span className="text-sm text-brand-blue font-medium">
+                    {isFallback ? "Identity Verification" : "Security Question"}
+                  </span>
                 </div>
-                <h1 className="text-2xl font-bold text-navy-900 mt-4">Check Your Email</h1>
+                <h1 className="text-2xl font-bold text-navy-900 mt-4">Verify Your Identity</h1>
                 <p className="text-gray-600 text-sm">
-                  We sent a password reset link to
-                </p>
-                <p className="text-brand-blue font-medium">{email}</p>
-                <p className="text-gray-500 text-xs mt-2">
-                  Click the link in the email to reset your password. If you don&apos;t see it, check your spam folder.
+                  {isFallback
+                    ? "Enter the full name you used when signing up"
+                    : "Answer the security question you set during registration"}
                 </p>
               </div>
 
-              <div className="space-y-3">
-                <div className="text-center">
-                  <button
-                    type="button"
-                    onClick={handleResendEmail}
-                    disabled={resendTimer > 0 || loading}
-                    className={`text-sm ${
-                      resendTimer > 0
-                        ? "text-gray-400 cursor-not-allowed"
-                        : "text-brand-blue hover:underline"
-                    }`}
-                  >
-                    {loading ? (
-                      <span className="flex items-center justify-center gap-2">
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                        Sending...
-                      </span>
-                    ) : resendTimer > 0 ? (
-                      `Resend email in ${resendTimer}s`
-                    ) : (
-                      "Resend email"
-                    )}
-                  </button>
-                </div>
-
+              <form onSubmit={handleVerifyIdentity} className="space-y-4">
                 {error && (
                   <div className="p-3 rounded-lg bg-red-50 border border-red-200 flex items-start gap-2">
                     <AlertCircle className="h-5 w-5 text-red-500 mt-0.5 flex-shrink-0" />
@@ -388,17 +399,75 @@ function ForgotPasswordContent() {
                   </div>
                 )}
 
+                {isFallback ? (
+                  <div className="space-y-2">
+                    <Label htmlFor="fullName" className="text-navy-900">Full Name</Label>
+                    <div className="relative">
+                      <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                      <Input
+                        id="fullName"
+                        type="text"
+                        placeholder="Enter your full name as registered"
+                        value={fullName}
+                        onChange={(e) => setFullName(e.target.value)}
+                        disabled={loading}
+                        className="pl-10"
+                        autoFocus
+                      />
+                    </div>
+                    <p className="text-xs text-gray-500">
+                      This must match the name you used when signing up (not case-sensitive)
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                      <p className="text-sm font-medium text-navy-900">{securityQuestion}</p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="securityAnswer" className="text-navy-900">Your Answer</Label>
+                      <div className="relative">
+                        <ShieldQuestion className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                        <Input
+                          id="securityAnswer"
+                          type="text"
+                          placeholder="Enter your answer"
+                          value={securityAnswer}
+                          onChange={(e) => setSecurityAnswer(e.target.value)}
+                          disabled={loading}
+                          className="pl-10"
+                          autoFocus
+                        />
+                      </div>
+                      <p className="text-xs text-gray-500">
+                        Answer is not case-sensitive
+                      </p>
+                    </div>
+                  </>
+                )}
+
+                <Button
+                  type="submit"
+                  disabled={loading || (isFallback ? !fullName.trim() : !securityAnswer.trim())}
+                  className="w-full bg-brand-blue hover:bg-brand-blue/90 text-white"
+                >
+                  Continue
+                </Button>
+
                 <button
                   type="button"
                   onClick={() => {
                     setStep("email");
                     setError("");
+                    setSecurityAnswer("");
+                    setFullName("");
                   }}
                   className="w-full text-sm text-gray-500 hover:text-gray-700"
                 >
-                  Use different email
+                  Go back
                 </button>
-              </div>
+              </form>
             </>
           )}
 
@@ -416,7 +485,7 @@ function ForgotPasswordContent() {
                 </p>
               </div>
 
-              <form onSubmit={handleUpdatePassword} className="space-y-4">
+              <form onSubmit={handleResetPassword} className="space-y-4">
                 {error && (
                   <div className="p-3 rounded-lg bg-red-50 border border-red-200 flex items-start gap-2">
                     <AlertCircle className="h-5 w-5 text-red-500 mt-0.5 flex-shrink-0" />
@@ -496,9 +565,50 @@ function ForgotPasswordContent() {
                   )}
                 </div>
 
+                {/* Legacy users: set a security question for future resets */}
+                {isFallback && (
+                  <>
+                    <div className="p-3 bg-amber-50 rounded-lg border border-amber-200">
+                      <p className="text-xs text-amber-700 font-medium">
+                        Please set a security question for future password resets
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="newSecurityQuestion" className="text-navy-900">Security Question</Label>
+                      <select
+                        id="newSecurityQuestion"
+                        value={newSecurityQuestion}
+                        onChange={(e) => setNewSecurityQuestion(e.target.value)}
+                        disabled={loading}
+                        className="flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-brand-blue focus:outline-none focus:ring-2 focus:ring-brand-blue/20"
+                      >
+                        <option value="">Select a security question...</option>
+                        {SECURITY_QUESTIONS.map((q) => (
+                          <option key={q} value={q}>{q}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {newSecurityQuestion && (
+                      <div className="space-y-2">
+                        <Label htmlFor="newSecurityAnswer" className="text-navy-900">Security Answer</Label>
+                        <Input
+                          id="newSecurityAnswer"
+                          type="text"
+                          placeholder="Enter your answer"
+                          value={newSecurityAnswer}
+                          onChange={(e) => setNewSecurityAnswer(e.target.value)}
+                          disabled={loading}
+                        />
+                      </div>
+                    )}
+                  </>
+                )}
+
                 <Button
                   type="submit"
-                  disabled={loading || !isValidPassword || !passwordsMatch}
+                  disabled={loading || !isValidPassword || !passwordsMatch || (isFallback && (!newSecurityQuestion || !newSecurityAnswer.trim()))}
                   className="w-full bg-brand-blue hover:bg-brand-blue/90 text-white"
                 >
                   {loading ? (
@@ -510,36 +620,24 @@ function ForgotPasswordContent() {
                     "Reset Password"
                   )}
                 </Button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setStep("question");
+                    setError("");
+                    setPassword("");
+                    setConfirmPassword("");
+                  }}
+                  className="w-full text-sm text-gray-500 hover:text-gray-700"
+                >
+                  Go back
+                </button>
               </form>
             </>
-          )}
-
-          {step === "email" && (
-            <div className="mt-6 text-center">
-              <p className="text-sm text-gray-500">
-                Remember your password?{" "}
-                <Link href="/auth/login" className="text-brand-blue hover:underline font-medium">
-                  Sign in
-                </Link>
-              </p>
-            </div>
           )}
         </Card>
       </div>
     </div>
-  );
-}
-
-export default function ForgotPasswordPage() {
-  return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen bg-gradient-to-br from-navy-900 via-navy-800 to-navy-900 flex items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-white" />
-        </div>
-      }
-    >
-      <ForgotPasswordContent />
-    </Suspense>
   );
 }

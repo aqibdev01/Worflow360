@@ -50,6 +50,20 @@ The authentication isn't working because **the database tables don't exist yet**
 
 ---
 
+## Step 6: Add Security Question Columns (Required for Password Reset)
+
+Run this SQL in the **SQL Editor** to add security question support:
+
+```sql
+ALTER TABLE public.users
+ADD COLUMN IF NOT EXISTS security_question TEXT,
+ADD COLUMN IF NOT EXISTS security_answer TEXT;
+```
+
+This enables the password reset flow where users verify their identity by answering a security question they set during signup (no email/SMTP required).
+
+---
+
 ## After Setup: Test Authentication
 
 ### Test Signup:
