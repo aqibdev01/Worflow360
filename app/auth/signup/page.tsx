@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { signUp } from "@/lib/auth";
-import { isSupabaseConfigured } from "@/lib/supabase";
+import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -125,40 +125,54 @@ export default function SignupPage() {
     }
 
     setLoading(true);
+    setError("");
 
     try {
       console.log("📝 Starting signup process...");
-      const { data, error: authError } = await signUp({
-        email,
-        password,
-        fullName,
+
+      // Listen for SIGNED_IN event — this fires reliably even when
+      // supabase API calls hang on the free tier.
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+        console.log("📝 Auth event during signup:", event);
+        if (event === "SIGNED_IN" && session) {
+          console.log("✅ SIGNED_IN detected, redirecting...");
+          subscription.unsubscribe();
+          setSuccess(true);
+          setTimeout(() => {
+            window.location.href = "/dashboard";
+          }, 1500);
+        }
       });
 
-      console.log("📝 Signup response:", { data, authError });
-
-      if (authError) {
-        console.error("❌ Signup error:", authError);
-        setError(authError.message);
+      // Timeout: if no SIGNED_IN event after 60s, show error
+      const timeout = setTimeout(() => {
+        subscription.unsubscribe();
         setLoading(false);
-        return;
-      }
+        setError("Account may have been created but we couldn't sign you in automatically. Please try logging in.");
+      }, 60000);
 
-      if (data) {
-        console.log("✅ Signup successful, redirecting to verification...");
-        setSuccess(true);
-        // Redirect to email verification page instead of dashboard
-        setTimeout(() => {
-          router.push(`/auth/verify-email?email=${encodeURIComponent(email)}`);
-        }, 1500);
-      } else {
-        // Handle case where no data and no error (shouldn't happen but just in case)
-        console.error("❌ No data returned from signup");
-        setError("Signup failed. Please try again.");
-        setLoading(false);
-      }
-    } catch (err) {
+      // Fire off signup — don't await it, it hangs on free tier
+      signUp({ email, password, fullName }).then((res) => {
+        console.log("📝 signUp() finally resolved:", res);
+        clearTimeout(timeout);
+        if (res.data && !success) {
+          subscription.unsubscribe();
+          setSuccess(true);
+          setTimeout(() => {
+            window.location.href = "/dashboard";
+          }, 1500);
+        } else if (res.error) {
+          subscription.unsubscribe();
+          clearTimeout(timeout);
+          setError(res.error.message);
+          setLoading(false);
+        }
+      }).catch((err) => {
+        console.error("📝 signUp() rejected:", err);
+      });
+    } catch (err: any) {
       console.error("❌ Unexpected error:", err);
-      setError("An unexpected error occurred");
+      setError(err?.message || "An unexpected error occurred");
       setLoading(false);
     }
   };
@@ -186,12 +200,9 @@ export default function SignupPage() {
                 <Mail className="h-8 w-8 text-success" />
               </div>
               <div>
-                <h3 className="text-2xl font-bold text-navy-900">Verify Your Email</h3>
+                <h3 className="text-2xl font-bold text-navy-900">Account Created!</h3>
                 <p className="text-muted-foreground mt-2">
-                  We've sent a 6-digit code to <span className="font-medium text-brand-blue">{email}</span>
-                </p>
-                <p className="text-muted-foreground text-sm mt-1">
-                  Redirecting to verification page...
+                  Welcome to Workflow360. Redirecting you now...
                 </p>
               </div>
             </div>

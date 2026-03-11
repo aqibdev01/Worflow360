@@ -55,7 +55,6 @@ export async function getUserOrganizations(userId?: string) {
     `
     );
 
-  // If userId provided, filter by that user's memberships
   if (userId) {
     query = query.eq("organization_members.user_id", userId);
   }
@@ -63,7 +62,30 @@ export async function getUserOrganizations(userId?: string) {
   const { data, error } = await query.order("created_at", { ascending: false });
 
   if (error) throw error;
-  return data;
+
+  if (!data || data.length === 0) return [];
+
+  // Fetch member and project counts in parallel
+  const orgIds = (data as any[]).map((o: any) => o.id);
+  const [memberCounts, projectCounts] = await Promise.all([
+    (supabase as any).from("organization_members").select("org_id").in("org_id", orgIds),
+    (supabase as any).from("projects").select("org_id").in("org_id", orgIds),
+  ]);
+
+  const memberCountMap: Record<string, number> = {};
+  const projectCountMap: Record<string, number> = {};
+  ((memberCounts.data || []) as any[]).forEach((r: any) => {
+    memberCountMap[r.org_id] = (memberCountMap[r.org_id] || 0) + 1;
+  });
+  ((projectCounts.data || []) as any[]).forEach((r: any) => {
+    projectCountMap[r.org_id] = (projectCountMap[r.org_id] || 0) + 1;
+  });
+
+  return (data as any[]).map((org: any) => ({
+    ...org,
+    member_count: memberCountMap[org.id] || 1,
+    project_count: projectCountMap[org.id] || 0,
+  }));
 }
 
 /**
@@ -412,9 +434,16 @@ export async function updateTaskStatus(
   taskId: string,
   status: "todo" | "in_progress" | "review" | "done" | "blocked"
 ) {
+  const updatePayload: any = { status };
+  if (status === "done") {
+    updatePayload.completed_at = new Date().toISOString();
+  } else {
+    updatePayload.completed_at = null;
+  }
+
   const { data, error } = await supabase
     .from("tasks")
-    .update({ status })
+    .update(updatePayload)
     .eq("id", taskId)
     .select()
     .single();
@@ -467,6 +496,7 @@ export async function updateTask(
     status?: "todo" | "in_progress" | "review" | "done" | "blocked";
     priority?: "low" | "medium" | "high" | "urgent";
     assignee_id?: string | null;
+    sprint_id?: string | null;
     due_date?: string | null;
   }
 ) {
@@ -1292,4 +1322,401 @@ export async function updateMemberRole(
 
   if (error) throw error;
   return data;
+}
+
+// =====================================================
+// ANALYTICS
+// =====================================================
+
+/**
+ * Get comprehensive analytics data for a project
+ * Fetches tasks (with assignee + sprint), members, and sprints in parallel
+ */
+export async function getProjectAnalyticsData(projectId: string) {
+  const [tasksResult, membersResult, sprintsResult] = await Promise.all([
+    supabase
+      .from("tasks")
+      .select(
+        `id, title, status, priority, created_at, completed_at, due_date,
+         assignee_id, sprint_id,
+         assignee:users!assignee_id(id, full_name, email)`
+      )
+      .eq("project_id", projectId)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("project_members")
+      .select(`id, role, custom_role, users(id, full_name, email)`)
+      .eq("project_id", projectId),
+    supabase
+      .from("sprints")
+      .select("id, name, status, start_date, end_date")
+      .eq("project_id", projectId)
+      .order("created_at", { ascending: true }),
+  ]);
+
+  if (tasksResult.error) throw tasksResult.error;
+  if (membersResult.error) throw membersResult.error;
+  if (sprintsResult.error) throw sprintsResult.error;
+
+  return {
+    tasks: (tasksResult.data || []) as any[],
+    members: (membersResult.data || []) as any[],
+    sprints: (sprintsResult.data || []) as any[],
+  };
+}
+
+// =====================================================
+// CALENDAR
+// =====================================================
+
+/**
+ * Get tasks assigned to a user that have due dates in a given range.
+ * Used for the personal calendar view.
+ */
+export async function getCalendarTasks(
+  userId: string,
+  startDate: string,
+  endDate: string
+): Promise<any[]> {
+  const { data, error } = await (supabase.from("tasks") as any)
+    .select(
+      `id, title, status, priority, due_date, assignee_id, project_id,
+       projects (id, name)`
+    )
+    .eq("assignee_id", userId)
+    .not("due_date", "is", null)
+    .gte("due_date", startDate)
+    .lte("due_date", endDate)
+    .order("due_date", { ascending: true });
+
+  if (error) throw error;
+  return (data || []) as any[];
+}
+
+/**
+ * Get all tasks (with assignee info) in projects where the user is a PM.
+ * Used for the manager calendar view with member filtering.
+ */
+export async function getCalendarTasksForManager(
+  userId: string,
+  startDate: string,
+  endDate: string
+): Promise<any[]> {
+  // Step 1: find projects where this user is owner/lead/Project Manager
+  const { data: memberRows } = await (supabase.from("project_members") as any)
+    .select("project_id, role, custom_role")
+    .eq("user_id", userId);
+
+  const projectIds = ((memberRows || []) as any[])
+    .filter(
+      (m: any) =>
+        m.role === "owner" ||
+        m.role === "lead" ||
+        m.custom_role === "Project Manager"
+    )
+    .map((m: any) => m.project_id);
+
+  if (projectIds.length === 0) return [];
+
+  // Step 2: get all tasks with due dates in those projects
+  const { data, error } = await (supabase.from("tasks") as any)
+    .select(
+      `id, title, status, priority, due_date, assignee_id, project_id,
+       projects (id, name),
+       assignee:users!assignee_id (id, full_name, email)`
+    )
+    .in("project_id", projectIds)
+    .not("due_date", "is", null)
+    .gte("due_date", startDate)
+    .lte("due_date", endDate)
+    .order("due_date", { ascending: true });
+
+  if (error) throw error;
+  return (data || []) as any[];
+}
+
+/**
+ * Get all unique members across projects managed by a user.
+ * Used to populate the PM member filter on the calendar.
+ */
+export async function getManagedProjectMembers(userId: string): Promise<any[]> {
+  const { data: memberRows } = await (supabase.from("project_members") as any)
+    .select("project_id, role, custom_role")
+    .eq("user_id", userId);
+
+  const projectIds = ((memberRows || []) as any[])
+    .filter(
+      (m: any) =>
+        m.role === "owner" ||
+        m.role === "lead" ||
+        m.custom_role === "Project Manager"
+    )
+    .map((m: any) => m.project_id);
+
+  if (projectIds.length === 0) return [];
+
+  const { data, error } = await (supabase.from("project_members") as any)
+    .select("user_id, users!inner (id, full_name, email)")
+    .in("project_id", projectIds);
+
+  if (error) return [];
+
+  // Deduplicate by user_id
+  const seen = new Set<string>();
+  return ((data || []) as any[]).filter((m: any) => {
+    if (seen.has(m.user_id)) return false;
+    seen.add(m.user_id);
+    return true;
+  });
+}
+
+/**
+ * Get all tasks for a specific project that have due dates in a given range.
+ * Includes assignee info for PM view. Used for project-level calendar.
+ */
+export async function getProjectCalendarTasks(
+  projectId: string,
+  startDate: string,
+  endDate: string
+): Promise<any[]> {
+  const { data, error } = await (supabase.from("tasks") as any)
+    .select(
+      `id, title, status, priority, due_date, assignee_id, project_id,
+       assignee:users!assignee_id (id, full_name, email)`
+    )
+    .eq("project_id", projectId)
+    .not("due_date", "is", null)
+    .gte("due_date", startDate)
+    .lte("due_date", endDate)
+    .order("due_date", { ascending: true });
+
+  if (error) throw error;
+  return (data || []) as any[];
+}
+
+/**
+ * Get all members of a specific project for calendar member filter.
+ */
+export async function getProjectMembersForCalendar(projectId: string): Promise<any[]> {
+  const { data, error } = await (supabase.from("project_members") as any)
+    .select(`user_id, role, custom_role, users (id, full_name, email)`)
+    .eq("project_id", projectId);
+
+  if (error) return [];
+  return (data || []) as any[];
+}
+
+// =====================================================
+// CALENDAR SPRINT EVENTS & SPRINTS
+// =====================================================
+
+/**
+ * Get all sprint events across user's projects for a date range.
+ * Used by the global calendar to show meetings, standups, etc.
+ */
+export async function getCalendarSprintEvents(
+  userId: string,
+  startDate: string,
+  endDate: string
+): Promise<any[]> {
+  // Get projects this user belongs to
+  const { data: memberRows } = await (supabase.from("project_members") as any)
+    .select("project_id")
+    .eq("user_id", userId);
+
+  const projectIds = ((memberRows || []) as any[]).map((m: any) => m.project_id);
+  if (projectIds.length === 0) return [];
+
+  // Get sprints in those projects
+  const { data: sprints } = await (supabase.from("sprints") as any)
+    .select("id")
+    .in("project_id", projectIds);
+
+  const sprintIds = ((sprints || []) as any[]).map((s: any) => s.id);
+  if (sprintIds.length === 0) return [];
+
+  // Get sprint events in date range
+  const { data, error } = await (supabase.from("sprint_events") as any)
+    .select(
+      `*,
+       created_by_user:users!created_by(id, full_name, email),
+       sprints!inner(id, name, project_id, projects(id, name))`
+    )
+    .in("sprint_id", sprintIds)
+    .gte("event_date", startDate)
+    .lte("event_date", endDate)
+    .order("event_date", { ascending: true });
+
+  if (error) {
+    console.error("Error fetching calendar sprint events:", error);
+    return [];
+  }
+  return (data || []) as any[];
+}
+
+/**
+ * Get all sprints (with date ranges) for user's projects.
+ * Used to highlight sprint periods on the calendar.
+ */
+export async function getCalendarSprints(
+  userId: string,
+  startDate: string,
+  endDate: string
+): Promise<any[]> {
+  const { data: memberRows } = await (supabase.from("project_members") as any)
+    .select("project_id")
+    .eq("user_id", userId);
+
+  const projectIds = ((memberRows || []) as any[]).map((m: any) => m.project_id);
+  if (projectIds.length === 0) return [];
+
+  const { data, error } = await (supabase.from("sprints") as any)
+    .select(`id, name, start_date, end_date, status, project_id, projects(id, name)`)
+    .in("project_id", projectIds)
+    .lte("start_date", endDate)
+    .gte("end_date", startDate)
+    .order("start_date", { ascending: true });
+
+  if (error) {
+    console.error("Error fetching calendar sprints:", error);
+    return [];
+  }
+  return (data || []) as any[];
+}
+
+/**
+ * Get sprint events for a specific project in a date range.
+ * Used by the project-level calendar.
+ */
+export async function getProjectCalendarEvents(
+  projectId: string,
+  startDate: string,
+  endDate: string
+): Promise<any[]> {
+  // Get sprints for this project
+  const { data: sprints } = await (supabase.from("sprints") as any)
+    .select("id")
+    .eq("project_id", projectId);
+
+  const sprintIds = ((sprints || []) as any[]).map((s: any) => s.id);
+  if (sprintIds.length === 0) return [];
+
+  const { data, error } = await (supabase.from("sprint_events") as any)
+    .select(
+      `*,
+       created_by_user:users!created_by(id, full_name, email),
+       sprints(id, name)`
+    )
+    .in("sprint_id", sprintIds)
+    .gte("event_date", startDate)
+    .lte("event_date", endDate)
+    .order("event_date", { ascending: true });
+
+  if (error) return [];
+  return (data || []) as any[];
+}
+
+/**
+ * Get sprints for a specific project overlapping a date range.
+ */
+export async function getProjectCalendarSprints(
+  projectId: string,
+  startDate: string,
+  endDate: string
+): Promise<any[]> {
+  const { data, error } = await (supabase.from("sprints") as any)
+    .select(`id, name, start_date, end_date, status, project_id`)
+    .eq("project_id", projectId)
+    .lte("start_date", endDate)
+    .gte("end_date", startDate)
+    .order("start_date", { ascending: true });
+
+  if (error) return [];
+  return (data || []) as any[];
+}
+
+/**
+ * Get upcoming deadlines (tasks due in next N days) for a user.
+ * Used for the reminders/deadline tracking panel.
+ */
+export async function getUpcomingDeadlines(
+  userId: string,
+  daysAhead: number = 7
+): Promise<any[]> {
+  const today = new Date().toISOString().slice(0, 10);
+  const futureDate = new Date(Date.now() + daysAhead * 86400000).toISOString().slice(0, 10);
+
+  const { data, error } = await (supabase.from("tasks") as any)
+    .select(
+      `id, title, status, priority, due_date, assignee_id, project_id,
+       projects (id, name)`
+    )
+    .eq("assignee_id", userId)
+    .not("due_date", "is", null)
+    .neq("status", "done")
+    .gte("due_date", today)
+    .lte("due_date", futureDate)
+    .order("due_date", { ascending: true });
+
+  if (error) return [];
+  return (data || []) as any[];
+}
+
+/**
+ * Get overdue tasks for a user (due_date < today, not done).
+ */
+export async function getOverdueTasks(userId: string): Promise<any[]> {
+  const today = new Date().toISOString().slice(0, 10);
+
+  const { data, error } = await (supabase.from("tasks") as any)
+    .select(
+      `id, title, status, priority, due_date, assignee_id, project_id,
+       projects (id, name)`
+    )
+    .eq("assignee_id", userId)
+    .not("due_date", "is", null)
+    .neq("status", "done")
+    .lt("due_date", today)
+    .order("due_date", { ascending: true });
+
+  if (error) return [];
+  return (data || []) as any[];
+}
+
+/**
+ * Get upcoming sprint events for a user (next N days).
+ */
+export async function getUpcomingSprintEvents(
+  userId: string,
+  daysAhead: number = 7
+): Promise<any[]> {
+  const today = new Date().toISOString().slice(0, 10);
+  const futureDate = new Date(Date.now() + daysAhead * 86400000).toISOString().slice(0, 10);
+
+  const { data: memberRows } = await (supabase.from("project_members") as any)
+    .select("project_id")
+    .eq("user_id", userId);
+
+  const projectIds = ((memberRows || []) as any[]).map((m: any) => m.project_id);
+  if (projectIds.length === 0) return [];
+
+  const { data: sprints } = await (supabase.from("sprints") as any)
+    .select("id")
+    .in("project_id", projectIds);
+
+  const sprintIds = ((sprints || []) as any[]).map((s: any) => s.id);
+  if (sprintIds.length === 0) return [];
+
+  const { data, error } = await (supabase.from("sprint_events") as any)
+    .select(
+      `*,
+       sprints(id, name, project_id, projects(id, name))`
+    )
+    .in("sprint_id", sprintIds)
+    .gte("event_date", today)
+    .lte("event_date", futureDate)
+    .order("event_date", { ascending: true });
+
+  if (error) return [];
+  return (data || []) as any[];
 }

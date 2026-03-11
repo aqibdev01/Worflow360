@@ -117,7 +117,7 @@ export default function TestAuthPage() {
         if (authData.user) {
           console.log("🧪 Test 6: Creating user profile...");
           try {
-            const { data: profileData, error: profileError } = await supabase
+            const { data: profileData, error: profileError } = await (supabase as any)
               .from("users")
               .insert({
                 id: authData.user.id,

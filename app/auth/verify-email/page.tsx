@@ -81,33 +81,35 @@ function VerifyEmailContent() {
     setError("");
     setLoading(true);
 
+    const withTimeout = <T,>(promise: Promise<T>, ms = 30000): Promise<T> =>
+      Promise.race([
+        promise,
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error("Verification timed out. Please try again.")), ms)
+        ),
+      ]);
+
     try {
       // Try verifying as signup OTP first
-      const { data, error: verifyError } = await supabase.auth.verifyOtp({
-        email,
-        token: otpCode,
-        type: "signup",
-      });
+      const { data, error: verifyError } = await withTimeout(
+        supabase.auth.verifyOtp({ email, token: otpCode, type: "signup" })
+      );
 
       if (verifyError) {
         // If signup verification fails, try email type
-        const { data: emailData, error: emailError } = await supabase.auth.verifyOtp({
-          email,
-          token: otpCode,
-          type: "email",
-        });
+        const { data: emailData, error: emailError } = await withTimeout(
+          supabase.auth.verifyOtp({ email, token: otpCode, type: "email" })
+        );
 
         if (emailError) {
           setError(emailError.message || "Invalid verification code. Please try again.");
-          setLoading(false);
           return;
         }
 
         if (emailData.user) {
           setSuccess(true);
           setTimeout(() => {
-            router.push("/dashboard");
-            router.refresh();
+            window.location.href = "/dashboard";
           }, 2000);
         }
         return;
@@ -116,12 +118,20 @@ function VerifyEmailContent() {
       if (data.user) {
         setSuccess(true);
         setTimeout(() => {
-          router.push("/dashboard");
-          router.refresh();
+          window.location.href = "/dashboard";
         }, 2000);
       }
-    } catch (err) {
-      setError("An unexpected error occurred. Please try again.");
+    } catch (err: any) {
+      const msg: string = err?.message || "";
+      if (msg.toLowerCase().includes("rate limit") || msg.toLowerCase().includes("email rate")) {
+        setError(
+          "Email rate limit reached. Supabase free tier allows only ~2 emails/hour. " +
+          "Please wait an hour and try again, or ask your admin to configure a custom SMTP provider."
+        );
+      } else {
+        setError(msg || "An unexpected error occurred. Please try again.");
+      }
+    } finally {
       setLoading(false);
     }
   };

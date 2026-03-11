@@ -452,3 +452,85 @@ export interface SprintWithDetails extends Sprint {
 export interface NotificationWithDetails extends Notification {
   users?: User;
 }
+
+// =====================================================
+// Communication Hub Types
+// =====================================================
+export type ChannelType = "org_default" | "org_custom" | "project_default" | "project_custom" | "direct";
+export type ChannelVisibility = "public" | "private";
+export type MessageType = "text" | "system" | "file";
+
+export interface Channel {
+  id: string;
+  name: string;
+  description: string | null;
+  channel_type: ChannelType;
+  visibility: ChannelVisibility;
+  org_id: string | null;
+  project_id: string | null;
+  created_by: string;
+  is_archived: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ChannelMember {
+  id: string;
+  channel_id: string;
+  user_id: string;
+  role: string;
+  last_read_at: string;
+  is_muted: boolean;
+  joined_at: string;
+}
+
+export interface Message {
+  id: string;
+  channel_id: string;
+  sender_id: string;
+  parent_message_id: string | null;
+  content: string;
+  message_type: MessageType;
+  reply_count: number;
+  is_edited: boolean;
+  is_deleted: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MessageMention {
+  id: string;
+  message_id: string;
+  mentioned_user_id: string;
+  created_at: string;
+}
+
+export interface MessageReaction {
+  id: string;
+  message_id: string;
+  user_id: string;
+  emoji: string;
+  created_at: string;
+}
+
+export interface MessageAttachment {
+  id: string;
+  message_id: string;
+  file_name: string;
+  file_size: number;
+  file_type: string;
+  storage_path: string;
+  created_at: string;
+}
+
+// Extended chat types
+export interface MessageWithSender extends Message {
+  users?: User | null;
+  message_attachments?: MessageAttachment[];
+  message_reactions?: MessageReaction[];
+}
+
+export interface ChannelWithUnread extends Channel {
+  unread_count?: number;
+  last_message?: Message | null;
+}

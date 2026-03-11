@@ -71,8 +71,8 @@ export default function LoginPage() {
       }
 
       if (data) {
-        // Redirect to dashboard
-        router.push(redirectTo);
+        // Full page reload to ensure AuthProvider re-initializes with new session
+        window.location.href = redirectTo;
       }
     } catch (err) {
       console.error("Login error:", err);

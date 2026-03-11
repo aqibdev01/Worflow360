@@ -15,6 +15,7 @@ import {
   Square,
   CheckCircle2,
   Pencil,
+  RotateCcw,
 } from "lucide-react";
 import { format, differenceInDays, isWithinInterval, isBefore, isAfter, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -44,6 +45,7 @@ interface SprintTimelineProps {
   isProjectManager: boolean;
   onStartSprint?: () => void;
   onStopSprint?: () => void;
+  onReopenSprint?: () => void;
   onEditSprint?: () => void;
   onAddEvent?: () => void;
   onEditEvent?: (event: SprintEvent) => void;
@@ -72,6 +74,7 @@ export function SprintTimeline({
   isProjectManager,
   onStartSprint,
   onStopSprint,
+  onReopenSprint,
   onEditSprint,
   onAddEvent,
   onEditEvent,
@@ -140,6 +143,12 @@ export function SprintTimeline({
               <Button size="sm" variant="outline" onClick={onStopSprint} className="gap-1">
                 <Square className="h-4 w-4" />
                 Complete Sprint
+              </Button>
+            )}
+            {isProjectManager && sprint.status === "completed" && (
+              <Button size="sm" variant="outline" onClick={onReopenSprint} className="gap-1 text-amber-600 border-amber-300 hover:bg-amber-50">
+                <RotateCcw className="h-4 w-4" />
+                Reopen Sprint
               </Button>
             )}
             {isProjectManager && (

@@ -51,6 +51,7 @@ const taskFormSchema = z.object({
   title: z.string().min(1, "Title is required").max(200, "Title is too long"),
   description: z.string().max(2000, "Description is too long").optional(),
   assignee_id: z.string().optional(),
+  sprint_id: z.string().optional(),
   due_date: z.date().optional(),
   priority: z.enum(["low", "medium", "high"]),
 });
@@ -70,6 +71,12 @@ interface ProjectMember {
   } | null;
 }
 
+interface Sprint {
+  id: string;
+  name: string;
+  status: string;
+}
+
 interface TaskDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -80,11 +87,17 @@ interface TaskDialogProps {
     title: string;
     description: string | null;
     assignee_id: string | null;
+    sprint_id: string | null;
     due_date: string | null;
     priority: "low" | "medium" | "high" | "urgent";
     created_by: string;
   } | null;
   isProjectManager: boolean;
+  availableSprints?: Sprint[];
+  defaultSprintId?: string;
+  defaultPriority?: "low" | "medium" | "high";
+  defaultStatus?: string;
+  hidePriority?: boolean;
   onTaskCreated?: () => void;
   onTaskUpdated?: () => void;
   onTaskDeleted?: () => void;
@@ -97,6 +110,11 @@ export function TaskDialog({
   currentUserId,
   task,
   isProjectManager,
+  availableSprints = [],
+  defaultSprintId,
+  defaultPriority,
+  defaultStatus,
+  hidePriority,
   onTaskCreated,
   onTaskUpdated,
   onTaskDeleted,
@@ -114,6 +132,7 @@ export function TaskDialog({
       title: "",
       description: "",
       assignee_id: "",
+      sprint_id: defaultSprintId || "",
       priority: "medium",
     },
   });
@@ -146,6 +165,7 @@ export function TaskDialog({
           title: task.title,
           description: task.description || "",
           assignee_id: task.assignee_id || "",
+          sprint_id: task.sprint_id || "",
           due_date: task.due_date ? new Date(task.due_date) : undefined,
           priority: task.priority === "urgent" ? "high" : task.priority,
         });
@@ -154,7 +174,8 @@ export function TaskDialog({
           title: "",
           description: "",
           assignee_id: "",
-          priority: "medium",
+          sprint_id: defaultSprintId || "",
+          priority: defaultPriority || "medium",
         });
       }
     }
@@ -170,10 +191,14 @@ export function TaskDialog({
 
       if (isEditing && task) {
         // Update existing task
+        const sprintId = values.sprint_id && values.sprint_id !== "none"
+          ? values.sprint_id
+          : null;
         await updateTask(task.id, {
           title: values.title,
           description: values.description || null,
           assignee_id: assigneeId,
+          sprint_id: sprintId,
           due_date: values.due_date ? values.due_date.toISOString() : null,
           priority: values.priority,
         });
@@ -181,16 +206,20 @@ export function TaskDialog({
         onTaskUpdated?.();
       } else {
         // Create new task
+        const sprintId = values.sprint_id && values.sprint_id !== "none"
+          ? values.sprint_id
+          : null;
         await createTask({
           project_id: projectId,
           title: values.title,
           description: values.description || null,
           assignee_id: assigneeId,
+          sprint_id: sprintId,
           due_date: values.due_date ? values.due_date.toISOString() : null,
           priority: values.priority,
-          status: "todo",
+          status: defaultStatus || "todo",
           created_by: currentUserId,
-        });
+        } as any);
         toast.success("Task created successfully");
         onTaskCreated?.();
       }
@@ -316,6 +345,40 @@ export function TaskDialog({
                 )}
               />
 
+              {/* Sprint selector — shown for both create and edit when sprints are available */}
+              {availableSprints.length > 0 && (
+                <FormField
+                  control={form.control}
+                  name="sprint_id"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Sprint (Optional)</FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value || "none"}
+                        disabled={!canEdit}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="No sprint (backlog)" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="none">No sprint (backlog)</SelectItem>
+                          {availableSprints.map((s) => (
+                            <SelectItem key={s.id} value={s.id}>
+                              {s.name}
+                              {s.status === "active" && " (Active)"}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+
               <FormField
                 control={form.control}
                 name="due_date"
@@ -359,47 +422,66 @@ export function TaskDialog({
                 )}
               />
 
-              <FormField
-                control={form.control}
-                name="priority"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Priority</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      value={field.value}
-                      disabled={!canEdit}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select priority" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="low">
-                          <div className="flex items-center gap-2">
-                            <div className="h-2 w-2 rounded-full bg-gray-500" />
-                            Low
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="medium">
-                          <div className="flex items-center gap-2">
-                            <div className="h-2 w-2 rounded-full bg-blue-500" />
-                            Medium
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="high">
-                          <div className="flex items-center gap-2">
-                            <div className="h-2 w-2 rounded-full bg-orange-500" />
-                            High
-                          </div>
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {hidePriority && defaultPriority && !isEditing ? (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Priority</label>
+                  <div className={`flex items-center gap-2 px-3 py-2 rounded-md border text-sm ${
+                    defaultPriority === "high" ? "bg-orange-50 border-orange-200 text-orange-700"
+                      : defaultPriority === "medium" ? "bg-blue-50 border-blue-200 text-blue-700"
+                      : "bg-gray-50 border-gray-200 text-gray-700"
+                  }`}>
+                    <div className={`h-2.5 w-2.5 rounded-full ${
+                      defaultPriority === "high" ? "bg-orange-500"
+                        : defaultPriority === "medium" ? "bg-blue-500"
+                        : "bg-gray-500"
+                    }`} />
+                    <span className="font-medium capitalize">{defaultPriority}</span>
+                    <span className="text-xs opacity-60 ml-1">(set from card)</span>
+                  </div>
+                </div>
+              ) : (
+                <FormField
+                  control={form.control}
+                  name="priority"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Priority</FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value}
+                        disabled={!canEdit}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select priority" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="low">
+                            <div className="flex items-center gap-2">
+                              <div className="h-2 w-2 rounded-full bg-gray-500" />
+                              Low
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="medium">
+                            <div className="flex items-center gap-2">
+                              <div className="h-2 w-2 rounded-full bg-blue-500" />
+                              Medium
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="high">
+                            <div className="flex items-center gap-2">
+                              <div className="h-2 w-2 rounded-full bg-orange-500" />
+                              High
+                            </div>
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
 
               <DialogFooter className="gap-2 sm:gap-0">
                 {canDelete && (

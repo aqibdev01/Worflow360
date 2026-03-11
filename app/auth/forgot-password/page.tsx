@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
@@ -22,20 +23,21 @@ import {
   EyeOff,
 } from "lucide-react";
 
-type Step = "email" | "otp" | "password" | "success";
+type Step = "email" | "sent" | "otp" | "password" | "success";
 
-export default function ForgotPasswordPage() {
-  const [step, setStep] = useState<Step>("email");
+function ForgotPasswordContent() {
+  const searchParams = useSearchParams();
+  // If arriving from callback with ?step=password, skip straight to password step
+  const initialStep = searchParams.get("step") === "password" ? "password" : "email";
+
+  const [step, setStep] = useState<Step>(initialStep as Step);
   const [email, setEmail] = useState("");
-  const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [resendTimer, setResendTimer] = useState(0);
-
-  const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   // Password requirements
   const hasMinLength = password.length >= 8;
@@ -53,38 +55,8 @@ export default function ForgotPasswordPage() {
     }
   }, [resendTimer]);
 
-  // Handle OTP input
-  const handleOtpChange = (index: number, value: string) => {
-    if (value.length > 1) {
-      // Handle paste
-      const digits = value.replace(/\D/g, "").slice(0, 6).split("");
-      const newOtp = [...otp];
-      digits.forEach((digit, i) => {
-        if (index + i < 6) {
-          newOtp[index + i] = digit;
-        }
-      });
-      setOtp(newOtp);
-      const nextIndex = Math.min(index + digits.length, 5);
-      otpRefs.current[nextIndex]?.focus();
-    } else {
-      const newOtp = [...otp];
-      newOtp[index] = value.replace(/\D/g, "");
-      setOtp(newOtp);
-      if (value && index < 5) {
-        otpRefs.current[index + 1]?.focus();
-      }
-    }
-  };
-
-  const handleOtpKeyDown = (index: number, e: React.KeyboardEvent) => {
-    if (e.key === "Backspace" && !otp[index] && index > 0) {
-      otpRefs.current[index - 1]?.focus();
-    }
-  };
-
-  // Step 1: Send password reset OTP to email
-  const handleSendOtp = async (e: React.FormEvent) => {
+  // Step 1: Send password reset email
+  const handleSendReset = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
@@ -96,15 +68,17 @@ export default function ForgotPasswordPage() {
     setLoading(true);
 
     try {
-      // Use Supabase's password reset with OTP (recovery type)
+      // Send password reset email with redirect to our callback
+      // The callback will detect type=recovery and redirect to this page with ?step=password
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-        // Don't provide redirectTo - this makes Supabase send OTP code instead of link
+        redirectTo: `${window.location.origin}/auth/callback?type=recovery`,
       });
 
       if (resetError) {
         setError(resetError.message);
       } else {
-        setStep("otp");
+        // Show "check your email" confirmation
+        setStep("sent");
         setResendTimer(60);
       }
     } catch (err) {
@@ -114,52 +88,7 @@ export default function ForgotPasswordPage() {
     }
   };
 
-  // Step 2: Verify OTP
-  const handleVerifyOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-
-    const otpCode = otp.join("");
-    if (otpCode.length !== 6) {
-      setError("Please enter the complete 6-digit code");
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      // Verify the recovery OTP
-      const { data, error: verifyError } = await supabase.auth.verifyOtp({
-        email,
-        token: otpCode,
-        type: "recovery",
-      });
-
-      console.log("OTP verification response:", { data, verifyError });
-
-      if (verifyError) {
-        console.error("OTP verification error:", verifyError);
-        setError("Invalid or expired code. Please try again.");
-        setLoading(false);
-        return;
-      }
-
-      if (data?.session) {
-        console.log("Session established, proceeding to password step");
-        setStep("password");
-      } else {
-        console.error("No session after OTP verification");
-        setError("Failed to verify code. Please try again.");
-      }
-    } catch (err) {
-      console.error("Unexpected OTP error:", err);
-      setError("Something went wrong. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Step 3: Update password
+  // Step 2: Update password (user arrives here via email link → callback → redirect)
   const handleUpdatePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -217,24 +146,25 @@ export default function ForgotPasswordPage() {
     }
   };
 
-  // Resend OTP
-  const handleResendOtp = async () => {
+  // Resend reset email
+  const handleResendEmail = async () => {
     if (resendTimer > 0) return;
 
     setError("");
     setLoading(true);
 
     try {
-      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email);
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/auth/callback?type=recovery`,
+      });
 
       if (!resetError) {
         setResendTimer(60);
-        setOtp(["", "", "", "", "", ""]);
       } else {
-        setError("Failed to resend code. Please try again.");
+        setError("Failed to resend email. Please try again.");
       }
     } catch (err) {
-      setError("Failed to resend code. Please try again.");
+      setError("Failed to resend email. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -317,36 +247,41 @@ export default function ForgotPasswordPage() {
       <div className="flex items-center justify-center min-h-screen pt-16 pb-12 px-4">
         <Card className="w-full max-w-md bg-white border-0 shadow-2xl p-8">
           {/* Step Indicator */}
-          <div className="flex items-center justify-center gap-2 mb-6">
-            {["email", "otp", "password"].map((s, i) => (
-              <div key={s} className="flex items-center">
-                <div
-                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                    step === s
-                      ? "bg-brand-blue text-white"
-                      : ["email", "otp", "password"].indexOf(step) > i
-                      ? "bg-green-500 text-white"
-                      : "bg-gray-200 text-gray-500"
-                  }`}
-                >
-                  {["email", "otp", "password"].indexOf(step) > i ? (
-                    <Check className="h-4 w-4" />
-                  ) : (
-                    i + 1
+          {step !== "password" && (
+            <div className="flex items-center justify-center gap-2 mb-6">
+              {[
+                { key: "email", label: "1" },
+                { key: "sent", label: "2" },
+              ].map((s, i) => (
+                <div key={s.key} className="flex items-center">
+                  <div
+                    className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                      step === s.key
+                        ? "bg-brand-blue text-white"
+                        : ["email", "sent"].indexOf(step) > i
+                        ? "bg-green-500 text-white"
+                        : "bg-gray-200 text-gray-500"
+                    }`}
+                  >
+                    {["email", "sent"].indexOf(step) > i ? (
+                      <Check className="h-4 w-4" />
+                    ) : (
+                      s.label
+                    )}
+                  </div>
+                  {i < 1 && (
+                    <div
+                      className={`w-12 h-1 mx-1 ${
+                        ["email", "sent"].indexOf(step) > i
+                          ? "bg-green-500"
+                          : "bg-gray-200"
+                      }`}
+                    />
                   )}
                 </div>
-                {i < 2 && (
-                  <div
-                    className={`w-12 h-1 mx-1 ${
-                      ["email", "otp", "password"].indexOf(step) > i
-                        ? "bg-green-500"
-                        : "bg-gray-200"
-                    }`}
-                  />
-                )}
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
 
           {/* Step 1: Email */}
           {step === "email" && (
@@ -358,11 +293,11 @@ export default function ForgotPasswordPage() {
                 </div>
                 <h1 className="text-2xl font-bold text-navy-900 mt-4">Forgot Password?</h1>
                 <p className="text-gray-600 text-sm">
-                  Enter your email and we&apos;ll send you a reset code
+                  Enter your email and we&apos;ll send you a reset link
                 </p>
               </div>
 
-              <form onSubmit={handleSendOtp} className="space-y-4">
+              <form onSubmit={handleSendReset} className="space-y-4">
                 {error && (
                   <div className="p-3 rounded-lg bg-red-50 border border-red-200 flex items-start gap-2">
                     <AlertCircle className="h-5 w-5 text-red-500 mt-0.5 flex-shrink-0" />
@@ -394,74 +329,38 @@ export default function ForgotPasswordPage() {
                   {loading ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Sending Code...
+                      Sending...
                     </>
                   ) : (
-                    "Send Reset Code"
+                    "Send Reset Link"
                   )}
                 </Button>
               </form>
             </>
           )}
 
-          {/* Step 2: OTP Verification */}
-          {step === "otp" && (
+          {/* Step 2: Check your email */}
+          {step === "sent" && (
             <>
               <div className="text-center space-y-2 mb-6">
-                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-brand-blue/10 border border-brand-blue/20">
-                  <Mail className="h-4 w-4 text-brand-blue" />
-                  <span className="text-sm text-brand-blue font-medium">Verify Code</span>
+                <div className="mx-auto w-16 h-16 bg-brand-blue/10 rounded-full flex items-center justify-center border border-brand-blue/20">
+                  <Mail className="h-8 w-8 text-brand-blue" />
                 </div>
-                <h1 className="text-2xl font-bold text-navy-900 mt-4">Enter Reset Code</h1>
+                <h1 className="text-2xl font-bold text-navy-900 mt-4">Check Your Email</h1>
                 <p className="text-gray-600 text-sm">
-                  We sent a 6-digit code to <span className="font-medium text-brand-blue">{email}</span>
+                  We sent a password reset link to
+                </p>
+                <p className="text-brand-blue font-medium">{email}</p>
+                <p className="text-gray-500 text-xs mt-2">
+                  Click the link in the email to reset your password. If you don&apos;t see it, check your spam folder.
                 </p>
               </div>
 
-              <form onSubmit={handleVerifyOtp} className="space-y-4">
-                {error && (
-                  <div className="p-3 rounded-lg bg-red-50 border border-red-200 flex items-start gap-2">
-                    <AlertCircle className="h-5 w-5 text-red-500 mt-0.5 flex-shrink-0" />
-                    <span className="text-sm text-red-600">{error}</span>
-                  </div>
-                )}
-
-                <div className="flex justify-center gap-2">
-                  {otp.map((digit, index) => (
-                    <Input
-                      key={index}
-                      ref={(el) => { otpRefs.current[index] = el; }}
-                      type="text"
-                      inputMode="numeric"
-                      maxLength={6}
-                      value={digit}
-                      onChange={(e) => handleOtpChange(index, e.target.value)}
-                      onKeyDown={(e) => handleOtpKeyDown(index, e)}
-                      disabled={loading}
-                      className="w-12 h-12 text-center text-xl font-semibold"
-                    />
-                  ))}
-                </div>
-
-                <Button
-                  type="submit"
-                  disabled={loading || otp.join("").length !== 6}
-                  className="w-full bg-brand-blue hover:bg-brand-blue/90 text-white"
-                >
-                  {loading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Verifying...
-                    </>
-                  ) : (
-                    "Verify Code"
-                  )}
-                </Button>
-
+              <div className="space-y-3">
                 <div className="text-center">
                   <button
                     type="button"
-                    onClick={handleResendOtp}
+                    onClick={handleResendEmail}
                     disabled={resendTimer > 0 || loading}
                     className={`text-sm ${
                       resendTimer > 0
@@ -469,24 +368,37 @@ export default function ForgotPasswordPage() {
                         : "text-brand-blue hover:underline"
                     }`}
                   >
-                    {resendTimer > 0
-                      ? `Resend code in ${resendTimer}s`
-                      : "Resend code"}
+                    {loading ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                        Sending...
+                      </span>
+                    ) : resendTimer > 0 ? (
+                      `Resend email in ${resendTimer}s`
+                    ) : (
+                      "Resend email"
+                    )}
                   </button>
                 </div>
+
+                {error && (
+                  <div className="p-3 rounded-lg bg-red-50 border border-red-200 flex items-start gap-2">
+                    <AlertCircle className="h-5 w-5 text-red-500 mt-0.5 flex-shrink-0" />
+                    <span className="text-sm text-red-600">{error}</span>
+                  </div>
+                )}
 
                 <button
                   type="button"
                   onClick={() => {
                     setStep("email");
-                    setOtp(["", "", "", "", "", ""]);
                     setError("");
                   }}
                   className="w-full text-sm text-gray-500 hover:text-gray-700"
                 >
                   Use different email
                 </button>
-              </form>
+              </div>
             </>
           )}
 
@@ -615,5 +527,19 @@ export default function ForgotPasswordPage() {
         </Card>
       </div>
     </div>
+  );
+}
+
+export default function ForgotPasswordPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-gradient-to-br from-navy-900 via-navy-800 to-navy-900 flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-white" />
+        </div>
+      }
+    >
+      <ForgotPasswordContent />
+    </Suspense>
   );
 }

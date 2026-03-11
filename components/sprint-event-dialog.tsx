@@ -71,7 +71,7 @@ const sprintEventFormSchema = z.object({
   title: z.string().min(1, "Title is required").max(200, "Title is too long"),
   description: z.string().max(1000, "Description is too long").optional(),
   event_type: z.enum(["planning", "daily_standup", "review", "retrospective", "meeting", "milestone", "other"]),
-  event_date: z.date({ required_error: "Date is required" }),
+  event_date: z.date({ message: "Date is required" }),
   start_time: z.string().optional(),
   end_time: z.string().optional(),
 }).refine((data) => {

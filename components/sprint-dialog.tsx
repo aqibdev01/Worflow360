@@ -24,6 +24,13 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import {
   Popover,
@@ -43,8 +50,9 @@ import {
 const sprintFormSchema = z.object({
   name: z.string().min(1, "Sprint name is required").max(100, "Name is too long"),
   goal: z.string().max(1000, "Goal is too long").optional(),
-  start_date: z.date({ required_error: "Start date is required" }),
-  end_date: z.date({ required_error: "End date is required" }),
+  start_date: z.date({ message: "Start date is required" }),
+  end_date: z.date({ message: "End date is required" }),
+  status: z.enum(["planned", "active", "completed", "cancelled"]).optional(),
 }).refine((data) => data.end_date > data.start_date, {
   message: "End date must be after start date",
   path: ["end_date"],
@@ -104,6 +112,7 @@ export function SprintDialog({
           goal: sprint.goal || "",
           start_date: new Date(sprint.start_date),
           end_date: new Date(sprint.end_date),
+          status: sprint.status as "planned" | "active" | "completed" | "cancelled",
         });
       } else {
         form.reset({
@@ -126,6 +135,7 @@ export function SprintDialog({
           goal: values.goal || null,
           start_date: values.start_date.toISOString(),
           end_date: values.end_date.toISOString(),
+          ...(values.status ? { status: values.status } : {}),
         });
         toast.success("Sprint updated successfully");
         onSprintUpdated?.();
@@ -243,6 +253,36 @@ export function SprintDialog({
                   </FormItem>
                 )}
               />
+
+              {isEditing && (
+                <FormField
+                  control={form.control}
+                  name="status"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Sprint Status</FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value}
+                        disabled={!canEdit}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select status" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="planned">Planned</SelectItem>
+                          <SelectItem value="active">Active</SelectItem>
+                          <SelectItem value="completed">Completed</SelectItem>
+                          <SelectItem value="cancelled">Cancelled</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
 
               <div className="grid grid-cols-2 gap-4">
                 <FormField

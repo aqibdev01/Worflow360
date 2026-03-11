@@ -1,0 +1,836 @@
+"use client";
+
+import { useState, useEffect, useMemo, useCallback } from "react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  ChevronLeft,
+  ChevronRight,
+  CalendarDays,
+  Filter,
+  X,
+  ExternalLink,
+  Loader2,
+  Clock,
+  Target,
+  Users,
+  MessageSquare,
+  Flag,
+  Calendar as CalendarIconSolid,
+  Plus,
+} from "lucide-react";
+import {
+  format,
+  startOfMonth,
+  endOfMonth,
+  startOfWeek,
+  endOfWeek,
+  addDays,
+  isSameMonth,
+  isToday,
+  addMonths,
+  subMonths,
+  parseISO,
+  isWithinInterval,
+} from "date-fns";
+import {
+  getProjectCalendarTasks,
+  getProjectMembersForCalendar,
+  getProjectCalendarEvents,
+  getProjectCalendarSprints,
+} from "@/lib/database";
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+interface CalendarTask {
+  id: string;
+  title: string;
+  status: string;
+  priority: string;
+  due_date: string;
+  assignee_id: string | null;
+  project_id: string;
+  assignee?: { id: string; full_name: string | null; email: string } | null;
+}
+
+interface SprintEvent {
+  id: string;
+  sprint_id: string;
+  title: string;
+  description: string | null;
+  event_type: string;
+  event_date: string;
+  start_time: string | null;
+  end_time: string | null;
+  created_by: string;
+  sprints?: { id: string; name: string };
+  created_by_user?: { id: string; full_name: string | null; email: string };
+}
+
+interface CalendarSprint {
+  id: string;
+  name: string;
+  start_date: string;
+  end_date: string;
+  status: string;
+  project_id: string;
+}
+
+interface ProjectMember {
+  user_id: string;
+  role: string;
+  custom_role: string | null;
+  users: { id: string; full_name: string | null; email: string };
+}
+
+// ─── Config ───────────────────────────────────────────────────────────────────
+
+const PRIORITY_STYLE: Record<string, string> = {
+  urgent: "bg-red-100 text-red-700 border border-red-200 hover:bg-red-200",
+  high: "bg-orange-100 text-orange-700 border border-orange-200 hover:bg-orange-200",
+  medium: "bg-yellow-100 text-yellow-700 border border-yellow-200 hover:bg-yellow-200",
+  low: "bg-emerald-100 text-emerald-700 border border-emerald-200 hover:bg-emerald-200",
+};
+
+const PRIORITY_DOT: Record<string, string> = {
+  urgent: "bg-red-500",
+  high: "bg-orange-500",
+  medium: "bg-yellow-500",
+  low: "bg-emerald-500",
+};
+
+const STATUS_LABEL: Record<string, string> = {
+  todo: "To Do",
+  in_progress: "In Progress",
+  review: "In Review",
+  done: "Done",
+  blocked: "Blocked",
+};
+
+const EVENT_TYPE_CONFIG: Record<string, { icon: any; color: string; bg: string; label: string }> = {
+  planning: { icon: Target, color: "text-blue-600", bg: "bg-blue-100 border-blue-200", label: "Planning" },
+  daily_standup: { icon: Users, color: "text-green-600", bg: "bg-green-100 border-green-200", label: "Standup" },
+  review: { icon: MessageSquare, color: "text-purple-600", bg: "bg-purple-100 border-purple-200", label: "Review" },
+  retrospective: { icon: Clock, color: "text-orange-600", bg: "bg-orange-100 border-orange-200", label: "Retro" },
+  meeting: { icon: Users, color: "text-indigo-600", bg: "bg-indigo-100 border-indigo-200", label: "Meeting" },
+  milestone: { icon: Flag, color: "text-red-600", bg: "bg-red-100 border-red-200", label: "Milestone" },
+  other: { icon: CalendarIconSolid, color: "text-gray-600", bg: "bg-gray-100 border-gray-200", label: "Event" },
+};
+
+const SPRINT_COLORS = [
+  "bg-brand-blue/8 border-brand-blue/20",
+  "bg-brand-purple/8 border-brand-purple/20",
+  "bg-emerald-500/8 border-emerald-500/20",
+  "bg-amber-500/8 border-amber-500/20",
+];
+
+const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const MAX_VISIBLE = 3;
+
+// ─── Calendar grid builder ────────────────────────────────────────────────────
+
+function buildCalendarDays(date: Date): Date[] {
+  const start = startOfWeek(startOfMonth(date), { weekStartsOn: 0 });
+  const end = endOfWeek(endOfMonth(date), { weekStartsOn: 0 });
+  const days: Date[] = [];
+  let current = start;
+  while (current <= end) {
+    days.push(current);
+    current = addDays(current, 1);
+  }
+  while (days.length < 42) {
+    days.push(addDays(days[days.length - 1], 1));
+  }
+  return days;
+}
+
+// ─── Event chip ──────────────────────────────────────────────────────────────
+
+function EventChip({ event, onClick }: { event: SprintEvent; onClick: () => void }) {
+  const config = EVENT_TYPE_CONFIG[event.event_type] || EVENT_TYPE_CONFIG.other;
+  const Icon = config.icon;
+
+  return (
+    <TooltipProvider delayDuration={200}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            onClick={(e) => { e.stopPropagation(); onClick(); }}
+            className={`w-full text-left px-1.5 py-0.5 rounded text-[11px] font-medium truncate flex items-center gap-1 transition-colors border ${config.bg}`}
+          >
+            <Icon className={`h-3 w-3 flex-shrink-0 ${config.color}`} />
+            <span className="truncate">{event.title}</span>
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="right" className="max-w-[240px] space-y-1.5 p-3">
+          <p className="font-semibold text-sm leading-tight">{event.title}</p>
+          <Badge variant="outline" className="text-[10px] capitalize px-1.5">{config.label}</Badge>
+          {event.start_time && (
+            <p className="text-xs text-muted-foreground flex items-center gap-1">
+              <Clock className="h-3 w-3" />
+              {event.start_time}{event.end_time ? ` - ${event.end_time}` : ""}
+            </p>
+          )}
+          {event.sprints && (
+            <p className="text-xs text-muted-foreground">{event.sprints.name}</p>
+          )}
+          {event.description && (
+            <p className="text-xs text-muted-foreground line-clamp-2">{event.description}</p>
+          )}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+}
+
+// ─── Task chip ────────────────────────────────────────────────────────────────
+
+function TaskChip({
+  task,
+  onClick,
+  isManager,
+}: {
+  task: CalendarTask;
+  onClick: () => void;
+  isManager: boolean;
+}) {
+  const assigneeName =
+    task.assignee?.full_name ||
+    task.assignee?.email?.split("@")[0] ||
+    "Unassigned";
+
+  return (
+    <TooltipProvider delayDuration={200}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            onClick={(e) => { e.stopPropagation(); onClick(); }}
+            className={`w-full text-left px-1.5 py-0.5 rounded text-[11px] font-medium truncate flex items-center gap-1 transition-colors ${
+              PRIORITY_STYLE[task.priority] || PRIORITY_STYLE.low
+            }`}
+          >
+            <span
+              className={`h-1.5 w-1.5 rounded-full flex-shrink-0 ${
+                PRIORITY_DOT[task.priority] || "bg-gray-400"
+              }`}
+            />
+            <span className="truncate">{task.title}</span>
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="right" className="max-w-[220px] space-y-1.5 p-3">
+          <p className="font-semibold text-sm leading-tight">{task.title}</p>
+          <div className="flex flex-wrap gap-1">
+            <Badge variant="outline" className="text-[10px] capitalize px-1.5">
+              {task.priority}
+            </Badge>
+            <Badge variant="secondary" className="text-[10px] px-1.5">
+              {STATUS_LABEL[task.status] || task.status}
+            </Badge>
+          </div>
+          {isManager && task.assignee_id && (
+            <p className="text-xs text-muted-foreground">{assigneeName}</p>
+          )}
+          <p className="text-xs text-primary flex items-center gap-1">
+            <ExternalLink className="h-3 w-3" />
+            Click to open Kanban
+          </p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+}
+
+// ─── Day Detail Dialog ────────────────────────────────────────────────────────
+
+function DayDetailDialog({
+  open,
+  onOpenChange,
+  date,
+  tasks,
+  events,
+  sprints,
+  isManager,
+  onTaskClick,
+  onEventClick,
+  onAddEvent,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  date: Date | null;
+  tasks: CalendarTask[];
+  events: SprintEvent[];
+  sprints: CalendarSprint[];
+  isManager: boolean;
+  onTaskClick: (task: CalendarTask) => void;
+  onEventClick: (event: SprintEvent) => void;
+  onAddEvent?: (date: string) => void;
+}) {
+  if (!date) return null;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md max-h-[80vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <CalendarDays className="h-5 w-5 text-brand-blue" />
+            {format(date, "EEEE, MMMM d, yyyy")}
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          {/* Active sprints */}
+          {sprints.length > 0 && (
+            <div>
+              <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+                Active Sprints
+              </h4>
+              <div className="space-y-1">
+                {sprints.map((s) => (
+                  <div key={s.id} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-brand-blue/5 border border-brand-blue/15">
+                    <div className="h-2 w-2 rounded-full bg-brand-blue" />
+                    <span className="text-sm font-medium">{s.name}</span>
+                    <Badge variant="outline" className="text-[10px] ml-auto capitalize">{s.status}</Badge>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Sprint Events */}
+          {events.length > 0 && (
+            <div>
+              <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+                Events ({events.length})
+              </h4>
+              <div className="space-y-2">
+                {events.map((ev) => {
+                  const config = EVENT_TYPE_CONFIG[ev.event_type] || EVENT_TYPE_CONFIG.other;
+                  const Icon = config.icon;
+                  return (
+                    <button
+                      key={ev.id}
+                      onClick={() => onEventClick(ev)}
+                      className={`w-full text-left px-3 py-2 rounded-lg border transition-colors hover:shadow-sm ${config.bg}`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Icon className={`h-4 w-4 ${config.color}`} />
+                        <span className="font-medium text-sm">{ev.title}</span>
+                        <Badge variant="outline" className="text-[10px] ml-auto capitalize">{config.label}</Badge>
+                      </div>
+                      {ev.start_time && (
+                        <p className="text-xs text-muted-foreground mt-1 ml-6">
+                          {ev.start_time}{ev.end_time ? ` - ${ev.end_time}` : ""}
+                        </p>
+                      )}
+                      {ev.sprints && (
+                        <p className="text-xs text-muted-foreground mt-0.5 ml-6">{ev.sprints.name}</p>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Tasks */}
+          {tasks.length > 0 && (
+            <div>
+              <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+                Tasks Due ({tasks.length})
+              </h4>
+              <div className="space-y-2">
+                {tasks.map((task) => (
+                  <button
+                    key={task.id}
+                    onClick={() => onTaskClick(task)}
+                    className={`w-full text-left px-3 py-2 rounded-lg border transition-colors hover:shadow-sm ${
+                      PRIORITY_STYLE[task.priority] || PRIORITY_STYLE.low
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className={`h-2 w-2 rounded-full flex-shrink-0 ${PRIORITY_DOT[task.priority]}`} />
+                      <span className="font-medium text-sm">{task.title}</span>
+                      <Badge variant="secondary" className="text-[10px] ml-auto">{STATUS_LABEL[task.status]}</Badge>
+                    </div>
+                    {isManager && task.assignee && (
+                      <p className="text-xs text-muted-foreground mt-0.5 ml-4">
+                        {task.assignee.full_name || task.assignee.email}
+                      </p>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {tasks.length === 0 && events.length === 0 && sprints.length === 0 && (
+            <p className="text-center text-sm text-muted-foreground py-4">
+              Nothing scheduled for this day
+            </p>
+          )}
+
+          {/* Add Event button for PMs */}
+          {isManager && onAddEvent && (
+            <Button
+              variant="outline"
+              className="w-full gap-2 border-dashed"
+              onClick={() => {
+                onOpenChange(false);
+                onAddEvent(format(date, "yyyy-MM-dd"));
+              }}
+            >
+              <Plus className="h-4 w-4" />
+              Schedule Event on This Day
+            </Button>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─── Main Component ───────────────────────────────────────────────────────────
+
+interface ProjectCalendarProps {
+  projectId: string;
+  currentUserId: string;
+  isProjectManager: boolean;
+  onNavigateToKanban?: (taskId: string) => void;
+  onAddSprintEvent?: (defaultDate?: string) => void;
+}
+
+export function ProjectCalendar({
+  projectId,
+  currentUserId: _currentUserId,
+  isProjectManager,
+  onNavigateToKanban,
+  onAddSprintEvent,
+}: ProjectCalendarProps) {
+
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [tasks, setTasks] = useState<CalendarTask[]>([]);
+  const [sprintEvents, setSprintEvents] = useState<SprintEvent[]>([]);
+  const [sprints, setSprints] = useState<CalendarSprint[]>([]);
+  const [members, setMembers] = useState<ProjectMember[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Filters
+  const [filterMember, setFilterMember] = useState("all");
+  const [filterPriority, setFilterPriority] = useState("all");
+  const [filterType, setFilterType] = useState("all");
+
+  // Day detail dialog
+  const [selectedDay, setSelectedDay] = useState<Date | null>(null);
+  const [dayDialogOpen, setDayDialogOpen] = useState(false);
+
+  const calendarDays = useMemo(() => buildCalendarDays(currentDate), [currentDate]);
+  const rangeStart = format(calendarDays[0], "yyyy-MM-dd");
+  const rangeEnd = format(calendarDays[calendarDays.length - 1], "yyyy-MM-dd");
+
+  // Load project members for filter dropdown
+  useEffect(() => {
+    if (!isProjectManager) return;
+    getProjectMembersForCalendar(projectId).then(setMembers).catch(() => {});
+  }, [projectId, isProjectManager]);
+
+  // Fetch all data
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [taskData, eventData, sprintData] = await Promise.all([
+        getProjectCalendarTasks(projectId, rangeStart, rangeEnd),
+        getProjectCalendarEvents(projectId, rangeStart, rangeEnd),
+        getProjectCalendarSprints(projectId, rangeStart, rangeEnd),
+      ]);
+      setTasks(taskData as CalendarTask[]);
+      setSprintEvents(eventData as SprintEvent[]);
+      setSprints(sprintData as CalendarSprint[]);
+    } catch {
+      setTasks([]);
+      setSprintEvents([]);
+      setSprints([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [projectId, rangeStart, rangeEnd]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  // Navigate
+  const goToPrevMonth = () => setCurrentDate((d) => subMonths(d, 1));
+  const goToNextMonth = () => setCurrentDate((d) => addMonths(d, 1));
+  const goToToday = () => setCurrentDate(new Date());
+
+  const openTask = (task: CalendarTask) => {
+    if (onNavigateToKanban) onNavigateToKanban(task.id);
+  };
+
+  // Filter tasks
+  const filteredTasks = useMemo(() => {
+    if (filterType === "events") return [];
+    return tasks.filter((t) => {
+      if (filterMember !== "all" && t.assignee_id !== filterMember) return false;
+      if (filterPriority !== "all" && t.priority !== filterPriority) return false;
+      return true;
+    });
+  }, [tasks, filterMember, filterPriority, filterType]);
+
+  const filteredEvents = useMemo(() => {
+    if (filterType === "tasks") return [];
+    return sprintEvents;
+  }, [sprintEvents, filterType]);
+
+  // Items per day
+  const itemsByDate = useMemo(() => {
+    const map: Record<string, { tasks: CalendarTask[]; events: SprintEvent[] }> = {};
+
+    filteredTasks.forEach((t) => {
+      const key = t.due_date.slice(0, 10);
+      if (!map[key]) map[key] = { tasks: [], events: [] };
+      map[key].tasks.push(t);
+    });
+
+    filteredEvents.forEach((e) => {
+      const key = e.event_date.slice(0, 10);
+      if (!map[key]) map[key] = { tasks: [], events: [] };
+      map[key].events.push(e);
+    });
+
+    return map;
+  }, [filteredTasks, filteredEvents]);
+
+  // Sprint ranges
+  const getSprintForDay = useCallback(
+    (day: Date): CalendarSprint[] => {
+      return sprints.filter((s) => {
+        try {
+          const start = parseISO(s.start_date);
+          const end = parseISO(s.end_date);
+          return isWithinInterval(day, { start, end });
+        } catch {
+          return false;
+        }
+      });
+    },
+    [sprints]
+  );
+
+  // Day detail data
+  const selectedDayTasks = useMemo(() => {
+    if (!selectedDay) return [];
+    const key = format(selectedDay, "yyyy-MM-dd");
+    return itemsByDate[key]?.tasks || [];
+  }, [selectedDay, itemsByDate]);
+
+  const selectedDayEvents = useMemo(() => {
+    if (!selectedDay) return [];
+    const key = format(selectedDay, "yyyy-MM-dd");
+    return itemsByDate[key]?.events || [];
+  }, [selectedDay, itemsByDate]);
+
+  const selectedDaySprints = useMemo(() => {
+    if (!selectedDay) return [];
+    return getSprintForDay(selectedDay);
+  }, [selectedDay, getSprintForDay]);
+
+  const handleDayClick = (day: Date) => {
+    setSelectedDay(day);
+    setDayDialogOpen(true);
+  };
+
+  const hasActiveFilters = filterMember !== "all" || filterPriority !== "all" || filterType !== "all";
+  const clearFilters = () => {
+    setFilterMember("all");
+    setFilterPriority("all");
+    setFilterType("all");
+  };
+
+  const totalItems = filteredTasks.length + filteredEvents.length;
+
+  return (
+    <div className="space-y-4">
+      {/* Header row */}
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h3 className="text-lg font-semibold">Project Calendar</h3>
+          <p className="text-sm text-muted-foreground">
+            {totalItems} item{totalItems !== 1 ? "s" : ""} this month
+            {sprints.length > 0 && ` · ${sprints.length} sprint${sprints.length !== 1 ? "s" : ""}`}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          {isProjectManager && onAddSprintEvent && (
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={() => onAddSprintEvent()}>
+              <Plus className="h-4 w-4" />
+              Add Event
+            </Button>
+          )}
+          <Button variant="outline" size="sm" onClick={goToPrevMonth}>
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <Button variant="outline" size="sm" onClick={goToToday}>
+            Today
+          </Button>
+          <Button variant="outline" size="sm" onClick={goToNextMonth}>
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+
+      {/* Month title */}
+      <div className="text-center">
+        <h2 className="text-xl font-semibold text-navy-900">
+          {format(currentDate, "MMMM yyyy")}
+        </h2>
+      </div>
+
+      {/* Filters */}
+      <div className="flex items-center gap-3 flex-wrap bg-muted/30 border rounded-xl px-4 py-3">
+        <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+          <Filter className="h-4 w-4" />
+          <span className="font-medium">Filter:</span>
+        </div>
+
+        <Select value={filterType} onValueChange={setFilterType}>
+          <SelectTrigger className="h-8 w-32 text-sm bg-white">
+            <SelectValue placeholder="All items" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All items</SelectItem>
+            <SelectItem value="tasks">Tasks only</SelectItem>
+            <SelectItem value="events">Events only</SelectItem>
+          </SelectContent>
+        </Select>
+
+        {isProjectManager && (
+          <Select value={filterMember} onValueChange={setFilterMember}>
+            <SelectTrigger className="h-8 w-44 text-sm bg-white">
+              <SelectValue placeholder="All members" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All members</SelectItem>
+              {members.map((m) => (
+                <SelectItem key={m.user_id} value={m.user_id}>
+                  {m.users?.full_name || m.users?.email?.split("@")[0] || "Unknown"}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+
+        <Select value={filterPriority} onValueChange={setFilterPriority}>
+          <SelectTrigger className="h-8 w-36 text-sm bg-white">
+            <SelectValue placeholder="All priorities" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All priorities</SelectItem>
+            <SelectItem value="urgent">Urgent</SelectItem>
+            <SelectItem value="high">High</SelectItem>
+            <SelectItem value="medium">Medium</SelectItem>
+            <SelectItem value="low">Low</SelectItem>
+          </SelectContent>
+        </Select>
+
+        {hasActiveFilters && (
+          <Button variant="ghost" size="sm" className="h-8 gap-1 text-xs" onClick={clearFilters}>
+            <X className="h-3 w-3" />
+            Clear
+          </Button>
+        )}
+      </div>
+
+      {/* Sprint Range Legend */}
+      {sprints.length > 0 && (
+        <div className="flex items-center gap-3 flex-wrap text-xs">
+          <span className="font-medium text-navy-900">Sprints:</span>
+          {sprints.map((s, idx) => (
+            <div key={s.id} className="flex items-center gap-1.5">
+              <div className={`h-3 w-8 rounded border ${SPRINT_COLORS[idx % SPRINT_COLORS.length]}`} />
+              <span className="text-muted-foreground">
+                {s.name}
+                <Badge variant="outline" className="text-[9px] ml-1 capitalize px-1">{s.status}</Badge>
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Calendar Grid */}
+      <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
+        {/* Weekday headers */}
+        <div className="grid grid-cols-7 border-b">
+          {WEEKDAYS.map((day) => (
+            <div
+              key={day}
+              className="py-3 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wide"
+            >
+              {day}
+            </div>
+          ))}
+        </div>
+
+        {loading ? (
+          <div className="flex items-center justify-center h-80">
+            <div className="text-center space-y-2">
+              <Loader2 className="h-7 w-7 animate-spin text-brand-blue mx-auto" />
+              <p className="text-sm text-muted-foreground">Loading calendar...</p>
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-7 divide-x divide-y">
+            {calendarDays.map((day, idx) => {
+              const dateKey = format(day, "yyyy-MM-dd");
+              const dayData = itemsByDate[dateKey] || { tasks: [], events: [] };
+              const dayItems = [...dayData.events, ...dayData.tasks];
+              const isCurrentMonth = isSameMonth(day, currentDate);
+              const isTodayDate = isToday(day);
+              const daySprints = getSprintForDay(day);
+              const visibleItems = dayItems.slice(0, MAX_VISIBLE);
+              const hiddenCount = dayItems.length - MAX_VISIBLE;
+
+              // Sprint background
+              let sprintBg = "";
+              if (daySprints.length > 0) {
+                const sprintIdx = sprints.findIndex((s) => s.id === daySprints[0].id);
+                sprintBg = SPRINT_COLORS[sprintIdx % SPRINT_COLORS.length];
+              }
+
+              return (
+                <div
+                  key={idx}
+                  onClick={() => handleDayClick(day)}
+                  className={`min-h-[100px] p-1.5 flex flex-col gap-1 cursor-pointer transition-colors hover:bg-muted/20 ${
+                    !isCurrentMonth ? "bg-muted/30" : sprintBg ? sprintBg : "bg-white"
+                  }`}
+                >
+                  <div className="flex justify-end">
+                    <span
+                      className={`h-6 w-6 flex items-center justify-center text-xs rounded-full font-medium ${
+                        isTodayDate
+                          ? "bg-brand-blue text-white font-bold"
+                          : isCurrentMonth
+                          ? "text-navy-900"
+                          : "text-muted-foreground/40"
+                      }`}
+                    >
+                      {format(day, "d")}
+                    </span>
+                  </div>
+
+                  <div className="space-y-0.5 flex-1">
+                    {visibleItems.map((item: any) => {
+                      if (item.event_type) {
+                        return (
+                          <EventChip
+                            key={`ev-${item.id}`}
+                            event={item}
+                            onClick={() => {}}
+                          />
+                        );
+                      }
+                      return (
+                        <TaskChip
+                          key={`task-${item.id}`}
+                          task={item}
+                          onClick={() => openTask(item)}
+                          isManager={isProjectManager}
+                        />
+                      );
+                    })}
+                    {hiddenCount > 0 && (
+                      <button
+                        className="w-full text-left px-1.5 text-[10px] text-brand-blue font-medium hover:text-brand-blue-600"
+                        onClick={(e) => { e.stopPropagation(); handleDayClick(day); }}
+                      >
+                        +{hiddenCount} more
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Legend */}
+      <div className="flex items-center gap-4 flex-wrap text-xs text-muted-foreground">
+        <span className="font-medium text-foreground">Priority:</span>
+        {[
+          { label: "Urgent", dot: "bg-red-500" },
+          { label: "High", dot: "bg-orange-500" },
+          { label: "Medium", dot: "bg-yellow-500" },
+          { label: "Low", dot: "bg-emerald-500" },
+        ].map((p) => (
+          <div key={p.label} className="flex items-center gap-1.5">
+            <div className={`h-2 w-2 rounded-full ${p.dot}`} />
+            {p.label}
+          </div>
+        ))}
+
+        <span className="mx-1 text-border">|</span>
+
+        <span className="font-medium text-foreground">Events:</span>
+        {["planning", "daily_standup", "review", "meeting"].map((type) => {
+          const config = EVENT_TYPE_CONFIG[type];
+          const Icon = config.icon;
+          return (
+            <div key={type} className="flex items-center gap-1">
+              <Icon className={`h-3 w-3 ${config.color}`} />
+              <span>{config.label}</span>
+            </div>
+          );
+        })}
+
+        <span className="ml-2 flex items-center gap-1">
+          <Clock className="h-3 w-3" />
+          Click any day for details
+        </span>
+      </div>
+
+      {/* Empty state */}
+      {!loading && totalItems === 0 && (
+        <div className="text-center py-10 text-muted-foreground">
+          <CalendarDays className="h-10 w-10 mx-auto mb-3 opacity-30" />
+          <p className="font-medium">No tasks or events this month</p>
+          <p className="text-sm mt-1">Assign due dates to tasks or create sprint events</p>
+        </div>
+      )}
+
+      {/* Day Detail Dialog */}
+      <DayDetailDialog
+        open={dayDialogOpen}
+        onOpenChange={setDayDialogOpen}
+        date={selectedDay}
+        tasks={selectedDayTasks}
+        events={selectedDayEvents}
+        sprints={selectedDaySprints}
+        isManager={isProjectManager}
+        onTaskClick={(t) => { setDayDialogOpen(false); openTask(t); }}
+        onEventClick={() => {}}
+        onAddEvent={isProjectManager && onAddSprintEvent ? (date) => onAddSprintEvent(date) : undefined}
+      />
+    </div>
+  );
+}

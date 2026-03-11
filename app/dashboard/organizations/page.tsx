@@ -11,21 +11,26 @@ import {
   Users,
   FolderKanban,
   UserPlus,
-  Loader2,
   Crown,
   Shield,
   ArrowRight,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { getUserOrganizations } from "@/lib/database";
+import { useBreadcrumbs } from "@/components/breadcrumbs";
 
 export default function OrganizationsPage() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [organizations, setOrganizations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
+  useBreadcrumbs([{ label: "Organizations" }]);
+
   useEffect(() => {
+    // Wait for auth to resolve before deciding what to load
+    if (authLoading) return;
+
     const loadOrganizations = async () => {
       if (!user) {
         setLoading(false);
@@ -43,14 +48,20 @@ export default function OrganizationsPage() {
     };
 
     loadOrganizations();
-  }, [user]);
+  }, [user, authLoading]);
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="text-center">
-          <Loader2 className="h-12 w-12 animate-spin text-brand-blue mx-auto mb-4" />
-          <p className="text-muted-foreground">Loading organizations...</p>
+      <div className="space-y-6 animate-pulse">
+        <div className="flex items-center justify-between">
+          <div className="space-y-2">
+            <div className="h-7 bg-muted rounded-lg w-44" />
+            <div className="h-4 bg-muted rounded w-64" />
+          </div>
+          <div className="h-9 bg-muted rounded-lg w-40" />
+        </div>
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {[...Array(3)].map((_, i) => <div key={i} className="h-52 bg-muted rounded-xl" />)}
         </div>
       </div>
     );

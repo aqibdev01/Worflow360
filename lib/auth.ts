@@ -70,22 +70,22 @@ export async function signUp(
     console.log("✅ Auth user created:", authData.user.id);
     console.log("📧 Email confirmation required:", authData.user.email_confirmed_at === null);
 
-    // Create user profile in public.users table
-    try {
-      await getOrCreateUserProfile(authData.user.id, email);
-
-      // Update full_name if provided
-      if (fullName) {
-        await supabase
-          .from("users")
-          .update({ full_name: fullName })
-          .eq("id", authData.user.id);
-      }
-    } catch (profileError) {
-      console.error("Error creating user profile:", profileError);
-      // Don't fail the signup if profile creation fails
-      // The profile will be created on first login
-    }
+    // Create user profile in background — don't await, getOrCreateUserProfile
+    // can hang on slow connections. The profile is also created on first login.
+    getOrCreateUserProfile(authData.user.id, email)
+      .then(() => {
+        if (fullName) {
+          supabase
+            .from("users")
+            .update({ full_name: fullName })
+            .eq("id", authData.user.id)
+            .then(() => {})
+            .catch(() => {});
+        }
+      })
+      .catch((profileError) => {
+        console.error("Background profile creation error:", profileError);
+      });
 
     return { data: authData.user };
   } catch (error) {

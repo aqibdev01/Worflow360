@@ -7,9 +7,10 @@ import type { Database } from "@/types/database";
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get("code");
+  const type = requestUrl.searchParams.get("type");
 
   if (code) {
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
 
     const supabase = createServerClient<Database>(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -30,8 +31,13 @@ export async function GET(request: NextRequest) {
     );
 
     await supabase.auth.exchangeCodeForSession(code);
+
+    // If this is a password recovery flow, redirect to the password reset page
+    if (type === "recovery") {
+      return NextResponse.redirect(new URL("/auth/forgot-password?step=password", request.url));
+    }
   }
 
-  // URL to redirect to after sign in process completes
+  // Default: redirect to dashboard after sign in
   return NextResponse.redirect(new URL("/dashboard", request.url));
 }

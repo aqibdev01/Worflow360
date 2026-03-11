@@ -6,8 +6,8 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard,
   Building2,
-  Calendar,
   BarChart3,
+  CalendarDays,
   Menu,
   X,
   LogOut,
@@ -31,6 +31,7 @@ import {
 import { toast } from "sonner";
 import { AlertBanner, AlertItem } from "@/components/dismissible-alert";
 import { Logo } from "@/components/Logo";
+import { BreadcrumbProvider, BreadcrumbNav } from "@/components/breadcrumbs";
 
 const navigation = [
   {
@@ -42,14 +43,14 @@ const navigation = [
   {
     name: "Calendar",
     href: "/dashboard/calendar",
-    icon: Calendar,
-    comingSoon: true,
+    icon: CalendarDays,
+    comingSoon: false,
   },
   {
     name: "Reports",
     href: "/dashboard/analytics",
     icon: BarChart3,
-    comingSoon: true,
+    comingSoon: false,
   },
   {
     name: "Dashboard",
@@ -72,13 +73,6 @@ export default function DashboardLayout({
 
   // System alerts - these can be dynamically updated from backend or state
   const [alerts] = useState<AlertItem[]>([
-    {
-      id: "welcome-alert",
-      title: "Welcome to Workflow360!",
-      message: "Get started by creating or joining an organization to collaborate with your team.",
-      variant: "info",
-      persistDismissal: true,
-    },
   ]);
 
   const handleLogout = async () => {
@@ -105,6 +99,7 @@ export default function DashboardLayout({
   };
 
   return (
+    <BreadcrumbProvider>
     <div className="min-h-screen bg-[#F8F9FC]">
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
@@ -198,7 +193,7 @@ export default function DashboardLayout({
           {/* Hide/Show Menu Toggle */}
           <button
             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-            className="hidden lg:flex items-center gap-2 text-muted-foreground hover:text-navy-900 transition-colors"
+            className="hidden lg:flex items-center gap-2 text-muted-foreground hover:text-navy-900 transition-colors shrink-0"
           >
             {sidebarCollapsed ? (
               <PanelLeft className="h-5 w-5" />
@@ -207,6 +202,11 @@ export default function DashboardLayout({
             )}
             <span className="text-sm font-medium">{sidebarCollapsed ? 'Show Menu' : 'Hide Menu'}</span>
           </button>
+
+          {/* Breadcrumb trail */}
+          <div className="flex-1 min-w-0 px-2 hidden sm:block">
+            <BreadcrumbNav />
+          </div>
 
           {/* Right side - User profile */}
           <div className="ml-auto flex items-center gap-4">
@@ -268,5 +268,6 @@ export default function DashboardLayout({
         <main className="p-4 lg:p-6">{children}</main>
       </div>
     </div>
+    </BreadcrumbProvider>
   );
 }

@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
+import { getUserOrganizations } from "@/lib/database";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -15,7 +16,6 @@ import {
   UserPlus,
   ArrowRight,
   Sparkles,
-  Activity,
   ListChecks,
   Zap,
   Target,
@@ -23,16 +23,34 @@ import {
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { user, userProfile, loading } = useAuth();
-  // Simulating empty state - in real app, this would come from database
-  const [hasOrganizations] = useState(false);
+  const { user, userProfile, loading: authLoading } = useAuth();
+  const [organizations, setOrganizations] = useState<any[]>([]);
+  const [orgsLoading, setOrgsLoading] = useState(true);
+
+  useEffect(() => {
+    if (authLoading) return;
+    if (!user) { setOrgsLoading(false); return; }
+    setOrgsLoading(true);
+    getUserOrganizations(user.id)
+      .then((orgs) => setOrganizations(orgs || []))
+      .catch(() => {})
+      .finally(() => setOrgsLoading(false));
+  }, [user, authLoading]);
+
+  const loading = authLoading || orgsLoading;
+  const hasOrganizations = organizations.length > 0;
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-blue mx-auto"></div>
-          <p className="mt-4 text-muted-foreground">Loading dashboard...</p>
+      <div className="space-y-6 animate-pulse">
+        <div className="h-8 bg-muted rounded-lg w-1/2" />
+        <div className="h-4 bg-muted rounded w-1/3" />
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {[...Array(3)].map((_, i) => <div key={i} className="h-28 bg-muted rounded-xl" />)}
+        </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="h-64 bg-muted rounded-xl" />
+          <div className="h-64 bg-muted rounded-xl" />
         </div>
       </div>
     );
@@ -217,8 +235,8 @@ export default function DashboardPage() {
         </>
       ) : (
         <>
-          {/* Stats Cards - Shown when user has organizations */}
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {/* Stats Cards - Real data from organizations */}
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             <Card className="border-l-4 border-l-brand-blue hover:shadow-lg hover:shadow-brand-blue/10 transition-all bg-white">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium text-navy-900">
@@ -229,9 +247,9 @@ export default function DashboardPage() {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-brand-blue">3</div>
+                <div className="text-2xl font-bold text-brand-blue">{organizations.length}</div>
                 <p className="text-xs text-muted-foreground">
-                  +1 joined this month
+                  {organizations.length === 1 ? "1 organization" : `${organizations.length} organizations`}
                 </p>
               </CardContent>
             </Card>
@@ -246,27 +264,10 @@ export default function DashboardPage() {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-brand-purple">12</div>
-                <p className="text-xs text-muted-foreground">
-                  8 active, 4 completed
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="border-l-4 border-l-success hover:shadow-lg hover:shadow-success/10 transition-all bg-white">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-navy-900">
-                  Active Tasks
-                </CardTitle>
-                <div className="h-8 w-8 bg-success/10 rounded-lg flex items-center justify-center">
-                  <CheckCircle2 className="h-4 w-4 text-success" />
+                <div className="text-2xl font-bold text-brand-purple">
+                  {organizations.reduce((sum, o) => sum + (o.project_count || 0), 0)}
                 </div>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-success">47</div>
-                <p className="text-xs text-muted-foreground">
-                  23 completed this week
-                </p>
+                <p className="text-xs text-muted-foreground">Across all organizations</p>
               </CardContent>
             </Card>
 
@@ -280,10 +281,10 @@ export default function DashboardPage() {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-brand-cyan-dark">18</div>
-                <p className="text-xs text-muted-foreground">
-                  Across all orgs
-                </p>
+                <div className="text-2xl font-bold text-brand-cyan-dark">
+                  {organizations.reduce((sum, o) => sum + (o.member_count || 1), 0)}
+                </div>
+                <p className="text-xs text-muted-foreground">Across all organizations</p>
               </CardContent>
             </Card>
           </div>
@@ -292,38 +293,36 @@ export default function DashboardPage() {
           <div className="grid gap-4 md:grid-cols-2">
             <Card className="bg-white">
               <CardHeader>
-                <CardTitle className="text-navy-900">Recent Activity</CardTitle>
+                <CardTitle className="text-navy-900">Your Organizations</CardTitle>
                 <CardDescription>
-                  Latest updates from your organizations
+                  Click an organization to manage its projects
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {[
-                    { user: "Sarah Chen", action: "completed task", item: "User Authentication", org: "Tech Startup", time: "2 hours ago", color: "bg-success" },
-                    { user: "Mike Johnson", action: "created project", item: "Q1 Planning", org: "Marketing Team", time: "4 hours ago", color: "bg-brand-blue" },
-                    { user: "Emma Wilson", action: "commented on", item: "Design Review", org: "Tech Startup", time: "5 hours ago", color: "bg-brand-purple" },
-                    { user: "Alex Turner", action: "assigned task", item: "API Testing", org: "Dev Team", time: "1 day ago", color: "bg-brand-cyan" },
-                  ].map((activity, i) => (
-                    <div key={i} className="flex gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
-                      <div className={`h-8 w-8 rounded-full ${activity.color} flex items-center justify-center flex-shrink-0`}>
-                        <Activity className="h-4 w-4 text-white" />
+                <div className="space-y-2">
+                  {organizations.slice(0, 5).map((org) => (
+                    <div
+                      key={org.id}
+                      className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
+                      onClick={() => router.push(`/dashboard/organizations/${org.id}`)}
+                    >
+                      <div className="h-9 w-9 bg-gradient-to-br from-brand-blue to-brand-cyan rounded-lg flex items-center justify-center flex-shrink-0">
+                        <Building2 className="h-4 w-4 text-white" />
                       </div>
-                      <div className="flex-1 space-y-1 min-w-0">
-                        <p className="text-sm">
-                          <span className="font-medium text-navy-900">{activity.user}</span>{" "}
-                          <span className="text-muted-foreground">{activity.action}</span>{" "}
-                          <span className="font-medium text-brand-blue">{activity.item}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-navy-900 truncate">{org.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {org.member_count || 1} member{(org.member_count || 1) !== 1 ? "s" : ""} · {org.project_count || 0} project{(org.project_count || 0) !== 1 ? "s" : ""}
                         </p>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <Badge variant="secondary" className="text-xs bg-navy-50">
-                            {activity.org}
-                          </Badge>
-                          <span>{activity.time}</span>
-                        </div>
                       </div>
+                      <ArrowRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                     </div>
                   ))}
+                  {organizations.length > 5 && (
+                    <Button variant="ghost" size="sm" className="w-full text-muted-foreground" onClick={() => router.push("/dashboard/organizations")}>
+                      View all {organizations.length} organizations
+                    </Button>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -336,21 +335,21 @@ export default function DashboardPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-2">
-                <Button variant="outline" className="w-full justify-start group hover:border-brand-blue hover:bg-brand-blue/5" size="lg">
-                  <Plus className="mr-2 h-4 w-4 text-brand-blue" />
-                  Create New Project
+                <Button variant="outline" className="w-full justify-start group hover:border-brand-blue hover:bg-brand-blue/5" size="lg" onClick={() => router.push("/dashboard/organizations")}>
+                  <FolderKanban className="mr-2 h-4 w-4 text-brand-blue" />
+                  View All Organizations
                 </Button>
-                <Button variant="outline" className="w-full justify-start group hover:border-brand-purple hover:bg-brand-purple/5" size="lg">
+                <Button variant="outline" className="w-full justify-start group hover:border-brand-purple hover:bg-brand-purple/5" size="lg" onClick={() => router.push("/dashboard/organizations/join")}>
                   <UserPlus className="mr-2 h-4 w-4 text-brand-purple" />
-                  Invite Team Member
+                  Join Organization
                 </Button>
                 <Button variant="outline" className="w-full justify-start group hover:border-success hover:bg-success/5" size="lg" onClick={() => router.push("/dashboard/organizations/new")}>
                   <Building2 className="mr-2 h-4 w-4 text-success" />
                   Create Organization
                 </Button>
-                <Button variant="outline" className="w-full justify-start group hover:border-brand-cyan hover:bg-brand-cyan/5" size="lg">
-                  <FolderKanban className="mr-2 h-4 w-4 text-brand-cyan-dark" />
-                  View All Projects
+                <Button variant="outline" className="w-full justify-start group hover:border-brand-cyan hover:bg-brand-cyan/5" size="lg" onClick={() => router.push("/dashboard/analytics")}>
+                  <CheckCircle2 className="mr-2 h-4 w-4 text-brand-cyan-dark" />
+                  View Reports
                 </Button>
               </CardContent>
             </Card>

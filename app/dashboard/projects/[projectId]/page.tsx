@@ -1,12 +1,23 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useAuth } from "@/hooks/useAuth";
 import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
+import {
+  DndContext,
+  DragOverlay,
+  useDraggable,
+  useDroppable,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import type { DragStartEvent, DragEndEvent } from "@dnd-kit/core";
 import {
   FolderKanban,
   Users,
@@ -27,6 +38,11 @@ import {
   Plus,
   GripVertical,
   Pencil,
+  BarChart3,
+  Archive,
+  Layers,
+  Trash2,
+  MessageSquare,
 } from "lucide-react";
 import {
   getProjectDetails,
@@ -34,17 +50,22 @@ import {
   getProjectTasks,
   getProjectSprints,
   updateTaskStatus,
+  deleteTask,
   getUserProjectRole,
   startSprint,
   stopSprint,
+  updateSprint,
   getSprintEvents,
 } from "@/lib/database";
 import { TaskDialog } from "@/components/task-dialog";
 import { SprintDialog } from "@/components/sprint-dialog";
 import { SprintEventDialog } from "@/components/sprint-event-dialog";
 import { SprintTimeline } from "@/components/sprint-timeline";
-import { supabase } from "@/lib/supabase";
+import { ProjectAnalytics } from "@/components/project-analytics";
+import { ProjectCalendar } from "@/components/project-calendar";
+import { ChatContainer } from "@/components/chat/chat-container";
 import { toast } from "sonner";
+import { useBreadcrumbs } from "@/components/breadcrumbs";
 
 const statusConfig = {
   planning: { label: "Planning", color: "bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/20" },
@@ -61,21 +82,155 @@ const roleIcons: { [key: string]: any } = {
   "Project Manager": Briefcase,
 };
 
+// ─── Drag-and-drop: Priority Card (draggable from the tray) ──────────────────
+
+function PriorityDragCard({ priority, color, bgColor, borderColor, label, icon }: {
+  priority: string;
+  color: string;
+  bgColor: string;
+  borderColor: string;
+  label: string;
+  icon: string;
+}) {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: priority,
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      {...listeners}
+      {...attributes}
+      className={`flex flex-col items-center gap-1.5 px-5 py-3.5 rounded-xl border-2 cursor-grab active:cursor-grabbing select-none transition-all ${bgColor} ${
+        isDragging ? "opacity-30 scale-90" : "hover:shadow-lg hover:scale-105 hover:-translate-y-0.5"
+      }`}
+      style={{ borderColor }}
+    >
+      <div className="flex items-center gap-2">
+        <GripVertical className="h-3.5 w-3.5 opacity-30" />
+        <span className="text-lg">{icon}</span>
+      </div>
+      <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: color }} />
+      <span className="font-bold text-xs uppercase tracking-wider" style={{ color }}>{label}</span>
+    </div>
+  );
+}
+
+// ─── Drag-and-drop: Board Drop Zone (for priority cards → new task) ──────────
+
+function BoardDropZone({ children, active }: { children: React.ReactNode; active: boolean }) {
+  const { setNodeRef, isOver } = useDroppable({ id: "kanban-board" });
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={`transition-all rounded-xl ${
+        active && isOver ? "ring-3 ring-brand-blue/40 ring-offset-4 bg-brand-blue/[0.02]" : ""
+      }`}
+    >
+      {children}
+    </div>
+  );
+}
+
+// ─── Drag-and-drop: Column Drop Zone (for task cards → change status) ────────
+
+function ColumnDropZone({ status, active, children }: {
+  status: string;
+  active: boolean;
+  children: React.ReactNode;
+}) {
+  const { setNodeRef, isOver } = useDroppable({ id: `column-${status}` });
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={`transition-all rounded-xl ${
+        active && isOver ? "ring-2 ring-brand-blue ring-offset-2 scale-[1.01] bg-brand-blue/5" : ""
+      }`}
+    >
+      {children}
+    </div>
+  );
+}
+
+// ─── Drag-and-drop: Delete Drop Zone ─────────────────────────────────────────
+
+function DeleteDropZone() {
+  const { setNodeRef, isOver } = useDroppable({ id: "delete-zone" });
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={`flex items-center justify-center gap-3 py-4 px-6 rounded-xl border-2 border-dashed transition-all ${
+        isOver
+          ? "border-red-500 bg-red-100 scale-[1.02]"
+          : "border-red-300 bg-red-50"
+      }`}
+    >
+      <Trash2 className={`h-5 w-5 transition-colors ${isOver ? "text-red-600" : "text-red-400"}`} />
+      <span className={`font-semibold text-sm transition-colors ${isOver ? "text-red-700" : "text-red-400"}`}>
+        {isOver ? "Release to delete" : "Drop here to delete task"}
+      </span>
+    </div>
+  );
+}
+
+// ─── Drag-and-drop: Draggable Task Card wrapper ─────────────────────────────
+
+function DraggableTaskCard({ taskId, canDrag, children }: {
+  taskId: string;
+  canDrag: boolean;
+  children: React.ReactNode;
+}) {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: `task-${taskId}`,
+    disabled: !canDrag,
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      {...(canDrag ? listeners : {})}
+      {...(canDrag ? attributes : {})}
+      className={`transition-all ${isDragging ? "opacity-30 scale-95" : ""} ${canDrag ? "cursor-grab active:cursor-grabbing" : ""}`}
+    >
+      {children}
+    </div>
+  );
+}
+
+// ─── Main Component ──────────────────────────────────────────────────────────
+
 export default function ProjectDashboardPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const projectId = params.projectId as string;
+  const { user, loading: authLoading } = useAuth();
 
   const [project, setProject] = useState<any>(null);
   const [taskStats, setTaskStats] = useState<any>(null);
   const [tasks, setTasks] = useState<any[]>([]);
   const [sprints, setSprints] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("overview");
+  const [activeTab, setActiveTab] = useState(searchParams.get("tab") || "overview");
 
   // Task dialog state
   const [taskDialogOpen, setTaskDialogOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<any>(null);
+  const [taskDialogDefaultSprintId, setTaskDialogDefaultSprintId] = useState<string | undefined>(undefined);
+  const [taskDialogDefaultPriority, setTaskDialogDefaultPriority] = useState<"low" | "medium" | "high" | undefined>(undefined);
+  const [taskDialogDefaultStatus, setTaskDialogDefaultStatus] = useState<string | undefined>(undefined);
+
+  // Kanban view state
+  const [showBacklog, setShowBacklog] = useState(false);
+  const [activeDragPriority, setActiveDragPriority] = useState<string | null>(null);
+  const [activeDragTaskId, setActiveDragTaskId] = useState<string | null>(null);
+  const [deleteConfirmTaskId, setDeleteConfirmTaskId] = useState<string | null>(null);
+
+  // dnd-kit sensor
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
   // Sprint dialog state
   const [sprintDialogOpen, setSprintDialogOpen] = useState(false);
@@ -91,27 +246,46 @@ export default function ProjectDashboardPage() {
   const [currentUserId, setCurrentUserId] = useState<string>("");
   const [userRole, setUserRole] = useState<{ role: string; custom_role: string | null } | null>(null);
 
+  // Calendar → Kanban highlight
+  const [highlightTaskId, setHighlightTaskId] = useState<string | null>(null);
+
   // Check if user is project manager (owner, lead, or has Project Manager custom role)
   const isProjectManager = userRole?.role === "owner" || userRole?.role === "lead" || userRole?.custom_role === "Project Manager";
 
-  const loadProjectData = async () => {
-    try {
-      // Get current user
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        setCurrentUserId(user.id);
-        // Get user's role in this project
-        const role = await getUserProjectRole(projectId, user.id);
-        setUserRole(role);
-      }
+  useBreadcrumbs([
+    { label: "Organizations", href: "/dashboard/organizations" },
+    {
+      label: project?.organizations?.name || "…",
+      href: project?.organizations?.id ? `/dashboard/organizations/${project.organizations.id}` : undefined,
+    },
+    { label: project?.name || "…" },
+  ]);
 
-      const [projectData, stats, projectTasks, projectSprints] = await Promise.all([
+  const handleCalendarTaskClick = (taskId: string) => {
+    setActiveTab("kanban");
+    setHighlightTaskId(taskId);
+    // Scroll to the task card after a brief delay for the tab to render
+    setTimeout(() => {
+      const el = document.getElementById(`task-card-${taskId}`);
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 100);
+    // Clear highlight after animation finishes
+    setTimeout(() => setHighlightTaskId(null), 2000);
+  };
+
+  const loadProjectData = async (userId: string) => {
+    try {
+      setCurrentUserId(userId);
+      // Fetch role + all project data fully in parallel (single round-trip)
+      const [role, projectData, stats, projectTasks, projectSprints] = await Promise.all([
+        getUserProjectRole(projectId, userId),
         getProjectDetails(projectId),
         getProjectTaskStats(projectId),
         getProjectTasks(projectId),
         getProjectSprints(projectId),
       ]);
 
+      setUserRole(role);
       setProject(projectData);
       setTaskStats(stats);
       setTasks(projectTasks || []);
@@ -165,12 +339,26 @@ export default function ProjectDashboardPage() {
     setTaskDialogOpen(true);
   };
 
-  const openCreateTaskDialog = () => {
+  const handleDragDeleteTask = async (taskId: string) => {
+    try {
+      await deleteTask(taskId);
+      toast.success("Task deleted");
+      refreshTasks();
+    } catch (error) {
+      console.error("Error deleting task:", error);
+      toast.error("Failed to delete task");
+    }
+  };
+
+  const openCreateTaskDialog = (sprintId?: string, priority?: "low" | "medium" | "high", status?: string) => {
     if (!isProjectManager) {
       toast.error("Only project managers can create tasks");
       return;
     }
     setEditingTask(null);
+    setTaskDialogDefaultSprintId(sprintId);
+    setTaskDialogDefaultPriority(priority);
+    setTaskDialogDefaultStatus(status);
     setTaskDialogOpen(true);
   };
 
@@ -181,10 +369,10 @@ export default function ProjectDashboardPage() {
       setSprints(projectSprints || []);
       // Refresh selected sprint if viewing one
       if (selectedSprint) {
-        const updatedSprint = projectSprints?.find((s: any) => s.id === selectedSprint.id);
+        const updatedSprint = (projectSprints as any[])?.find((s: any) => s.id === selectedSprint.id);
         if (updatedSprint) {
           setSelectedSprint(updatedSprint);
-          const events = await getSprintEvents(updatedSprint.id);
+          const events = await getSprintEvents((updatedSprint as any).id);
           setSprintEvents(events);
         }
       }
@@ -246,6 +434,18 @@ export default function ProjectDashboardPage() {
     }
   };
 
+  const handleReopenSprint = async () => {
+    if (!selectedSprint || !isProjectManager) return;
+    try {
+      await updateSprint(selectedSprint.id, { status: "active" });
+      toast.success("Sprint reopened successfully");
+      refreshSprints();
+    } catch (error) {
+      console.error("Error reopening sprint:", error);
+      toast.error("Failed to reopen sprint");
+    }
+  };
+
   const openCreateEventDialog = () => {
     if (!isProjectManager) {
       toast.error("Only project managers can create events");
@@ -276,13 +476,24 @@ export default function ProjectDashboardPage() {
   };
 
   useEffect(() => {
-    loadProjectData();
-  }, [projectId]);
+    if (authLoading) return;
+    if (!user) { setLoading(false); return; }
+    loadProjectData(user.id);
+  // user reference changes on token refresh — only re-run on projectId or auth state
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectId, user?.id, authLoading]);
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-muted-foreground">Loading project...</div>
+      <div className="space-y-6 animate-pulse">
+        <div className="h-8 bg-muted rounded-lg w-1/3" />
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="h-28 bg-muted rounded-xl" />
+          ))}
+        </div>
+        <div className="h-48 bg-muted rounded-xl" />
+        <div className="h-64 bg-muted rounded-xl" />
       </div>
     );
   }
@@ -310,18 +521,8 @@ export default function ProjectDashboardPage() {
 
   return (
     <div className="space-y-6">
-      {/* Back Button and Header */}
+      {/* Header */}
       <div className="space-y-4">
-        <Button
-          variant="ghost"
-          size="sm"
-          className="gap-2"
-          onClick={() => router.push(`/dashboard/organizations/${project.organizations.id}`)}
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to {project.organizations.name}
-        </Button>
-
         <div className="flex items-start justify-between">
           <div className="space-y-1 flex-1">
             <div className="flex items-center gap-3 mb-2">
@@ -489,10 +690,10 @@ export default function ProjectDashboardPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+              <div className="grid gap-3 md:grid-cols-3 lg:grid-cols-5">
                 <Button
                   variant="outline"
-                  className="h-auto py-4 flex-col gap-2 hover:bg-primary/5 hover:border-primary/50 transition-colors"
+                  className="h-auto py-4 flex-col gap-2 hover:bg-primary/5 hover:text-primary hover:border-primary/50 transition-colors"
                   onClick={() => setActiveTab("kanban")}
                 >
                   <LayoutGrid className="h-6 w-6" />
@@ -500,7 +701,7 @@ export default function ProjectDashboardPage() {
                 </Button>
                 <Button
                   variant="outline"
-                  className="h-auto py-4 flex-col gap-2 hover:bg-primary/5 hover:border-primary/50 transition-colors"
+                  className="h-auto py-4 flex-col gap-2 hover:bg-primary/5 hover:text-primary hover:border-primary/50 transition-colors"
                   onClick={() => setActiveTab("sprints")}
                 >
                   <PlayCircle className="h-6 w-6" />
@@ -508,7 +709,7 @@ export default function ProjectDashboardPage() {
                 </Button>
                 <Button
                   variant="outline"
-                  className="h-auto py-4 flex-col gap-2 hover:bg-primary/5 hover:border-primary/50 transition-colors"
+                  className="h-auto py-4 flex-col gap-2 hover:bg-primary/5 hover:text-primary hover:border-primary/50 transition-colors"
                   onClick={() => setActiveTab("team")}
                 >
                   <Users className="h-6 w-6" />
@@ -516,11 +717,35 @@ export default function ProjectDashboardPage() {
                 </Button>
                 <Button
                   variant="outline"
-                  className="h-auto py-4 flex-col gap-2 hover:bg-primary/5 hover:border-primary/50 transition-colors"
+                  className="h-auto py-4 flex-col gap-2 hover:bg-primary/5 hover:text-primary hover:border-primary/50 transition-colors"
                   onClick={() => setActiveTab("settings")}
                 >
                   <Settings className="h-6 w-6" />
                   <span className="text-sm font-medium">Settings</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  className="h-auto py-4 flex-col gap-2 hover:bg-primary/5 hover:text-primary hover:border-primary/50 transition-colors"
+                  onClick={() => setActiveTab("analytics")}
+                >
+                  <BarChart3 className="h-6 w-6" />
+                  <span className="text-sm font-medium">Analytics</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  className="h-auto py-4 flex-col gap-2 hover:bg-primary/5 hover:text-primary hover:border-primary/50 transition-colors"
+                  onClick={() => setActiveTab("calendar")}
+                >
+                  <Calendar className="h-6 w-6" />
+                  <span className="text-sm font-medium">Calendar</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  className="h-auto py-4 flex-col gap-2 hover:bg-primary/5 hover:text-primary hover:border-primary/50 transition-colors"
+                  onClick={() => setActiveTab("chat")}
+                >
+                  <MessageSquare className="h-6 w-6" />
+                  <span className="text-sm font-medium">Chat</span>
                 </Button>
               </div>
             </CardContent>
@@ -655,7 +880,7 @@ export default function ProjectDashboardPage() {
 
         {/* Kanban Tab */}
         <TabsContent value="kanban" className="space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-3">
             <div>
               <h3 className="text-lg font-semibold">Kanban Board</h3>
               <p className="text-sm text-muted-foreground">
@@ -663,37 +888,395 @@ export default function ProjectDashboardPage() {
                 {!isProjectManager && " (Only project managers can create/edit tasks)"}
               </p>
             </div>
-            <Button
-              className="gap-2"
-              onClick={openCreateTaskDialog}
-              disabled={!isProjectManager}
-            >
-              <Plus className="h-4 w-4" />
-              Add Task
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant={showBacklog ? "default" : "outline"}
+                size="sm"
+                className={`gap-2 ${showBacklog ? "bg-amber-600 hover:bg-amber-700" : ""}`}
+                onClick={() => setShowBacklog(!showBacklog)}
+              >
+                <Archive className="h-4 w-4" />
+                Backlog
+                {(() => {
+                  const backlogCount = tasks.filter((t) => !t.sprint_id).length;
+                  return backlogCount > 0 ? (
+                    <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px]">{backlogCount}</Badge>
+                  ) : null;
+                })()}
+              </Button>
+              <Button
+                className="gap-2"
+                onClick={() => openCreateTaskDialog()}
+                disabled={!isProjectManager}
+              >
+                <Plus className="h-4 w-4" />
+                Add Task
+              </Button>
+            </div>
           </div>
 
-          {tasks.length === 0 ? (
-            <Card>
-              <CardContent className="flex flex-col items-center justify-center py-12">
-                <LayoutGrid className="h-12 w-12 text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold mb-2">No Tasks Yet</h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  {isProjectManager
-                    ? "Create your first task to get started with the Kanban board"
-                    : "No tasks have been created yet. Ask your project manager to create tasks."}
-                </p>
-                {isProjectManager && (
-                  <Button className="gap-2" onClick={openCreateTaskDialog}>
-                    <Plus className="h-4 w-4" />
-                    Create First Task
-                  </Button>
+          {/* Backlog Section */}
+          {showBacklog && (() => {
+            const backlogTasks = tasks.filter((t) => !t.sprint_id);
+            return (
+              <Card className="bg-amber-50/50 dark:bg-amber-950/10 border-amber-200">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Archive className="h-4 w-4 text-amber-600" />
+                      <h4 className="font-semibold text-amber-900">Backlog</h4>
+                      <span className="text-xs text-amber-600">Tasks not assigned to any sprint</span>
+                    </div>
+                    <Badge variant="secondary" className="font-bold">{backlogTasks.length}</Badge>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {backlogTasks.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-4">
+                      No backlog tasks. All tasks are assigned to sprints.
+                    </p>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                      {backlogTasks.map((task) => (
+                        <Card
+                          key={task.id}
+                          className="cursor-pointer border-l-4 bg-white hover:shadow-md transition-shadow"
+                          style={{
+                            borderLeftColor:
+                              task.priority === "urgent" ? "#ef4444"
+                                : task.priority === "high" ? "#f97316"
+                                : task.priority === "medium" ? "#3b82f6"
+                                : "#6b7280",
+                          }}
+                          onClick={() => isProjectManager && openEditTaskDialog(task)}
+                        >
+                          <CardContent className="p-3 space-y-2">
+                            <div className="flex items-start justify-between gap-2">
+                              <h5 className="font-medium text-sm leading-tight line-clamp-2 flex-1">{task.title}</h5>
+                              {isProjectManager && (
+                                <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0"
+                                  onClick={(e) => { e.stopPropagation(); openEditTaskDialog(task); }}>
+                                  <Pencil className="h-3 w-3" />
+                                </Button>
+                              )}
+                            </div>
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              <Badge variant="outline" className={`text-xs capitalize ${
+                                task.priority === "high" ? "border-orange-500 text-orange-600"
+                                  : task.priority === "urgent" ? "border-red-500 text-red-600" : ""
+                              }`}>
+                                {task.priority}
+                              </Badge>
+                              <Badge variant="secondary" className="text-xs capitalize">
+                                {task.status === "in_progress" ? "In Progress" : task.status}
+                              </Badge>
+                              {task.due_date && (
+                                <Badge variant="outline" className="text-xs gap-1">
+                                  <Calendar className="h-3 w-3" />
+                                  {new Date(task.due_date).toLocaleDateString()}
+                                </Badge>
+                              )}
+                            </div>
+                            {task.assignee && (
+                              <div className="flex items-center gap-2 pt-1">
+                                <div className="h-5 w-5 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-medium text-primary">
+                                  {task.assignee.full_name
+                                    ? task.assignee.full_name.split(" ").map((n: string) => n[0]).join("").toUpperCase()
+                                    : task.assignee.email?.[0]?.toUpperCase() || "?"}
+                                </div>
+                                <span className="text-xs text-muted-foreground truncate">
+                                  {task.assignee.full_name || task.assignee.email}
+                                </span>
+                              </div>
+                            )}
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })()}
+
+          {/* Kanban Board with Drag-and-Drop */}
+          {isProjectManager && (
+            <DndContext
+              sensors={sensors}
+              onDragStart={(event: DragStartEvent) => {
+                const id = event.active.id as string;
+                if (id.startsWith("task-")) {
+                  setActiveDragTaskId(id.replace("task-", ""));
+                  setActiveDragPriority(null);
+                } else {
+                  setActiveDragPriority(id);
+                  setActiveDragTaskId(null);
+                }
+              }}
+              onDragEnd={(event: DragEndEvent) => {
+                const { active, over } = event;
+                const activeId = active.id as string;
+
+                if (activeId.startsWith("task-") && over) {
+                  const taskId = activeId.replace("task-", "");
+                  const targetId = over.id as string;
+                  const task = tasks.find((t) => t.id === taskId);
+
+                  if (targetId === "delete-zone" && task) {
+                    // Show delete confirmation
+                    setDeleteConfirmTaskId(taskId);
+                  } else if (targetId.startsWith("column-") && task) {
+                    const newStatus = targetId.replace("column-", "");
+                    if (newStatus !== task.status) {
+                      handleTaskStatusChange(taskId, newStatus, task);
+                    }
+                  }
+                } else if (!activeId.startsWith("task-") && over) {
+                  // Priority card dropped on board
+                  const priority = activeId as "low" | "medium" | "high";
+                  openCreateTaskDialog(undefined, priority, "todo");
+                }
+
+                setActiveDragPriority(null);
+                setActiveDragTaskId(null);
+              }}
+              onDragCancel={() => {
+                setActiveDragPriority(null);
+                setActiveDragTaskId(null);
+              }}
+            >
+              {/* Priority Card Tray */}
+              <div className={`bg-white border-2 border-dashed rounded-xl p-4 shadow-sm transition-all ${
+                activeDragPriority ? "border-brand-blue/40 bg-brand-blue/[0.02]" : "border-gray-200"
+              }`}>
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="h-8 w-8 rounded-lg bg-brand-blue/10 flex items-center justify-center">
+                    <Layers className="h-4 w-4 text-brand-blue" />
+                  </div>
+                  <div>
+                    <span className="text-sm font-semibold text-navy-900">Quick Add</span>
+                    <p className="text-xs text-muted-foreground">Pick a priority card and drop it on the board to create a task</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-4">
+                  <PriorityDragCard priority="low" color="#6b7280" bgColor="bg-gray-50" borderColor="#d1d5db" label="Low" icon="🟢" />
+                  <PriorityDragCard priority="medium" color="#3b82f6" bgColor="bg-blue-50" borderColor="#93c5fd" label="Medium" icon="🟡" />
+                  <PriorityDragCard priority="high" color="#f97316" bgColor="bg-orange-50" borderColor="#fdba74" label="High" icon="🔴" />
+                </div>
+              </div>
+
+              {/* Delete zone — only visible when dragging a task */}
+              {activeDragTaskId && (
+                <DeleteDropZone />
+              )}
+
+              <BoardDropZone active={!!activeDragPriority}>
+                {tasks.length === 0 ? (
+                  <Card className={`transition-all ${activeDragPriority ? "ring-2 ring-brand-blue/30 ring-dashed" : ""}`}>
+                    <CardContent className="flex flex-col items-center justify-center py-12">
+                      <LayoutGrid className="h-12 w-12 text-muted-foreground mb-4" />
+                      <h3 className="text-lg font-semibold mb-2">No Tasks Yet</h3>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        {activeDragPriority
+                          ? "Drop here to create your first task!"
+                          : "Drag a card from above or click Add Task to get started"}
+                      </p>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {["todo", "in_progress", "review", "done"].map((status) => {
+                      const statusTasks = tasks.filter((t) => t.status === status);
+                      const statusLabels: { [key: string]: { title: string; color: string; bgColor: string } } = {
+                        todo: { title: "To Do", color: "bg-orange-500", bgColor: "bg-orange-50 dark:bg-orange-950/20" },
+                        in_progress: { title: "Work in Progress", color: "bg-blue-500", bgColor: "bg-blue-50 dark:bg-blue-950/20" },
+                        review: { title: "Review", color: "bg-purple-500", bgColor: "bg-purple-50 dark:bg-purple-950/20" },
+                        done: { title: "Completed", color: "bg-green-500", bgColor: "bg-green-50 dark:bg-green-950/20" },
+                      };
+
+                      const statusOrder = ["todo", "in_progress", "review", "done"];
+                      const currentIndex = statusOrder.indexOf(status);
+                      const prevStatus = currentIndex > 0 ? statusOrder[currentIndex - 1] : null;
+                      const nextStatus = currentIndex < statusOrder.length - 1 ? statusOrder[currentIndex + 1] : null;
+
+                      return (
+                        <ColumnDropZone key={status} status={status} active={!!activeDragTaskId}>
+                          <Card className={`flex flex-col min-h-[500px] ${statusLabels[status].bgColor}`}>
+                            <CardHeader className="pb-3">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  <div className={`h-3 w-3 rounded-full ${statusLabels[status].color}`} />
+                                  <h4 className="font-semibold">{statusLabels[status].title}</h4>
+                                </div>
+                                <Badge variant="secondary" className="font-bold">{statusTasks.length}</Badge>
+                              </div>
+                            </CardHeader>
+                            <CardContent className="flex-1 space-y-3 overflow-y-auto">
+                              {statusTasks.map((task) => {
+                                const canMoveTask = task.assignee_id === currentUserId || task.created_by === currentUserId || isProjectManager;
+                                const isHighlighted = task.id === highlightTaskId;
+
+                                return (
+                                  <DraggableTaskCard key={task.id} taskId={task.id} canDrag={canMoveTask}>
+                                    <Card
+                                      id={`task-card-${task.id}`}
+                                      className={`border-l-4 bg-background transition-shadow ${
+                                        isHighlighted
+                                          ? "ring-2 ring-brand-blue animate-task-highlight"
+                                          : "hover:shadow-md"
+                                      }`}
+                                      style={{
+                                        borderLeftColor:
+                                          task.priority === "urgent" ? "#ef4444"
+                                            : task.priority === "high" ? "#f97316"
+                                            : task.priority === "medium" ? "#3b82f6"
+                                            : "#6b7280",
+                                      }}
+                                    >
+                                      <CardContent className="p-3 space-y-2">
+                                        <div className="flex items-start justify-between gap-2">
+                                          <h5 className="font-medium text-sm leading-tight line-clamp-2 flex-1">
+                                            {task.title}
+                                          </h5>
+                                          <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0"
+                                            onClick={(e) => { e.stopPropagation(); openEditTaskDialog(task); }}>
+                                            <Pencil className="h-3 w-3" />
+                                          </Button>
+                                        </div>
+                                        {task.description && (
+                                          <p className="text-xs text-muted-foreground line-clamp-2">{task.description}</p>
+                                        )}
+                                        <div className="flex flex-wrap items-center gap-1.5">
+                                          <Badge variant="outline" className={`text-xs ${
+                                            task.priority === "high" ? "border-orange-500 text-orange-600"
+                                              : task.priority === "urgent" ? "border-red-500 text-red-600" : ""
+                                          }`}>
+                                            {task.priority}
+                                          </Badge>
+                                          {task.due_date && (
+                                            <Badge variant="outline" className="text-xs gap-1">
+                                              <Calendar className="h-3 w-3" />
+                                              {new Date(task.due_date).toLocaleDateString()}
+                                            </Badge>
+                                          )}
+                                        </div>
+                                        {task.assignee && (
+                                          <div className="flex items-center gap-2 pt-1">
+                                            <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium text-primary">
+                                              {task.assignee.full_name
+                                                ? task.assignee.full_name.split(" ").map((n: string) => n[0]).join("").toUpperCase()
+                                                : task.assignee.email?.[0]?.toUpperCase() || "?"}
+                                            </div>
+                                            <span className="text-xs text-muted-foreground truncate">
+                                              {task.assignee.full_name || task.assignee.email}
+                                            </span>
+                                          </div>
+                                        )}
+
+                                        {!activeDragTaskId && canMoveTask && (prevStatus || nextStatus) && (
+                                          <div className="flex items-center justify-between pt-2 border-t mt-2">
+                                            {prevStatus ? (
+                                              <Button variant="ghost" size="sm" className="h-7 text-xs px-2"
+                                                onClick={(e) => { e.stopPropagation(); handleTaskStatusChange(task.id, prevStatus, task); }}>
+                                                ← {statusLabels[prevStatus].title}
+                                              </Button>
+                                            ) : <div />}
+                                            {nextStatus && (
+                                              <Button variant="ghost" size="sm" className="h-7 text-xs px-2"
+                                                onClick={(e) => { e.stopPropagation(); handleTaskStatusChange(task.id, nextStatus, task); }}>
+                                                {statusLabels[nextStatus].title} →
+                                              </Button>
+                                            )}
+                                          </div>
+                                        )}
+                                      </CardContent>
+                                    </Card>
+                                  </DraggableTaskCard>
+                                );
+                              })}
+                            </CardContent>
+                          </Card>
+                        </ColumnDropZone>
+                      );
+                    })}
+                  </div>
                 )}
-              </CardContent>
-            </Card>
-          ) : (
+              </BoardDropZone>
+
+              {/* Drag Overlay */}
+              <DragOverlay>
+                {activeDragPriority ? (
+                  <div className={`px-5 py-3 rounded-xl border-2 shadow-2xl font-semibold text-sm flex items-center gap-3 ${
+                    activeDragPriority === "high" ? "bg-orange-50 border-orange-400 text-orange-700"
+                      : activeDragPriority === "medium" ? "bg-blue-50 border-blue-400 text-blue-700"
+                      : "bg-gray-50 border-gray-400 text-gray-700"
+                  }`}>
+                    <span className="text-base">{activeDragPriority === "high" ? "🔴" : activeDragPriority === "medium" ? "🟡" : "🟢"}</span>
+                    <span>{activeDragPriority === "high" ? "High" : activeDragPriority === "medium" ? "Medium" : "Low"} Priority</span>
+                    <Plus className="h-4 w-4 opacity-60" />
+                  </div>
+                ) : activeDragTaskId ? (() => {
+                  const dragTask = tasks.find((t) => t.id === activeDragTaskId);
+                  if (!dragTask) return null;
+                  return (
+                    <div className="px-4 py-2.5 rounded-lg border-2 shadow-2xl bg-white max-w-[220px] border-l-4"
+                      style={{
+                        borderLeftColor:
+                          dragTask.priority === "urgent" ? "#ef4444"
+                            : dragTask.priority === "high" ? "#f97316"
+                            : dragTask.priority === "medium" ? "#3b82f6"
+                            : "#6b7280",
+                      }}>
+                      <p className="font-medium text-sm truncate">{dragTask.title}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5 capitalize">{dragTask.priority} priority</p>
+                    </div>
+                  );
+                })() : null}
+              </DragOverlay>
+            </DndContext>
+          )}
+
+          {/* Delete Confirmation Dialog */}
+          {deleteConfirmTaskId && (() => {
+            const taskToDelete = tasks.find((t) => t.id === deleteConfirmTaskId);
+            return (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setDeleteConfirmTaskId(null)}>
+                <div className="bg-white rounded-xl p-6 shadow-2xl max-w-sm mx-4 space-y-4" onClick={(e) => e.stopPropagation()}>
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-full bg-red-100 flex items-center justify-center">
+                      <Trash2 className="h-5 w-5 text-red-600" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-navy-900">Delete Task?</h3>
+                      <p className="text-sm text-muted-foreground">This action cannot be undone.</p>
+                    </div>
+                  </div>
+                  {taskToDelete && (
+                    <div className="px-3 py-2 rounded-lg bg-red-50 border border-red-100">
+                      <p className="font-medium text-sm">{taskToDelete.title}</p>
+                      <p className="text-xs text-muted-foreground capitalize">{taskToDelete.priority} priority</p>
+                    </div>
+                  )}
+                  <div className="flex justify-end gap-2">
+                    <Button variant="outline" size="sm" onClick={() => setDeleteConfirmTaskId(null)}>
+                      Cancel
+                    </Button>
+                    <Button variant="destructive" size="sm" onClick={() => {
+                      handleDragDeleteTask(deleteConfirmTaskId);
+                      setDeleteConfirmTaskId(null);
+                    }}>
+                      <Trash2 className="h-4 w-4 mr-1" />
+                      Delete
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* Non-PM view (no drag-and-drop) */}
+          {!isProjectManager && tasks.length > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {/* Only show 4 columns: To Do, Work in Progress, Review, Completed */}
               {["todo", "in_progress", "review", "done"].map((status) => {
                 const statusTasks = tasks.filter((t) => t.status === status);
                 const statusLabels: { [key: string]: { title: string; color: string; bgColor: string } } = {
@@ -703,7 +1286,6 @@ export default function ProjectDashboardPage() {
                   done: { title: "Completed", color: "bg-green-500", bgColor: "bg-green-50 dark:bg-green-950/20" },
                 };
 
-                // Get adjacent statuses for move buttons
                 const statusOrder = ["todo", "in_progress", "review", "done"];
                 const currentIndex = statusOrder.indexOf(status);
                 const prevStatus = currentIndex > 0 ? statusOrder[currentIndex - 1] : null;
@@ -722,58 +1304,34 @@ export default function ProjectDashboardPage() {
                     </CardHeader>
                     <CardContent className="flex-1 space-y-3 overflow-y-auto">
                       {statusTasks.map((task) => {
-                        const canMoveTask = task.assignee_id === currentUserId || task.created_by === currentUserId || isProjectManager;
+                        const canMoveTask = task.assignee_id === currentUserId || task.created_by === currentUserId;
+                        const isHighlighted = task.id === highlightTaskId;
 
                         return (
                           <Card
                             key={task.id}
-                            className="cursor-pointer hover:shadow-md transition-shadow border-l-4 bg-background"
+                            id={`task-card-${task.id}`}
+                            className={`cursor-pointer border-l-4 bg-background transition-shadow ${
+                              isHighlighted ? "ring-2 ring-brand-blue animate-task-highlight" : "hover:shadow-md"
+                            }`}
                             style={{
                               borderLeftColor:
-                                task.priority === "urgent"
-                                  ? "#ef4444"
-                                  : task.priority === "high"
-                                  ? "#f97316"
-                                  : task.priority === "medium"
-                                  ? "#3b82f6"
+                                task.priority === "urgent" ? "#ef4444"
+                                  : task.priority === "high" ? "#f97316"
+                                  : task.priority === "medium" ? "#3b82f6"
                                   : "#6b7280",
                             }}
                           >
                             <CardContent className="p-3 space-y-2">
-                              <div className="flex items-start justify-between gap-2">
-                                <h5 className="font-medium text-sm leading-tight line-clamp-2 flex-1">
-                                  {task.title}
-                                </h5>
-                                {isProjectManager && (
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-6 w-6 shrink-0"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      openEditTaskDialog(task);
-                                    }}
-                                  >
-                                    <Pencil className="h-3 w-3" />
-                                  </Button>
-                                )}
-                              </div>
+                              <h5 className="font-medium text-sm leading-tight line-clamp-2">{task.title}</h5>
                               {task.description && (
-                                <p className="text-xs text-muted-foreground line-clamp-2">
-                                  {task.description}
-                                </p>
+                                <p className="text-xs text-muted-foreground line-clamp-2">{task.description}</p>
                               )}
                               <div className="flex flex-wrap items-center gap-1.5">
-                                <Badge
-                                  variant="outline"
-                                  className={`text-xs ${
-                                    task.priority === "high"
-                                      ? "border-orange-500 text-orange-600"
-                                      : task.priority === "urgent"
-                                      ? "border-red-500 text-red-600"
-                                      : ""
-                                  }`}
-                                >
+                                <Badge variant="outline" className={`text-xs ${
+                                  task.priority === "high" ? "border-orange-500 text-orange-600"
+                                    : task.priority === "urgent" ? "border-red-500 text-red-600" : ""
+                                }`}>
                                   {task.priority}
                                 </Badge>
                                 {task.due_date && (
@@ -787,11 +1345,7 @@ export default function ProjectDashboardPage() {
                                 <div className="flex items-center gap-2 pt-1">
                                   <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium text-primary">
                                     {task.assignee.full_name
-                                      ? task.assignee.full_name
-                                          .split(" ")
-                                          .map((n: string) => n[0])
-                                          .join("")
-                                          .toUpperCase()
+                                      ? task.assignee.full_name.split(" ").map((n: string) => n[0]).join("").toUpperCase()
                                       : task.assignee.email?.[0]?.toUpperCase() || "?"}
                                   </div>
                                   <span className="text-xs text-muted-foreground truncate">
@@ -799,35 +1353,17 @@ export default function ProjectDashboardPage() {
                                   </span>
                                 </div>
                               )}
-
-                              {/* Move task buttons */}
                               {canMoveTask && (prevStatus || nextStatus) && (
                                 <div className="flex items-center justify-between pt-2 border-t mt-2">
                                   {prevStatus ? (
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      className="h-7 text-xs px-2"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleTaskStatusChange(task.id, prevStatus, task);
-                                      }}
-                                    >
+                                    <Button variant="ghost" size="sm" className="h-7 text-xs px-2"
+                                      onClick={(e) => { e.stopPropagation(); handleTaskStatusChange(task.id, prevStatus, task); }}>
                                       ← {statusLabels[prevStatus].title}
                                     </Button>
-                                  ) : (
-                                    <div />
-                                  )}
+                                  ) : <div />}
                                   {nextStatus && (
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      className="h-7 text-xs px-2"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleTaskStatusChange(task.id, nextStatus, task);
-                                      }}
-                                    >
+                                    <Button variant="ghost" size="sm" className="h-7 text-xs px-2"
+                                      onClick={(e) => { e.stopPropagation(); handleTaskStatusChange(task.id, nextStatus, task); }}>
                                       {statusLabels[nextStatus].title} →
                                     </Button>
                                   )}
@@ -844,6 +1380,18 @@ export default function ProjectDashboardPage() {
             </div>
           )}
 
+          {!isProjectManager && tasks.length === 0 && (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <LayoutGrid className="h-12 w-12 text-muted-foreground mb-4" />
+                <h3 className="text-lg font-semibold mb-2">No Tasks Yet</h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  No tasks have been created yet. Ask your project manager to create tasks.
+                </p>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Task Dialog */}
           <TaskDialog
             open={taskDialogOpen}
@@ -852,6 +1400,11 @@ export default function ProjectDashboardPage() {
             currentUserId={currentUserId}
             task={editingTask}
             isProjectManager={isProjectManager}
+            availableSprints={sprints.filter((s: any) => s.status !== "cancelled")}
+            defaultSprintId={taskDialogDefaultSprintId}
+            defaultPriority={taskDialogDefaultPriority}
+            defaultStatus={taskDialogDefaultStatus}
+            hidePriority={!!taskDialogDefaultPriority}
             onTaskCreated={refreshTasks}
             onTaskUpdated={refreshTasks}
             onTaskDeleted={refreshTasks}
@@ -873,15 +1426,44 @@ export default function ProjectDashboardPage() {
                 Back to Sprints
               </Button>
 
+              {isProjectManager && (
+                <div className="flex justify-end">
+                  <Button
+                    className="gap-2"
+                    size="sm"
+                    onClick={() => openCreateTaskDialog(selectedSprint.id)}
+                  >
+                    <Plus className="h-4 w-4" />
+                    Add Task to Sprint
+                  </Button>
+                </div>
+              )}
+
               <SprintTimeline
                 sprint={selectedSprint}
                 events={sprintEvents}
                 isProjectManager={isProjectManager}
                 onStartSprint={handleStartSprint}
                 onStopSprint={handleStopSprint}
+                onReopenSprint={handleReopenSprint}
                 onEditSprint={() => openEditSprintDialog(selectedSprint)}
                 onAddEvent={openCreateEventDialog}
                 onEditEvent={openEditEventDialog}
+              />
+
+              {/* Task Dialog (for creating tasks within a sprint) */}
+              <TaskDialog
+                open={taskDialogOpen}
+                onOpenChange={setTaskDialogOpen}
+                projectId={projectId}
+                currentUserId={currentUserId}
+                task={editingTask}
+                isProjectManager={isProjectManager}
+                availableSprints={sprints.filter((s: any) => s.status !== "cancelled")}
+                defaultSprintId={taskDialogDefaultSprintId}
+                onTaskCreated={refreshTasks}
+                onTaskUpdated={refreshTasks}
+                onTaskDeleted={refreshTasks}
               />
 
               {/* Sprint Event Dialog */}
@@ -913,7 +1495,7 @@ export default function ProjectDashboardPage() {
                 </div>
                 <Button
                   className="gap-2"
-                  onClick={openCreateSprintDialog}
+                  onClick={() => openCreateSprintDialog()}
                   disabled={!isProjectManager}
                 >
                   <Plus className="h-4 w-4" />
@@ -931,7 +1513,7 @@ export default function ProjectDashboardPage() {
                       Define goals, set timelines, and schedule events.
                     </p>
                     {isProjectManager && (
-                      <Button className="gap-2" onClick={openCreateSprintDialog}>
+                      <Button className="gap-2" onClick={() => openCreateSprintDialog()}>
                         <Plus className="h-4 w-4" />
                         Create First Sprint
                       </Button>
@@ -1168,6 +1750,61 @@ export default function ProjectDashboardPage() {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Analytics Tab */}
+        <TabsContent value="analytics" className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold">Analytics</h3>
+              <p className="text-sm text-muted-foreground">
+                Track contributions, team performance, and project health
+              </p>
+            </div>
+            <BarChart3 className="h-5 w-5 text-muted-foreground" />
+          </div>
+
+          {activeTab === "analytics" && (
+            <ProjectAnalytics
+              projectId={projectId}
+              currentUserId={currentUserId}
+              isProjectManager={isProjectManager}
+            />
+          )}
+        </TabsContent>
+
+        {/* Calendar Tab */}
+        <TabsContent value="calendar" className="space-y-4">
+          {activeTab === "calendar" && (
+            <ProjectCalendar
+              projectId={projectId}
+              currentUserId={currentUserId}
+              isProjectManager={isProjectManager}
+              onNavigateToKanban={handleCalendarTaskClick}
+              onAddSprintEvent={() => {
+                if (!isProjectManager || !selectedSprint) {
+                  if (!selectedSprint) {
+                    toast.error("Please select a sprint first from the Sprints tab to add events");
+                  }
+                  return;
+                }
+                setEditingSprintEvent(null);
+                setSprintEventDialogOpen(true);
+              }}
+            />
+          )}
+        </TabsContent>
+
+        {/* Chat Tab */}
+        <TabsContent value="chat" className="space-y-4">
+          {activeTab === "chat" && (
+            <ChatContainer
+              scope="project"
+              scopeId={projectId}
+              currentUserId={currentUserId}
+              canManageChannels={isProjectManager}
+            />
+          )}
         </TabsContent>
       </Tabs>
     </div>

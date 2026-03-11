@@ -58,12 +58,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (mounted) {
           if (session?.user) {
             setUser(session.user);
-            // Ensure user profile exists and fetch it
-            await getOrCreateUserProfile(
-              session.user.id,
-              session.user.email || ""
-            );
-            await fetchUserProfile(session.user.id);
+            // Try to fetch profile directly (single DB call for existing users)
+            try {
+              const { data: profile } = await supabase
+                .from("users")
+                .select("*")
+                .eq("id", session.user.id)
+                .single();
+
+              if (profile) {
+                setUserProfile(profile);
+              } else {
+                // Profile missing — create it in background, don't block loading
+                getOrCreateUserProfile(session.user.id, session.user.email || "")
+                  .then(() => {
+                    if (mounted) fetchUserProfile(session.user.id);
+                  })
+                  .catch(() => {});
+              }
+            } catch (profileError) {
+              console.error("Error fetching profile during init:", profileError);
+            }
           } else {
             setUser(null);
             setUserProfile(null);
@@ -92,38 +107,47 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log("Auth state changed:", event);
 
-      if (session?.user) {
-        setUser(session.user);
-        // Ensure profile exists and fetch it
-        try {
-          await getOrCreateUserProfile(
-            session.user.id,
-            session.user.email || ""
-          );
-          await fetchUserProfile(session.user.id);
-        } catch (error) {
-          console.error("Error handling auth state change:", error);
-        }
-      } else {
-        setUser(null);
-        setUserProfile(null);
-      }
-
-      // Handle specific events
-      if (event === "SIGNED_IN") {
-        console.log("User signed in");
-      } else if (event === "SIGNED_OUT") {
-        console.log("User signed out");
-      } else if (event === "TOKEN_REFRESHED") {
-        console.log("Token refreshed");
-      } else if (event === "USER_UPDATED") {
-        console.log("User updated");
+      try {
         if (session?.user) {
-          await fetchUserProfile(session.user.id);
+          setUser(session.user);
+          // Fetch profile (non-blocking create if missing)
+          try {
+            const { data: profile } = await supabase
+              .from("users")
+              .select("*")
+              .eq("id", session.user.id)
+              .single();
+            if (profile) {
+              setUserProfile(profile);
+            } else {
+              getOrCreateUserProfile(session.user.id, session.user.email || "")
+                .then(() => fetchUserProfile(session.user.id))
+                .catch(() => {});
+            }
+          } catch (error) {
+            console.error("Error handling auth state change:", error);
+          }
+        } else {
+          setUser(null);
+          setUserProfile(null);
         }
-      }
 
-      setLoading(false);
+        // Handle specific events
+        if (event === "SIGNED_IN") {
+          console.log("User signed in");
+        } else if (event === "SIGNED_OUT") {
+          console.log("User signed out");
+        } else if (event === "TOKEN_REFRESHED") {
+          console.log("Token refreshed");
+        } else if (event === "USER_UPDATED") {
+          console.log("User updated");
+          if (session?.user) {
+            await fetchUserProfile(session.user.id);
+          }
+        }
+      } finally {
+        setLoading(false);
+      }
     });
 
     return () => {

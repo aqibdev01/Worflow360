@@ -1,271 +1,208 @@
-# Project Management System Implementation Plan
+# Project Management System — Implementation Log
 
-## Overview
-Complete project management system with custom roles, Kanban boards, and sprint management.
-
----
-
-## Features to Implement
-
-### 1. Enhanced Project Creation
-- [x] Organization dashboard with "Create Project" button
-- [ ] Multi-step project creation form:
-  - Step 1: Basic Info (name, description, dates)
-  - Step 2: Add Members from Organization with Roles
-  - Step 3: Define Custom Roles (optional)
-  - Step 4: Review and Create
-
-### 2. Member Roles System
-**Default Roles:**
-- Developer
-- QA (Quality Assurance)
-- Designer
-- Business Analyst
-- Project Manager (from project_role: owner/lead)
-
-**Custom Roles:**
-- User-defined role names
-- Role descriptions
-- Assigned to specific project members
-
-### 3. Project Dashboard
-After creation, redirect to `/dashboard/projects/[projectId]` with tabs:
-- **Overview** - Project stats and info
-- **Kanban Board** - Task management
-- **Sprints** - Sprint planning and tracking
-- **Team** - Member management
-- **Settings** - Project settings
-
-### 4. Kanban Board (`/dashboard/projects/[projectId]/kanban`)
-**Columns:**
-- To Do
-- In Progress
-- In Review
-- Done
-- Blocked
-
-**Features:**
-- Drag and drop tasks between columns
-- Create new tasks inline
-- Task cards showing:
-  - Title
-  - Assignee avatar
-  - Priority badge
-  - Due date
-  - Task ID
-
-### 5. Sprint Management (`/dashboard/projects/[projectId]/sprints`)
-**Features:**
-- List of all sprints (planned, active, completed)
-- Create new sprint form:
-  - Sprint name
-  - Goal/objective
-  - Start/end dates
-  - Select tasks to include
-- Sprint board view (Kanban for sprint tasks only)
-- Sprint burndown chart
-- Sprint completion stats
+> **Last Updated:** March 8, 2026
+> **Status:** Analytics phase complete. Next: polish & future features.
 
 ---
 
-## Database Schema Updates
+## ✅ COMPLETED FEATURES
 
-### New Fields in `projects` table:
-```sql
-ALTER TABLE projects ADD COLUMN start_date TIMESTAMPTZ;
-ALTER TABLE projects ADD COLUMN end_date TIMESTAMPTZ;
-```
+### Authentication
+- [x] Email/password sign up & sign in
+- [x] OTP email verification
+- [x] Forgot password / reset password flow
+- [x] Logout
 
-### New Table: `project_custom_roles`
-```sql
-CREATE TABLE project_custom_roles (
-  id UUID PRIMARY KEY,
-  project_id UUID REFERENCES projects(id),
-  name TEXT NOT NULL,
-  description TEXT,
-  permissions JSONB,
-  created_at TIMESTAMPTZ
-);
-```
+### Organizations
+- [x] Create organization (name, description, invite code auto-generated)
+- [x] Join organization by invite code
+- [x] Organization dashboard with member list
+- [x] Member roles: admin / manager / member
+- [x] Organization member management
 
-### New Field in `project_members`:
-```sql
-ALTER TABLE project_members ADD COLUMN custom_role TEXT;
-```
+### Projects
+- [x] Create project (name, description, start/end dates, status, template)
+- [x] Add members from organization during project creation
+- [x] Assign custom roles: Developer, QA Engineer, Designer, Project Manager
+- [x] User-defined custom roles via `project_custom_roles` table
+- [x] Project dashboard with stats, progress bar, team avatars
+- [x] All projects list across organizations (`/dashboard/projects`)
 
----
+### Kanban Board
+- [x] 4-column board: To Do → Work in Progress → Review → Completed
+- [x] Task cards with priority border color, assignee avatar, due date badge
+- [x] Move tasks left/right with permission checks (assignee, creator, or PM)
+- [x] Create task modal (title, description, status, priority, assignee, due date, sprint)
+- [x] Edit task modal (PM only)
+- [x] Delete task (PM only)
+- [x] Blocked column support (shown in stats but not as kanban column)
 
-## File Structure
+### Sprint Management
+- [x] Create sprint (name, goal, start/end dates)
+- [x] Edit / delete sprint (PM only)
+- [x] Sprint list view with status badges
+- [x] Sprint detail / timeline view
+- [x] Start sprint / Stop (complete) sprint
+- [x] Sprint events (planning, standup, review, retro, milestone, etc.)
+- [x] Sprint statistics panel (planned/active/completed/total)
+- [x] Days remaining progress bar on active sprint
 
-```
-app/dashboard/
-├── organizations/
-│   └── [orgId]/
-│       ├── page.tsx (Add "Create Project" button)
-│       └── projects/
-│           └── new/
-│               └── page.tsx (Enhanced creation form)
-│
-└── projects/
-    └── [projectId]/
-        ├── page.tsx (Redirect to overview)
-        ├── overview/
-        │   └── page.tsx (Project dashboard)
-        ├── kanban/
-        │   └── page.tsx (Kanban board)
-        ├── sprints/
-        │   ├── page.tsx (Sprints list)
-        │   ├── new/
-        │   │   └── page.tsx (Create sprint)
-        │   └── [sprintId]/
-        │       └── page.tsx (Sprint detail)
-        ├── team/
-        │   └── page.tsx (Team management)
-        └── settings/
-            └── page.tsx (Project settings)
-```
+### Analytics & Reports  ← NEW (March 8, 2026)
+- [x] **Project-level Analytics tab** in project page
+  - My Contribution section (all users):
+    - Summary stat cards: Assigned / Completed / In Progress / Blocked
+    - Task status breakdown with mini progress bars
+    - Priority breakdown bar chart (Urgent → Low)
+    - Overall completion rate gradient bar
+    - Overdue task warning
+  - Team Analytics section (Project Managers only):
+    - 5 combinable filters: Member / Role / Sprint / Status / Priority
+    - "Clear all" filter button + live filtered count
+    - Filtered overview stat cards
+    - Status Distribution horizontal bar chart
+    - Priority Distribution horizontal bar chart
+    - Member Contributions table (avatar, name, role badges, done/active/review/blocked, completion % bar, overdue indicator)
+    - Sprint Velocity CSS bar chart (per sprint: completed/in-progress/remaining stacked, detail rows with status)
+- [x] **Global Reports page** (`/dashboard/analytics`) — sidebar link enabled
+  - My Task Summary across all projects (4 stat cards + legend progress bar)
+  - Project Breakdown cards (stats, completion bar, "View Full Analytics" deep link)
+- [x] `?tab=analytics` deep-link support on project page
+- [x] `getProjectAnalyticsData()` database helper
 
----
+### Notifications
+- [x] Notification creation (backend)
+- [x] Mark as read / mark all as read
+- [ ] Notification UI panel (frontend not built yet)
 
-## Implementation Steps
-
-### Phase 1: Database & Types ✅
-1. Run migration for custom roles
-2. Update TypeScript types
-3. Add database helper functions
-
-### Phase 2: Enhanced Project Creation
-1. Update organization dashboard with "Create Project" button
-2. Build multi-step project creation form
-3. Add member selection from organization
-4. Add role assignment (default + custom)
-5. Implement custom role creation
-
-### Phase 3: Project Dashboard
-1. Create project layout with tabs
-2. Build overview page with stats
-3. Add team member list
-4. Show recent activity
-
-### Phase 4: Kanban Board
-1. Create Kanban board layout
-2. Implement drag-and-drop with DnD Kit
-3. Add task creation modal
-4. Add task edit/delete functionality
-5. Real-time updates (optional)
-
-### Phase 5: Sprint Management
-1. Create sprints list page
-2. Build sprint creation form
-3. Implement sprint board view
-4. Add task assignment to sprints
-5. Sprint statistics and burndown
+### Dashboard Layout
+- [x] Collapsible sidebar
+- [x] Mobile responsive sidebar
+- [x] User dropdown (profile, settings, logout)
+- [x] Dismissible alert banner system
+- [x] Reports nav link enabled
 
 ---
 
-## Component Architecture
+## 🔧 IN PROGRESS / PARTIAL
 
-### New Components to Create:
+### Notifications UI
+- Backend functions exist (`getUserNotifications`, `markNotificationAsRead`, etc.)
+- Frontend bell icon/panel not built — badge shows but no dropdown
+
+### Project Settings Tab
+- Tab exists with "Coming Soon" placeholder
+- No actual settings implemented yet
+
+---
+
+## 📋 TODO — FUTURE PHASES
+
+### High Priority
+- [ ] Notification panel dropdown (bell icon → list of notifications)
+- [ ] Project settings (rename, change status, archive, delete)
+- [ ] Calendar view (`/dashboard/calendar`)
+- [ ] Search functionality (search bar exists but is non-functional)
+
+### Medium Priority
+- [ ] Task comments/discussion thread
+- [ ] File attachments on tasks
+- [ ] Task dependencies (block/blocked-by links)
+- [ ] @mention in task descriptions
+- [ ] Gantt chart view
+
+### Low Priority / Nice to Have
+- [ ] Real-time updates via Supabase Realtime subscriptions
+- [ ] Email notifications (on assignment, status change, sprint events)
+- [ ] Time tracking per task
+- [ ] Export reports (PDF/CSV)
+- [ ] Burndown chart per sprint (using real date data)
+- [ ] Workload view (tasks per member across all projects)
+
+---
+
+## 📁 File Structure (Current)
 
 ```
+app/
+├── auth/
+│   ├── forgot-password/page.tsx
+│   ├── login/page.tsx
+│   ├── logout/page.tsx
+│   ├── signup/page.tsx
+│   └── verify-email/page.tsx
+└── dashboard/
+    ├── layout.tsx                          ← sidebar nav
+    ├── page.tsx                            ← home/welcome
+    ├── analytics/
+    │   └── page.tsx                        ← Global Reports page (NEW)
+    ├── organizations/
+    │   ├── page.tsx
+    │   ├── new/page.tsx
+    │   ├── join/page.tsx
+    │   └── [orgId]/
+    │       ├── page.tsx
+    │       └── projects/
+    │           ├── new/page.tsx
+    │           └── [projectId]/page.tsx
+    └── projects/
+        ├── page.tsx
+        └── [projectId]/page.tsx            ← Main project page (tabs: overview/kanban/sprints/team/settings/analytics)
+
 components/
-├── project/
-│   ├── ProjectCard.tsx
-│   ├── MemberSelector.tsx
-│   ├── RoleSelector.tsx
-│   └── CustomRoleForm.tsx
-│
-├── kanban/
-│   ├── KanbanBoard.tsx
-│   ├── KanbanColumn.tsx
-│   ├── TaskCard.tsx
-│   ├── CreateTaskModal.tsx
-│   └── TaskDetailModal.tsx
-│
-└── sprint/
-    ├── SprintCard.tsx
-    ├── SprintForm.tsx
-    ├── SprintBoard.tsx
-    └── BurndownChart.tsx
+├── Logo.tsx
+├── dismissible-alert.tsx
+├── project-analytics.tsx                   ← Analytics component (NEW)
+├── sprint-dialog.tsx
+├── sprint-event-dialog.tsx
+├── sprint-timeline.tsx
+├── task-dialog.tsx
+└── ui/
+    ├── alert.tsx, avatar.tsx, badge.tsx, button.tsx
+    ├── calendar.tsx, card.tsx, checkbox.tsx
+    ├── dialog.tsx, dropdown-menu.tsx, form.tsx
+    ├── input.tsx, label.tsx, popover.tsx
+    ├── select.tsx, separator.tsx, tabs.tsx
+    ├── textarea.tsx, toaster.tsx
+
+lib/
+├── auth.ts
+├── database.ts                             ← getProjectAnalyticsData() added at bottom
+├── supabase.ts
+└── utils.ts
+
+types/
+├── database.ts
+└── index.ts
 ```
 
 ---
 
-## API Functions to Add
+## 🗄️ Database Schema (Active Tables)
 
-### lib/database.ts additions:
-
-```typescript
-// Projects with dates
-createProjectWithDates(data: ProjectInsertWithDates): Promise<Project>
-
-// Custom Roles
-createCustomRole(projectId, name, description): Promise<CustomRole>
-getProjectCustomRoles(projectId): Promise<CustomRole[]>
-deleteCustomRole(roleId): Promise<void>
-
-// Project Members with Custom Roles
-addProjectMemberWithRole(data): Promise<ProjectMember>
-updateMemberRole(memberId, role, customRole?): Promise<ProjectMember>
-
-// Sprints
-createSprint(data): Promise<Sprint>
-getProjectSprints(projectId): Promise<Sprint[]>
-getSprintTasks(sprintId): Promise<Task[]>
-updateSprintStatus(sprintId, status): Promise<Sprint>
-
-// Tasks (Kanban)
-createTask(data): Promise<Task>
-updateTaskStatus(taskId, status): Promise<Task>
-updateTaskColumn(taskId, status): Promise<Task>
-assignTaskToUser(taskId, userId): Promise<Task>
-```
+| Table | Key Columns |
+|-------|-------------|
+| `users` | id, email, full_name, avatar_url |
+| `organizations` | id, name, owner_id, invite_code |
+| `organization_members` | org_id, user_id, role (admin/manager/member) |
+| `projects` | id, org_id, name, status, start_date, end_date, created_by |
+| `project_members` | project_id, user_id, role (owner/lead/contributor/viewer), custom_role |
+| `project_custom_roles` | project_id, name, description |
+| `tasks` | project_id, sprint_id, title, status, priority, assignee_id, due_date, completed_at |
+| `sprints` | project_id, name, goal, status, start_date, end_date |
+| `sprint_events` | sprint_id, type, title, scheduled_at |
+| `notifications` | user_id, title, message, type, read_at |
 
 ---
 
-## User Flow
+## 🔑 Permission Model
 
-### Creating a Project:
-1. User clicks "Create Project" on org dashboard
-2. Step 1: Enter project name, description, start/end dates
-3. Step 2: Select members from organization
-4. Step 3: Assign roles (Developer, QA, Designer, BA) or create custom roles
-5. Step 4: Review all details
-6. Click "Create Project"
-7. Redirect to project dashboard
-
-### Using Kanban Board:
-1. Navigate to project → Kanban tab
-2. View columns: To Do, In Progress, Review, Done, Blocked
-3. Create new task by clicking "+ Add Task" in any column
-4. Drag tasks between columns to update status
-5. Click task to see details/edit
-6. Assign to team member
-7. Set priority and due date
-
-### Managing Sprints:
-1. Navigate to project → Sprints tab
-2. See list of all sprints
-3. Click "Create Sprint"
-4. Enter sprint details (name, goal, dates)
-5. Select tasks from backlog to include
-6. Start sprint
-7. View sprint progress on sprint board
-8. Complete sprint when done
-
----
-
-## Next Actions
-
-1. ✅ Create SQL migration for custom roles
-2. Update types in `/types/database.ts`
-3. Add database functions in `/lib/database.ts`
-4. Update organization dashboard with "Create Project" button
-5. Build enhanced project creation form
-6. Create project dashboard layout
-7. Implement Kanban board
-8. Build sprint management
-
----
-
-This is a comprehensive system that will take the project management to the next level!
+| Action | Who |
+|--------|-----|
+| Create/edit/delete tasks | Project Manager (owner, lead, or custom_role = "Project Manager") |
+| Move tasks between columns | Assignee OR creator OR Project Manager |
+| Create/edit/delete sprints | Project Manager only |
+| Create sprint events | Project Manager only |
+| View analytics (My section) | All project members |
+| View Team Analytics + filters | Project Manager only |
+| Create project | Org admin/manager |
+| Manage org members | Org admin |
