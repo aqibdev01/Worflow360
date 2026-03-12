@@ -33,13 +33,26 @@ The authentication isn't working because **the database tables don't exist yet**
 
 1. Click **Table Editor** in the left sidebar
 2. You should now see these tables:
-   - ✅ users
+   **Core Tables:**
+   - ✅ users (with security_question, security_answer columns)
    - ✅ organizations
    - ✅ organization_members
    - ✅ projects
    - ✅ project_members
+   - ✅ project_custom_roles
    - ✅ tasks
    - ✅ sprints
+   - ✅ sprint_events
+   - ✅ notifications
+
+   **Communication Hub Tables:**
+   - ✅ channels
+   - ✅ channel_members
+   - ✅ messages
+   - ✅ message_reactions
+   - ✅ direct_message_threads
+   - ✅ direct_message_participants
+   - ✅ direct_messages
 
 ### Step 5: Configure Authentication Settings
 
@@ -50,17 +63,36 @@ The authentication isn't working because **the database tables don't exist yet**
 
 ---
 
-## Step 6: Add Security Question Columns (Required for Password Reset)
+## Step 6: Verify Communication Hub Setup
 
-Run this SQL in the **SQL Editor** to add security question support:
+The complete schema file (`001_complete_schema.sql`) already includes:
+- Security question columns on `users` table (for password reset)
+- Communication Hub tables (channels, messages, reactions, DMs)
+- Auto-create triggers (#general channel created when members join orgs/projects)
+- Supabase Realtime enabled on messages, reactions, DMs, channel_members
+- `chat-attachments` storage bucket (10MB file size limit)
 
-```sql
-ALTER TABLE public.users
-ADD COLUMN IF NOT EXISTS security_question TEXT,
-ADD COLUMN IF NOT EXISTS security_answer TEXT;
+**If you already have the database set up and need to add Communication Hub only:**
+Run the separate migration file in SQL Editor:
+```
+supabase/migrations/002_communication_hub.sql
 ```
 
-This enables the password reset flow where users verify their identity by answering a security question they set during signup (no email/SMTP required).
+### Step 7: Verify Realtime is Enabled
+
+1. Go to **Database** → **Publications** in Supabase Dashboard
+2. Click on `supabase_realtime`
+3. Verify these tables are listed:
+   - ✅ messages
+   - ✅ message_reactions
+   - ✅ direct_messages
+   - ✅ channel_members
+
+### Step 8: Verify Storage Bucket
+
+1. Go to **Storage** in Supabase Dashboard
+2. You should see a `chat-attachments` bucket
+3. If not, create it manually with a 10MB file size limit
 
 ---
 
@@ -132,11 +164,15 @@ The SQL migration file is located at:
 ```
 
 This file creates:
-- All database tables
+- All database tables (core + communication hub)
 - Indexes for performance
 - Row Level Security (RLS) policies
 - Enums for status types
 - Triggers for updated_at timestamps
+- Communication hub auto-create channel triggers
+- Reply count auto-increment/decrement triggers
+- Supabase Realtime publications
+- Chat attachments storage bucket
 
 ---
 
