@@ -25,6 +25,7 @@ import {
 import { getOrgChannels } from "@/lib/communication/channels";
 import { getDMThreads } from "@/lib/communication/dm";
 import { useUnreadCounts } from "@/hooks/useUnreadCounts";
+import { usePresence } from "@/hooks/usePresence";
 import { CreateChannelDialog } from "./CreateChannelDialog";
 import { NewDMDialog } from "./NewDMDialog";
 import { supabase } from "@/lib/supabase";
@@ -118,6 +119,9 @@ export function CommunicationSidebar({
     currentUserId,
     channelIds
   );
+
+  // Online presence
+  const { isOnline } = usePresence(currentUserId, orgId);
 
   // Filter by search
   const filteredChannels = useMemo(() => {
@@ -331,6 +335,7 @@ export function CommunicationSidebar({
                   filteredDMs.map((dm) => {
                     const other = dm.other_participants?.[0];
                     const otherUser = other?.users;
+                    const otherUserId = other?.user_id;
                     const name =
                       otherUser?.full_name ||
                       otherUser?.email?.split("@")[0] ||
@@ -345,6 +350,43 @@ export function CommunicationSidebar({
                       : name[0]?.toUpperCase() || "?";
                     const lastMsg = dm.last_message;
                     const isActive = dm.id === activeDMThreadId;
+                    const online = otherUserId ? isOnline(otherUserId) : false;
+
+                    // Unread count for DM
+                    const myParticipation = (dm.direct_message_participants || []).find(
+                      (p: any) => p.user_id === currentUserId
+                    );
+                    const lastReadAt = myParticipation?.last_read_at;
+                    const hasUnread =
+                      lastMsg &&
+                      lastMsg.sender_id !== currentUserId &&
+                      (!lastReadAt || new Date(lastMsg.created_at) > new Date(lastReadAt));
+
+                    // Format timestamp
+                    const lastMsgTime = lastMsg?.created_at;
+                    let timeLabel = "";
+                    if (lastMsgTime) {
+                      const d = new Date(lastMsgTime);
+                      const now = new Date();
+                      const diffMs = now.getTime() - d.getTime();
+                      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+                      if (diffDays === 0) {
+                        timeLabel = d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+                      } else if (diffDays === 1) {
+                        timeLabel = "Yesterday";
+                      } else if (diffDays < 7) {
+                        timeLabel = d.toLocaleDateString([], { weekday: "short" });
+                      } else {
+                        timeLabel = d.toLocaleDateString([], { month: "short", day: "numeric" });
+                      }
+                    }
+
+                    // Truncate preview to 40 chars
+                    const preview = lastMsg?.content
+                      ? lastMsg.content.length > 40
+                        ? lastMsg.content.slice(0, 40) + "..."
+                        : lastMsg.content
+                      : "";
 
                     return (
                       <button
@@ -353,22 +395,41 @@ export function CommunicationSidebar({
                         className={`w-full flex items-center gap-2.5 px-4 py-2 text-sm transition-colors ${
                           isActive
                             ? "bg-brand-blue/10 text-brand-blue font-medium"
+                            : hasUnread
+                            ? "text-navy-900 font-semibold hover:bg-muted/50"
                             : "text-muted-foreground hover:bg-muted/50 hover:text-navy-900"
                         }`}
                       >
-                        <div className="h-7 w-7 rounded-full bg-gradient-to-br from-brand-blue to-brand-cyan flex items-center justify-center flex-shrink-0">
-                          <span className="text-[10px] font-medium text-white">
-                            {initials}
-                          </span>
+                        {/* Avatar with presence dot */}
+                        <div className="relative flex-shrink-0">
+                          <div className="h-7 w-7 rounded-full bg-gradient-to-br from-brand-blue to-brand-cyan flex items-center justify-center">
+                            <span className="text-[10px] font-medium text-white">
+                              {initials}
+                            </span>
+                          </div>
+                          {online && (
+                            <div className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-emerald-500 border-2 border-[#F8F9FC]" />
+                          )}
                         </div>
                         <div className="flex-1 min-w-0 text-left">
-                          <p className="text-sm font-medium truncate">
-                            {name}
-                          </p>
-                          {lastMsg && (
-                            <p className="text-[11px] text-muted-foreground truncate">
-                              {lastMsg.content}
-                            </p>
+                          <div className="flex items-center justify-between gap-1">
+                            <p className="text-sm truncate flex-1">{name}</p>
+                            {timeLabel && (
+                              <span className={`text-[10px] flex-shrink-0 ${hasUnread ? "text-brand-blue font-bold" : "text-muted-foreground"}`}>
+                                {timeLabel}
+                              </span>
+                            )}
+                          </div>
+                          {preview && (
+                            <div className="flex items-center gap-1">
+                              <p className="text-[11px] text-muted-foreground truncate flex-1">
+                                {lastMsg?.sender_id === currentUserId ? "You: " : ""}
+                                {preview}
+                              </p>
+                              {hasUnread && (
+                                <div className="h-2 w-2 rounded-full bg-brand-blue flex-shrink-0" />
+                              )}
+                            </div>
                           )}
                         </div>
                       </button>
