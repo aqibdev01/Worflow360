@@ -6,6 +6,7 @@ import { ChatWindow } from "@/components/communication/ChatWindow";
 
 export default function ChannelPage() {
   const params = useParams();
+  const orgId = params.orgId as string;
   const channelId = params.channelId as string;
   const { user } = useAuth();
 
@@ -13,6 +14,7 @@ export default function ChannelPage() {
     <ChatWindow
       channelId={channelId}
       currentUserId={user?.id || ""}
+      orgId={orgId}
     />
   );
 }

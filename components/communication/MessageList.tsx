@@ -28,6 +28,8 @@ import {
 } from "@/components/ui/tooltip";
 import { editMessage, deleteMessage, toggleReaction } from "@/lib/communication/messages";
 import { MessageReactions, ReactionPicker } from "./MessageReactions";
+import { TaskRefCard } from "./TaskRefCard";
+import { FileMessageCard } from "./FileMessageCard";
 import { toast } from "sonner";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -339,6 +341,12 @@ function MessageRow({
               </Button>
             </div>
           </div>
+        ) : message.type === "task_ref" && message.metadata ? (
+          /* Task reference card */
+          <TaskRefCard metadata={message.metadata as any} />
+        ) : message.type === "file" && message.metadata ? (
+          /* File message card */
+          <FileMessageCard metadata={message.metadata as any} />
         ) : (
           <div className="text-sm text-foreground whitespace-pre-wrap break-words">
             {renderContent(message.content)}
@@ -348,25 +356,9 @@ function MessageRow({
           </div>
         )}
 
-        {/* File attachment from metadata */}
-        {message.metadata?.url && (
-          <div className="mt-1.5">
-            <a
-              href={message.metadata.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-3 py-1.5 bg-muted/50 rounded-lg border text-sm hover:bg-muted transition-colors"
-            >
-              <span className="truncate max-w-[200px]">
-                {message.metadata.name || "File"}
-              </span>
-              {message.metadata.size && (
-                <span className="text-xs text-muted-foreground">
-                  {(message.metadata.size / 1024).toFixed(0)}KB
-                </span>
-              )}
-            </a>
-          </div>
+        {/* Legacy file attachment from metadata (text messages with attached files) */}
+        {message.type !== "file" && message.type !== "task_ref" && message.metadata?.url && (
+          <FileMessageCard metadata={message.metadata as any} />
         )}
 
         {/* Reactions */}
@@ -376,15 +368,20 @@ function MessageRow({
           currentUserId={currentUserId}
         />
 
-        {/* Thread reply count */}
+        {/* Thread summary footer */}
         {message.reply_count > 0 && (
           <button
             onClick={() => onOpenThread(message.id)}
-            className="flex items-center gap-1.5 mt-1 text-xs text-brand-blue hover:underline"
+            className="flex items-center gap-2 mt-1.5 py-1 text-xs text-brand-blue hover:bg-brand-blue/5 rounded px-1.5 -ml-1.5 transition-colors group"
           >
             <MessageSquare className="h-3 w-3" />
-            {message.reply_count}{" "}
-            {message.reply_count === 1 ? "reply" : "replies"}
+            <span className="font-medium">
+              {message.reply_count}{" "}
+              {message.reply_count === 1 ? "reply" : "replies"}
+            </span>
+            <span className="text-muted-foreground group-hover:text-brand-blue/70">
+              View thread
+            </span>
           </button>
         )}
       </div>

@@ -10,9 +10,11 @@ import {
   Terminal,
   X,
   Loader2,
+  ClipboardList,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { sendMessage, uploadAttachment } from "@/lib/communication/messages";
+import { TaskRefPicker } from "./TaskRefPicker";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 
@@ -29,6 +31,7 @@ interface CommunicationMessageInputProps {
   currentUserId: string;
   parentMessageId?: string;
   channelMembers?: MemberSuggestion[];
+  orgId?: string;
   placeholder?: string;
   onMessageSent?: () => void;
 }
@@ -40,6 +43,7 @@ export function CommunicationMessageInput({
   currentUserId,
   parentMessageId,
   channelMembers = [],
+  orgId,
   placeholder = "Type a message...",
   onMessageSent,
 }: CommunicationMessageInputProps) {
@@ -47,6 +51,7 @@ export function CommunicationMessageInput({
   const [sending, setSending] = useState(false);
   const [stagedFiles, setStagedFiles] = useState<File[]>([]);
   const [uploadingFiles, setUploadingFiles] = useState(false);
+  const [showTaskPicker, setShowTaskPicker] = useState(false);
 
   // Mention state
   const [showMentions, setShowMentions] = useState(false);
@@ -377,6 +382,17 @@ export function CommunicationMessageInput({
           <Terminal className="h-3.5 w-3.5 text-muted-foreground" />
         </Button>
         <div className="flex-1" />
+        {orgId && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 w-7 p-0"
+            onClick={() => setShowTaskPicker(true)}
+            title="Attach task"
+          >
+            <ClipboardList className="h-3.5 w-3.5 text-muted-foreground" />
+          </Button>
+        )}
         <Button
           variant="ghost"
           size="sm"
@@ -438,6 +454,37 @@ export function CommunicationMessageInput({
           </p>
         )}
       </div>
+
+      {/* Task Reference Picker */}
+      {orgId && (
+        <TaskRefPicker
+          open={showTaskPicker}
+          onOpenChange={setShowTaskPicker}
+          orgId={orgId}
+          onTaskSelected={async (taskRef) => {
+            try {
+              const metadata = {
+                taskId: taskRef.taskId,
+                taskTitle: taskRef.taskTitle,
+                projectName: taskRef.projectName,
+                status: taskRef.status,
+                assignee: taskRef.assignee,
+                url: `/dashboard/organizations/${orgId}/projects/${taskRef.projectId}?tab=board&task=${taskRef.taskId}`,
+              };
+              await sendMessage(
+                channelId,
+                `📋 ${taskRef.taskTitle}`,
+                "task_ref",
+                metadata,
+                parentMessageId
+              );
+              onMessageSent?.();
+            } catch {
+              toast.error("Failed to send task reference");
+            }
+          }}
+        />
+      )}
     </div>
   );
 }

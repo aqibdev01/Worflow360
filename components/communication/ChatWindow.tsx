@@ -7,7 +7,7 @@ import { useChannelMessages } from "@/hooks/useChannelMessages";
 import { getChannelMembers, updateLastRead } from "@/lib/communication/channels";
 import { CommunicationMessageList } from "./MessageList";
 import { CommunicationMessageInput } from "./MessageInput";
-import { ThreadPanel } from "@/components/chat/thread-panel";
+import { CommunicationThreadPanel } from "./ThreadPanel";
 import { supabase } from "@/lib/supabase";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -15,11 +15,12 @@ import { supabase } from "@/lib/supabase";
 interface ChatWindowProps {
   channelId: string;
   currentUserId: string;
+  orgId?: string;
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
-export function ChatWindow({ channelId, currentUserId }: ChatWindowProps) {
+export function ChatWindow({ channelId, currentUserId, orgId }: ChatWindowProps) {
   const [channel, setChannel] = useState<any>(null);
   const [channelMembers, setChannelMembers] = useState<any[]>([]);
   const [threadParentId, setThreadParentId] = useState<string | null>(null);
@@ -204,6 +205,7 @@ export function ChatWindow({ channelId, currentUserId }: ChatWindowProps) {
           channelId={channelId}
           currentUserId={currentUserId}
           channelMembers={memberSuggestions}
+          orgId={orgId}
           placeholder={`Message #${channel?.name || "channel"}`}
           onMessageSent={() => {
             updateLastRead(channelId, currentUserId).catch(() => {});
@@ -214,7 +216,7 @@ export function ChatWindow({ channelId, currentUserId }: ChatWindowProps) {
 
       {/* Thread panel — right panel */}
       {threadParentMessage && (
-        <ThreadPanel
+        <CommunicationThreadPanel
           parentMessage={threadParentMessage}
           currentUserId={currentUserId}
           channelMembers={channelMembers}
