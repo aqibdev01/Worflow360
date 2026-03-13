@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
-import { createChannel, addAllOrgMembersToChannel, addAllProjectMembersToChannel } from "@/lib/chat-database";
+import { createChannel, addAllOrgMembersToChannel, addAllProjectMembersToChannel } from "@/lib/communication/channels";
 import { toast } from "sonner";
 
 interface ChannelCreateDialogProps {
@@ -28,6 +28,7 @@ interface ChannelCreateDialogProps {
   onOpenChange: (open: boolean) => void;
   scope: "org" | "project";
   scopeId: string;
+  orgId: string;
   currentUserId: string;
   onChannelCreated: () => void;
 }
@@ -37,6 +38,7 @@ export function ChannelCreateDialog({
   onOpenChange,
   scope,
   scopeId,
+  orgId,
   currentUserId,
   onChannelCreated,
 }: ChannelCreateDialogProps) {
@@ -53,12 +55,11 @@ export function ChannelCreateDialog({
 
     setLoading(true);
     try {
-      const channel = await createChannel({
+      const channel = await createChannel(orgId, {
         name: name.trim(),
+        display_name: name.trim().replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
         description: description.trim() || undefined,
-        channel_type: scope === "org" ? "org_custom" : "project_custom",
-        visibility,
-        org_id: scope === "org" ? scopeId : undefined,
+        type: visibility as "public" | "private",
         project_id: scope === "project" ? scopeId : undefined,
         created_by: currentUserId,
       });

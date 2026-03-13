@@ -5,16 +5,16 @@ import {
   getOrgChannels,
   getProjectChannels,
   getUnreadCounts,
-} from "@/lib/chat-database";
+} from "@/lib/communication/channels";
 
 interface ChannelData {
   id: string;
-  name: string;
-  description: string | null;
-  channel_type: string;
-  visibility: string;
-  org_id: string | null;
+  organization_id: string;
   project_id: string | null;
+  name: string;
+  display_name: string;
+  description: string | null;
+  type: string;
   created_by: string;
   is_archived: boolean;
   created_at: string;
@@ -40,13 +40,10 @@ export function useChannels(
 
       setChannels(data);
 
-      // Auto-select the default channel if none selected
+      // Auto-select the #general channel if none selected
       if (!selectedChannelId && data.length > 0) {
-        const defaultChannel = data.find(
-          (c: any) =>
-            c.channel_type === (scope === "org" ? "org_default" : "project_default")
-        );
-        setSelectedChannelId(defaultChannel?.id || data[0].id);
+        const generalChannel = data.find((c: any) => c.name === "general");
+        setSelectedChannelId(generalChannel?.id || data[0].id);
       }
 
       // Load unread counts

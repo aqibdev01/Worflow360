@@ -406,6 +406,7 @@ export default function OrganizationDashboardPage() {
         <ChatContainer
           scope="org"
           scopeId={orgId}
+          orgId={orgId}
           currentUserId={currentUserId}
           canManageChannels={isOrgAdmin}
         />

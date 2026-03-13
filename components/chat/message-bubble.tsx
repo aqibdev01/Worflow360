@@ -20,11 +20,13 @@ interface MessageBubbleProps {
     id: string;
     sender_id: string;
     content: string;
-    message_type: string;
+    type?: string;
+    message_type?: string; // backward compat
     reply_count: number;
     is_edited: boolean;
     is_deleted: boolean;
     created_at: string;
+    metadata?: any;
     users?: {
       id: string;
       email: string;
@@ -229,7 +231,7 @@ export function MessageBubble({
           </p>
         )}
 
-        {/* Attachments */}
+        {/* Attachments — legacy (message_attachments) or new (metadata) */}
         {message.message_attachments && message.message_attachments.length > 0 && (
           <div className="mt-2 flex flex-wrap gap-2">
             {message.message_attachments.map((att: any) => (
@@ -243,6 +245,23 @@ export function MessageBubble({
                 </span>
               </div>
             ))}
+          </div>
+        )}
+        {!message.message_attachments?.length && message.metadata?.url && (
+          <div className="mt-2">
+            <a
+              href={message.metadata.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 px-3 py-2 bg-muted/50 rounded-lg border text-sm hover:bg-muted transition-colors"
+            >
+              <span className="truncate max-w-[200px]">{message.metadata.name || "File"}</span>
+              {message.metadata.size && (
+                <span className="text-xs text-muted-foreground">
+                  {(message.metadata.size / 1024).toFixed(0)}KB
+                </span>
+              )}
+            </a>
           </div>
         )}
 

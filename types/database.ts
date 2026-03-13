@@ -462,18 +462,19 @@ export interface NotificationWithDetails extends Notification {
 // =====================================================
 // Communication Hub Types
 // =====================================================
-export type ChannelType = "org_default" | "org_custom" | "project_default" | "project_custom" | "direct";
-export type ChannelVisibility = "public" | "private";
-export type MessageType = "text" | "system" | "file";
+export type ChannelType = "public" | "private" | "announcement";
+export type ChannelMemberRole = "admin" | "member";
+export type MessageType = "text" | "system" | "task_ref" | "file";
+export type DMMessageType = "text" | "file" | "task_ref";
 
 export interface Channel {
   id: string;
-  name: string;
-  description: string | null;
-  channel_type: ChannelType;
-  visibility: ChannelVisibility;
-  org_id: string | null;
+  organization_id: string;
   project_id: string | null;
+  name: string;
+  display_name: string;
+  description: string | null;
+  type: ChannelType;
   created_by: string;
   is_archived: boolean;
   created_at: string;
@@ -484,7 +485,7 @@ export interface ChannelMember {
   id: string;
   channel_id: string;
   user_id: string;
-  role: string;
+  role: ChannelMemberRole;
   last_read_at: string;
   is_muted: boolean;
   joined_at: string;
@@ -494,21 +495,15 @@ export interface Message {
   id: string;
   channel_id: string;
   sender_id: string;
-  parent_message_id: string | null;
   content: string;
-  message_type: MessageType;
+  type: MessageType;
+  metadata: Record<string, any> | null;
+  parent_message_id: string | null;
   reply_count: number;
   is_edited: boolean;
   is_deleted: boolean;
   created_at: string;
   updated_at: string;
-}
-
-export interface MessageMention {
-  id: string;
-  message_id: string;
-  mentioned_user_id: string;
-  created_at: string;
 }
 
 export interface MessageReaction {
@@ -519,24 +514,49 @@ export interface MessageReaction {
   created_at: string;
 }
 
-export interface MessageAttachment {
+export interface DirectMessageThread {
   id: string;
-  message_id: string;
-  file_name: string;
-  file_size: number;
-  file_type: string;
-  storage_path: string;
+  organization_id: string;
   created_at: string;
+}
+
+export interface DirectMessageParticipant {
+  thread_id: string;
+  user_id: string;
+  last_read_at: string;
+}
+
+export interface DirectMessage {
+  id: string;
+  thread_id: string;
+  sender_id: string;
+  content: string;
+  type: DMMessageType;
+  metadata: Record<string, any> | null;
+  is_edited: boolean;
+  is_deleted: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
 // Extended chat types
 export interface MessageWithSender extends Message {
   users?: User | null;
-  message_attachments?: MessageAttachment[];
   message_reactions?: MessageReaction[];
+}
+
+export interface ChannelWithMembers extends Channel {
+  channel_members?: { count: number }[];
 }
 
 export interface ChannelWithUnread extends Channel {
   unread_count?: number;
   last_message?: Message | null;
+}
+
+export interface DMThreadWithDetails extends DirectMessageThread {
+  direct_message_participants?: (DirectMessageParticipant & {
+    users?: User;
+  })[];
+  last_message?: DirectMessage | null;
 }

@@ -1801,6 +1801,7 @@ export default function ProjectDashboardPage() {
             <ChatContainer
               scope="project"
               scopeId={projectId}
+              orgId={project?.organizations?.id || ""}
               currentUserId={currentUserId}
               canManageChannels={isProjectManager}
             />

@@ -1,16 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { Hash, Lock, Plus, Volume2, VolumeX, ChevronDown, ChevronRight } from "lucide-react";
+import { Hash, Lock, Plus, ChevronDown, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
 interface ChannelData {
   id: string;
   name: string;
+  display_name: string;
   description: string | null;
-  channel_type: string;
-  visibility: string;
+  type: string;
   is_archived: boolean;
   channel_members?: { count: number }[];
 }
@@ -36,11 +36,9 @@ export function ChannelSidebar({
 }: ChannelSidebarProps) {
   const [showChannels, setShowChannels] = useState(true);
 
-  const defaultType = scope === "org" ? "org_default" : "project_default";
-  const customType = scope === "org" ? "org_custom" : "project_custom";
-
-  const defaultChannels = channels.filter((c) => c.channel_type === defaultType);
-  const customChannels = channels.filter((c) => c.channel_type === customType);
+  // Default channels are named "general", custom are everything else
+  const defaultChannels = channels.filter((c) => c.name === "general");
+  const customChannels = channels.filter((c) => c.name !== "general");
 
   return (
     <div className="w-60 border-r bg-[#F8F9FC] flex flex-col h-full">
@@ -122,7 +120,7 @@ function ChannelItem({
   unreadCount: number;
   onClick: () => void;
 }) {
-  const isPrivate = channel.visibility === "private";
+  const isPrivate = channel.type === "private";
 
   return (
     <button
@@ -140,7 +138,7 @@ function ChannelItem({
       ) : (
         <Hash className="h-3.5 w-3.5 flex-shrink-0" />
       )}
-      <span className="truncate flex-1 text-left">{channel.name}</span>
+      <span className="truncate flex-1 text-left">{channel.display_name || channel.name}</span>
       {unreadCount > 0 && (
         <Badge className="h-5 min-w-[20px] px-1.5 bg-brand-blue text-white text-[10px] font-bold">
           {unreadCount > 99 ? "99+" : unreadCount}

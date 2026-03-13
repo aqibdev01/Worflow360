@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/lib/supabase";
-import { getMessages, getThreadReplies } from "@/lib/chat-database";
+import { getMessages, getThreadMessages } from "@/lib/communication/messages";
 
 interface MessageData {
   id: string;
@@ -10,7 +10,8 @@ interface MessageData {
   sender_id: string;
   parent_message_id: string | null;
   content: string;
-  message_type: string;
+  type: string;
+  metadata: Record<string, any> | null;
   reply_count: number;
   is_edited: boolean;
   is_deleted: boolean;
@@ -22,7 +23,6 @@ interface MessageData {
     full_name: string | null;
     avatar_url: string | null;
   } | null;
-  message_attachments?: any[];
   message_reactions?: any[];
 }
 
@@ -32,7 +32,6 @@ export function useRealtimeMessages(channelId: string | null) {
   const [hasMore, setHasMore] = useState(true);
   const channelRef = useRef<any>(null);
 
-  // Load initial messages
   const loadMessages = useCallback(async () => {
     if (!channelId) return;
 
@@ -48,7 +47,6 @@ export function useRealtimeMessages(channelId: string | null) {
     }
   }, [channelId]);
 
-  // Load older messages (for infinite scroll)
   const loadMore = useCallback(async () => {
     if (!channelId || !hasMore || messages.length === 0) return;
 
@@ -62,13 +60,11 @@ export function useRealtimeMessages(channelId: string | null) {
     }
   }, [channelId, hasMore, messages]);
 
-  // Subscribe to realtime updates
   useEffect(() => {
     if (!channelId) return;
 
     loadMessages();
 
-    // Set up realtime subscription
     const realtimeChannel = supabase
       .channel(`messages:${channelId}`)
       .on(
@@ -80,16 +76,14 @@ export function useRealtimeMessages(channelId: string | null) {
           filter: `channel_id=eq.${channelId}`,
         },
         async (payload: any) => {
-          // Fetch the full message with user data
           const { data: fullMessage } = await (supabase as any)
             .from("messages")
-            .select("*, users(id, email, full_name, avatar_url), message_attachments(*), message_reactions(*)")
+            .select("*, users(id, email, full_name, avatar_url), message_reactions(*)")
             .eq("id", payload.new.id)
             .single();
 
           if (fullMessage) {
             if (fullMessage.parent_message_id) {
-              // It's a thread reply - update parent's reply_count
               setMessages((prev) =>
                 prev.map((m) =>
                   m.id === fullMessage.parent_message_id
@@ -98,9 +92,7 @@ export function useRealtimeMessages(channelId: string | null) {
                 )
               );
             } else {
-              // Top-level message - add to list
               setMessages((prev) => {
-                // Avoid duplicates
                 if (prev.some((m) => m.id === fullMessage.id)) return prev;
                 return [...prev, fullMessage];
               });
@@ -155,7 +147,7 @@ export function useThreadReplies(parentMessageId: string | null) {
     if (!parentMessageId) return;
     setLoading(true);
     try {
-      const data = await getThreadReplies(parentMessageId);
+      const data = await getThreadMessages(parentMessageId);
       setReplies(data);
     } catch (error) {
       console.error("Error loading replies:", error);

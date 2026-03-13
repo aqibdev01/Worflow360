@@ -15,6 +15,7 @@ import { getChannelMembers, updateLastRead } from "@/lib/chat-database";
 interface ChatContainerProps {
   scope: "org" | "project";
   scopeId: string;
+  orgId: string;
   currentUserId: string;
   canManageChannels: boolean;
 }
@@ -22,6 +23,7 @@ interface ChatContainerProps {
 export function ChatContainer({
   scope,
   scopeId,
+  orgId,
   currentUserId,
   canManageChannels,
 }: ChatContainerProps) {
@@ -119,7 +121,7 @@ export function ChatContainer({
               <div className="flex items-center gap-2 min-w-0">
                 <Hash className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                 <h3 className="text-sm font-semibold text-navy-900 truncate">
-                  {selectedChannel.name}
+                  {selectedChannel.display_name || selectedChannel.name}
                 </h3>
                 {selectedChannel.description && (
                   <span className="text-xs text-muted-foreground truncate hidden md:block">
@@ -248,6 +250,7 @@ export function ChatContainer({
         onOpenChange={setCreateDialogOpen}
         scope={scope}
         scopeId={scopeId}
+        orgId={orgId}
         currentUserId={currentUserId}
         onChannelCreated={refreshChannels}
       />

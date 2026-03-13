@@ -14,12 +14,14 @@ interface ThreadPanelProps {
     channel_id: string;
     sender_id: string;
     content: string;
-    message_type: string;
+    type?: string;
+    message_type?: string; // backward compat
     reply_count: number;
     is_edited: boolean;
     is_deleted: boolean;
     created_at: string;
     updated_at: string;
+    metadata?: any;
     users?: any;
     message_attachments?: any[];
     message_reactions?: any[];

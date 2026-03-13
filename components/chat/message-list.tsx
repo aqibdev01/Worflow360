@@ -11,12 +11,14 @@ interface MessageData {
   sender_id: string;
   parent_message_id: string | null;
   content: string;
-  message_type: string;
+  type?: string;
+  message_type?: string; // backward compat
   reply_count: number;
   is_edited: boolean;
   is_deleted: boolean;
   created_at: string;
   updated_at: string;
+  metadata?: any;
   users?: {
     id: string;
     email: string;
