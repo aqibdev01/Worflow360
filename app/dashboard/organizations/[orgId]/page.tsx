@@ -142,6 +142,14 @@ export default function OrganizationDashboardPage() {
           <MessageSquare className="h-4 w-4" />
           Chat
         </button>
+        <Link href={`/dashboard/organizations/${orgId}/communication`}>
+          <button
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all text-muted-foreground hover:text-navy-900"
+          >
+            <MessageSquare className="h-4 w-4" />
+            Communication Hub
+          </button>
+        </Link>
       </div>
 
       {/* Overview Tab */}

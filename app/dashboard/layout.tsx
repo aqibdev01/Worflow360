@@ -8,6 +8,7 @@ import {
   Building2,
   BarChart3,
   CalendarDays,
+  MessageSquare,
   Menu,
   X,
   LogOut,
@@ -33,7 +34,7 @@ import { AlertBanner, AlertItem } from "@/components/dismissible-alert";
 import { Logo } from "@/components/Logo";
 import { BreadcrumbProvider, BreadcrumbNav } from "@/components/breadcrumbs";
 
-const navigation = [
+const baseNavigation = [
   {
     name: "Home",
     href: "/dashboard",
@@ -59,6 +60,24 @@ const navigation = [
     comingSoon: false,
   },
 ];
+
+function getNavigation(pathname: string) {
+  // Extract orgId from pathname if user is within an org context
+  const orgMatch = pathname.match(/\/dashboard\/organizations\/([^/]+)/);
+  const orgId = orgMatch ? orgMatch[1] : null;
+
+  return [
+    ...baseNavigation,
+    {
+      name: "Messages",
+      href: orgId
+        ? `/dashboard/organizations/${orgId}/communication`
+        : "/dashboard/organizations",
+      icon: MessageSquare,
+      comingSoon: false,
+    },
+  ];
+}
 
 export default function DashboardLayout({
   children,
@@ -131,9 +150,9 @@ export default function DashboardLayout({
 
           {/* Navigation */}
           <nav className="flex-1 space-y-1 px-3 py-6">
-            {navigation.map((item) => {
+            {getNavigation(pathname).map((item) => {
               const isActive = pathname === item.href ||
-                (item.href !== "/dashboard" && pathname.startsWith(item.href));
+                (item.href !== "/dashboard" && item.name !== "Dashboard" && pathname.startsWith(item.href));
               const Icon = item.icon;
 
               // For coming soon items, render a div instead of a link
