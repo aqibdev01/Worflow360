@@ -22,6 +22,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { useBreadcrumbs } from "@/components/breadcrumbs";
 import { ChatContainer } from "@/components/chat/chat-container";
+import { InviteCodeManager } from "@/components/org/InviteCodeManager";
+import { OrgMemberTable } from "@/components/org/OrgMemberTable";
+import { TemplateManager } from "@/components/projects/TemplateManager";
 
 export default function OrganizationDashboardPage() {
   const params = useParams();
@@ -33,7 +36,7 @@ export default function OrganizationDashboardPage() {
   const [projects, setProjects] = useState<any[]>([]);
   const [members, setMembers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"overview" | "chat">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "members" | "chat">("overview");
 
   useBreadcrumbs([
     { label: "Organizations", href: "/dashboard/organizations" },
@@ -131,6 +134,19 @@ export default function OrganizationDashboardPage() {
           <LayoutDashboard className="h-4 w-4" />
           Overview
         </button>
+        {isOrgAdmin && (
+          <button
+            onClick={() => setActiveTab("members")}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              activeTab === "members"
+                ? "bg-white text-navy-900 shadow-sm"
+                : "text-muted-foreground hover:text-navy-900"
+            }`}
+          >
+            <Users className="h-4 w-4" />
+            Members
+          </button>
+        )}
         <button
           onClick={() => setActiveTab("chat")}
           className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
@@ -407,6 +423,45 @@ export default function OrganizationDashboardPage() {
             </div>
           )}
         </>
+      )}
+
+      {/* Members Tab */}
+      {activeTab === "members" && isOrgAdmin && (
+        <div className="space-y-8">
+          {/* Invite Code Manager */}
+          <Card className="bg-white border border-[#E7E9EF] shadow-sm">
+            <CardContent className="p-6">
+              <InviteCodeManager orgId={orgId} isAdmin={currentMember?.role === "admin"} />
+            </CardContent>
+          </Card>
+
+          {/* Org Member Table */}
+          <Card className="bg-white border border-[#E7E9EF] shadow-sm">
+            <CardContent className="p-6">
+              <OrgMemberTable
+                members={members}
+                currentUserId={currentUserId}
+                isAdmin={currentMember?.role === "admin"}
+                orgName={organization?.name || ""}
+                onMembersChanged={async () => {
+                  const updated = await getOrganizationMembers(orgId);
+                  setMembers(updated || []);
+                }}
+              />
+            </CardContent>
+          </Card>
+
+          {/* Template Manager */}
+          <Card className="bg-white border border-[#E7E9EF] shadow-sm">
+            <CardContent className="p-6">
+              <TemplateManager
+                orgId={orgId}
+                currentUserId={currentUserId}
+                isAdmin={currentMember?.role === "admin" || currentMember?.role === "manager"}
+              />
+            </CardContent>
+          </Card>
+        </div>
       )}
 
       {/* Chat Tab */}

@@ -64,6 +64,9 @@ import { SprintTimeline } from "@/components/sprint-timeline";
 import { ProjectAnalytics } from "@/components/project-analytics";
 import { ProjectCalendar } from "@/components/project-calendar";
 import { ChatContainer } from "@/components/chat/chat-container";
+import { EditProjectDialog } from "@/components/projects/EditProjectDialog";
+import { ProjectMemberManager } from "@/components/projects/ProjectMemberManager";
+import { ProjectDangerZone } from "@/components/projects/ProjectDangerZone";
 import { toast } from "sonner";
 import { useBreadcrumbs } from "@/components/breadcrumbs";
 
@@ -249,8 +252,12 @@ export default function ProjectDashboardPage() {
   // Calendar → Kanban highlight
   const [highlightTaskId, setHighlightTaskId] = useState<string | null>(null);
 
+  // Edit project dialog state
+  const [editProjectOpen, setEditProjectOpen] = useState(false);
+
   // Check if user is project manager (owner, lead, or has Project Manager custom role)
   const isProjectManager = userRole?.role === "owner" || userRole?.role === "lead" || userRole?.custom_role === "Project Manager";
+  const isProjectOwner = userRole?.role === "owner";
 
   useBreadcrumbs([
     { label: "Organizations", href: "/dashboard/organizations" },
@@ -531,7 +538,20 @@ export default function ProjectDashboardPage() {
                 <p className="text-sm text-muted-foreground">
                   {project.organizations.name}
                 </p>
-                <h1 className="text-3xl font-bold tracking-tight">{project.name}</h1>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-3xl font-bold tracking-tight">{project.name}</h1>
+                  {isProjectManager && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0 text-muted-foreground hover:text-brand-blue"
+                      onClick={() => setEditProjectOpen(true)}
+                      title="Edit project"
+                    >
+                      <Settings className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
             <p className="text-muted-foreground max-w-3xl">
@@ -1730,26 +1750,101 @@ export default function ProjectDashboardPage() {
         </TabsContent>
 
         {/* Settings Tab */}
-        <TabsContent value="settings">
-          <Card>
-            <CardHeader>
-              <CardTitle>Project Settings</CardTitle>
-              <CardDescription>
-                Manage project configuration and preferences
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center justify-center py-12">
-                <div className="text-center space-y-3">
-                  <Settings className="h-12 w-12 text-muted-foreground mx-auto" />
-                  <h3 className="text-lg font-semibold">Settings Coming Soon</h3>
-                  <p className="text-sm text-muted-foreground max-w-md">
-                    Configure project settings, permissions, and preferences.
-                  </p>
+        <TabsContent value="settings" className="space-y-6">
+          {isProjectManager ? (
+            <>
+              {/* General Settings */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle>General</CardTitle>
+                      <CardDescription>
+                        Project name, description, status, and dates
+                      </CardDescription>
+                    </div>
+                    <Button
+                      size="sm"
+                      className="bg-brand-blue hover:bg-brand-blue/90 gap-1.5"
+                      onClick={() => setEditProjectOpen(true)}
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                      Edit Details
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-1">
+                      <p className="text-xs font-medium text-muted-foreground">Name</p>
+                      <p className="text-sm font-medium text-navy-900">{project.name}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-xs font-medium text-muted-foreground">Status</p>
+                      <Badge
+                        variant="outline"
+                        className={`${statusConfig[project.status as keyof typeof statusConfig]?.color} border text-xs`}
+                      >
+                        {statusConfig[project.status as keyof typeof statusConfig]?.label || project.status}
+                      </Badge>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-xs font-medium text-muted-foreground">Start Date</p>
+                      <p className="text-sm">{project.start_date ? new Date(project.start_date).toLocaleDateString() : "Not set"}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-xs font-medium text-muted-foreground">End Date</p>
+                      <p className="text-sm">{project.end_date ? new Date(project.end_date).toLocaleDateString() : "Not set"}</p>
+                    </div>
+                    <div className="space-y-1 md:col-span-2">
+                      <p className="text-xs font-medium text-muted-foreground">Description</p>
+                      <p className="text-sm text-muted-foreground">{project.description || "No description"}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Members */}
+              <Card>
+                <CardContent className="p-6">
+                  <ProjectMemberManager
+                    projectId={projectId}
+                    orgId={project.organizations?.id || ""}
+                    members={project.project_members || []}
+                    currentUserId={currentUserId}
+                    isOwner={isProjectOwner}
+                    isManager={isProjectManager}
+                    onMembersChanged={() => loadProjectData(currentUserId)}
+                  />
+                </CardContent>
+              </Card>
+
+              {/* Danger Zone */}
+              <Card>
+                <CardContent className="p-6">
+                  <ProjectDangerZone
+                    project={project}
+                    isOwner={isProjectOwner}
+                    onUpdated={() => loadProjectData(currentUserId)}
+                  />
+                </CardContent>
+              </Card>
+            </>
+          ) : (
+            <Card>
+              <CardContent className="py-12">
+                <div className="flex items-center justify-center">
+                  <div className="text-center space-y-3">
+                    <Settings className="h-12 w-12 text-muted-foreground mx-auto" />
+                    <h3 className="text-lg font-semibold">Access Restricted</h3>
+                    <p className="text-sm text-muted-foreground max-w-md">
+                      Only project owners and leads can access project settings.
+                    </p>
+                  </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
         {/* Analytics Tab */}
@@ -1808,6 +1903,16 @@ export default function ProjectDashboardPage() {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Edit Project Dialog */}
+      {isProjectManager && (
+        <EditProjectDialog
+          open={editProjectOpen}
+          onOpenChange={setEditProjectOpen}
+          project={project}
+          onUpdated={() => loadProjectData(currentUserId)}
+        />
+      )}
     </div>
   );
 }
