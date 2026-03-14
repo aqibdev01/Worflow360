@@ -25,16 +25,20 @@ CREATE INDEX IF NOT EXISTS idx_invite_codes_org ON organization_invite_codes(org
 
 ALTER TABLE organization_invite_codes ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Org admins/managers can view invite codes" ON organization_invite_codes;
+DROP POLICY IF EXISTS "Org admins/managers can create invite codes" ON organization_invite_codes;
+DROP POLICY IF EXISTS "Org admins/managers can update invite codes" ON organization_invite_codes;
+
 -- Admins and managers can view their org's invite codes
 CREATE POLICY "Org admins/managers can view invite codes"
   ON organization_invite_codes
   FOR SELECT
   USING (
     EXISTS (
-      SELECT 1 FROM organization_members
-      WHERE organization_members.org_id = organization_invite_codes.organization_id
-        AND organization_members.user_id = auth.uid()
-        AND organization_members.role IN ('admin', 'manager')
+      SELECT 1 FROM organization_members om
+      WHERE om.org_id = organization_invite_codes.organization_id
+        AND om.user_id = auth.uid()
+        AND om.role IN ('admin', 'manager')
     )
   );
 
@@ -44,10 +48,10 @@ CREATE POLICY "Org admins/managers can create invite codes"
   FOR INSERT
   WITH CHECK (
     EXISTS (
-      SELECT 1 FROM organization_members
-      WHERE organization_members.org_id = organization_invite_codes.organization_id
-        AND organization_members.user_id = auth.uid()
-        AND organization_members.role IN ('admin', 'manager')
+      SELECT 1 FROM organization_members om
+      WHERE om.org_id = organization_invite_codes.organization_id
+        AND om.user_id = auth.uid()
+        AND om.role IN ('admin', 'manager')
     )
   );
 
@@ -57,10 +61,10 @@ CREATE POLICY "Org admins/managers can update invite codes"
   FOR UPDATE
   USING (
     EXISTS (
-      SELECT 1 FROM organization_members
-      WHERE organization_members.org_id = organization_invite_codes.organization_id
-        AND organization_members.user_id = auth.uid()
-        AND organization_members.role IN ('admin', 'manager')
+      SELECT 1 FROM organization_members om
+      WHERE om.org_id = organization_invite_codes.organization_id
+        AND om.user_id = auth.uid()
+        AND om.role IN ('admin', 'manager')
     )
   );
 

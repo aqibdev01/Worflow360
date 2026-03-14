@@ -124,7 +124,7 @@ CREATE POLICY "Org members can view org templates"
     organization_id IS NOT NULL
     AND EXISTS (
       SELECT 1 FROM organization_members
-      WHERE organization_members.organization_id = project_templates.organization_id
+      WHERE organization_members.org_id = project_templates.organization_id
         AND organization_members.user_id = auth.uid()
     )
   );
@@ -136,7 +136,7 @@ CREATE POLICY "Admins can create org templates"
     organization_id IS NOT NULL
     AND EXISTS (
       SELECT 1 FROM organization_members
-      WHERE organization_members.organization_id = project_templates.organization_id
+      WHERE organization_members.org_id = project_templates.organization_id
         AND organization_members.user_id = auth.uid()
         AND organization_members.role IN ('admin', 'manager')
     )
@@ -150,7 +150,7 @@ CREATE POLICY "Admins can update org templates"
     AND organization_id IS NOT NULL
     AND EXISTS (
       SELECT 1 FROM organization_members
-      WHERE organization_members.organization_id = project_templates.organization_id
+      WHERE organization_members.org_id = project_templates.organization_id
         AND organization_members.user_id = auth.uid()
         AND organization_members.role IN ('admin', 'manager')
     )
@@ -164,7 +164,7 @@ CREATE POLICY "Admins can delete org templates"
     AND organization_id IS NOT NULL
     AND EXISTS (
       SELECT 1 FROM organization_members
-      WHERE organization_members.organization_id = project_templates.organization_id
+      WHERE organization_members.org_id = project_templates.organization_id
         AND organization_members.user_id = auth.uid()
         AND organization_members.role IN ('admin', 'manager')
     )
@@ -181,7 +181,7 @@ CREATE POLICY "View template tasks"
           project_templates.is_system = TRUE
           OR EXISTS (
             SELECT 1 FROM organization_members
-            WHERE organization_members.organization_id = project_templates.organization_id
+            WHERE organization_members.org_id = project_templates.organization_id
               AND organization_members.user_id = auth.uid()
           )
         )
@@ -198,7 +198,7 @@ CREATE POLICY "Manage template tasks"
         AND project_templates.is_system = FALSE
         AND EXISTS (
           SELECT 1 FROM organization_members
-          WHERE organization_members.organization_id = project_templates.organization_id
+          WHERE organization_members.org_id = project_templates.organization_id
             AND organization_members.user_id = auth.uid()
             AND organization_members.role IN ('admin', 'manager')
         )
@@ -214,7 +214,7 @@ CREATE POLICY "Update template tasks"
         AND project_templates.is_system = FALSE
         AND EXISTS (
           SELECT 1 FROM organization_members
-          WHERE organization_members.organization_id = project_templates.organization_id
+          WHERE organization_members.org_id = project_templates.organization_id
             AND organization_members.user_id = auth.uid()
             AND organization_members.role IN ('admin', 'manager')
         )
@@ -230,7 +230,7 @@ CREATE POLICY "Delete template tasks"
         AND project_templates.is_system = FALSE
         AND EXISTS (
           SELECT 1 FROM organization_members
-          WHERE organization_members.organization_id = project_templates.organization_id
+          WHERE organization_members.org_id = project_templates.organization_id
             AND organization_members.user_id = auth.uid()
             AND organization_members.role IN ('admin', 'manager')
         )

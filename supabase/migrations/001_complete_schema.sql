@@ -1,7 +1,8 @@
 -- =====================================================
 -- Workflow360 Complete Database Schema
--- Version: 1.0.0
+-- Version: 2.0.0
 -- Run this single migration file to set up the entire database
+-- Includes: Core, Communication Hub, Invite Codes, Project Templates, File Management
 -- =====================================================
 
 -- Enable UUID extension
@@ -72,6 +73,7 @@ CREATE INDEX IF NOT EXISTS organizations_invite_code_idx ON public.organizations
 
 -- =====================================================
 -- ORGANIZATION MEMBERS TABLE
+-- NOTE: Column is "org_id" (not "organization_id")
 -- =====================================================
 CREATE TABLE IF NOT EXISTS public.organization_members (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -234,6 +236,270 @@ CREATE INDEX IF NOT EXISTS notifications_read_idx ON public.notifications(read);
 CREATE INDEX IF NOT EXISTS notifications_created_at_idx ON public.notifications(created_at DESC);
 
 -- =====================================================
+-- ORGANIZATION INVITE CODES TABLE (advanced multi-code system)
+-- =====================================================
+CREATE TABLE IF NOT EXISTS public.organization_invite_codes (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+    code TEXT NOT NULL UNIQUE,
+    created_by UUID NOT NULL REFERENCES public.users(id),
+    default_role TEXT NOT NULL DEFAULT 'member' CHECK (default_role IN ('manager', 'member')),
+    max_uses INT,
+    use_count INT NOT NULL DEFAULT 0,
+    expires_at TIMESTAMPTZ,
+    is_active BOOLEAN NOT NULL DEFAULT true,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_invite_codes_code ON public.organization_invite_codes(code);
+CREATE INDEX IF NOT EXISTS idx_invite_codes_org ON public.organization_invite_codes(organization_id);
+
+-- =====================================================
+-- PROJECT TEMPLATES
+-- =====================================================
+CREATE TABLE IF NOT EXISTS public.project_templates (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    organization_id UUID REFERENCES public.organizations(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    description TEXT,
+    category TEXT NOT NULL DEFAULT 'general',
+    icon TEXT DEFAULT 'folder',
+    color TEXT DEFAULT '#3B82F6',
+    is_system BOOLEAN DEFAULT FALSE,
+    created_by UUID REFERENCES public.users(id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.template_tasks (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    template_id UUID NOT NULL REFERENCES public.project_templates(id) ON DELETE CASCADE,
+    title TEXT NOT NULL,
+    description TEXT,
+    status TEXT NOT NULL DEFAULT 'todo',
+    priority TEXT NOT NULL DEFAULT 'medium',
+    sort_order INT NOT NULL DEFAULT 0,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- =====================================================
+-- COMMUNICATION HUB: ENUM TYPES
+-- =====================================================
+DO $$ BEGIN
+    CREATE TYPE channel_type AS ENUM ('public', 'private', 'announcement');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+    CREATE TYPE channel_member_role AS ENUM ('admin', 'member');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+    CREATE TYPE message_type AS ENUM ('text', 'system', 'task_ref', 'file');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+    CREATE TYPE dm_message_type AS ENUM ('text', 'file', 'task_ref');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+-- =====================================================
+-- CHANNELS TABLE
+-- =====================================================
+CREATE TABLE IF NOT EXISTS public.channels (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+    project_id UUID REFERENCES public.projects(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    display_name TEXT NOT NULL,
+    description TEXT,
+    type channel_type NOT NULL DEFAULT 'public',
+    created_by UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+    is_archived BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(organization_id, name)
+);
+
+CREATE INDEX IF NOT EXISTS channels_org_id_idx ON public.channels(organization_id);
+CREATE INDEX IF NOT EXISTS channels_project_id_idx ON public.channels(project_id);
+CREATE INDEX IF NOT EXISTS channels_type_idx ON public.channels(type);
+CREATE INDEX IF NOT EXISTS channels_created_by_idx ON public.channels(created_by);
+
+-- =====================================================
+-- CHANNEL MEMBERS TABLE
+-- =====================================================
+CREATE TABLE IF NOT EXISTS public.channel_members (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    channel_id UUID NOT NULL REFERENCES public.channels(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+    role channel_member_role NOT NULL DEFAULT 'member',
+    last_read_at TIMESTAMPTZ DEFAULT NOW(),
+    is_muted BOOLEAN DEFAULT FALSE,
+    joined_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(channel_id, user_id)
+);
+
+CREATE INDEX IF NOT EXISTS channel_members_channel_id_idx ON public.channel_members(channel_id);
+CREATE INDEX IF NOT EXISTS channel_members_user_id_idx ON public.channel_members(user_id);
+
+-- =====================================================
+-- MESSAGES TABLE
+-- =====================================================
+CREATE TABLE IF NOT EXISTS public.messages (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    channel_id UUID NOT NULL REFERENCES public.channels(id) ON DELETE CASCADE,
+    sender_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+    content TEXT NOT NULL,
+    type message_type NOT NULL DEFAULT 'text',
+    metadata JSONB,
+    parent_message_id UUID REFERENCES public.messages(id) ON DELETE SET NULL,
+    reply_count INTEGER DEFAULT 0,
+    is_edited BOOLEAN DEFAULT FALSE,
+    is_deleted BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS messages_channel_id_created_at_idx ON public.messages(channel_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS messages_sender_id_idx ON public.messages(sender_id);
+CREATE INDEX IF NOT EXISTS messages_parent_message_id_idx ON public.messages(parent_message_id);
+
+-- =====================================================
+-- MESSAGE REACTIONS TABLE
+-- =====================================================
+CREATE TABLE IF NOT EXISTS public.message_reactions (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    message_id UUID NOT NULL REFERENCES public.messages(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+    emoji TEXT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(message_id, user_id, emoji)
+);
+
+CREATE INDEX IF NOT EXISTS message_reactions_message_id_idx ON public.message_reactions(message_id);
+
+-- =====================================================
+-- DIRECT MESSAGE THREADS TABLE
+-- =====================================================
+CREATE TABLE IF NOT EXISTS public.direct_message_threads (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS dm_threads_org_id_idx ON public.direct_message_threads(organization_id);
+
+-- =====================================================
+-- DIRECT MESSAGE PARTICIPANTS TABLE
+-- =====================================================
+CREATE TABLE IF NOT EXISTS public.direct_message_participants (
+    thread_id UUID NOT NULL REFERENCES public.direct_message_threads(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+    last_read_at TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (thread_id, user_id)
+);
+
+CREATE INDEX IF NOT EXISTS dm_participants_user_id_idx ON public.direct_message_participants(user_id);
+
+-- =====================================================
+-- DIRECT MESSAGES TABLE
+-- =====================================================
+CREATE TABLE IF NOT EXISTS public.direct_messages (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    thread_id UUID NOT NULL REFERENCES public.direct_message_threads(id) ON DELETE CASCADE,
+    sender_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+    content TEXT NOT NULL,
+    type dm_message_type NOT NULL DEFAULT 'text',
+    metadata JSONB,
+    is_edited BOOLEAN DEFAULT FALSE,
+    is_deleted BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS dm_thread_id_created_at_idx ON public.direct_messages(thread_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS dm_sender_id_idx ON public.direct_messages(sender_id);
+
+-- =====================================================
+-- FILE & DOCUMENT MANAGEMENT
+-- =====================================================
+
+-- File Folders
+CREATE TABLE IF NOT EXISTS public.file_folders (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+    project_id UUID REFERENCES public.projects(id) ON DELETE CASCADE,
+    parent_folder_id UUID REFERENCES public.file_folders(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    created_by UUID NOT NULL REFERENCES public.users(id) ON DELETE SET NULL,
+    position INT NOT NULL DEFAULT 0,
+    color TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Files
+CREATE TABLE IF NOT EXISTS public.files (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+    project_id UUID REFERENCES public.projects(id) ON DELETE CASCADE,
+    folder_id UUID REFERENCES public.file_folders(id) ON DELETE SET NULL,
+    name TEXT NOT NULL,
+    storage_path TEXT NOT NULL,
+    public_url TEXT,
+    mime_type TEXT NOT NULL,
+    size_bytes BIGINT NOT NULL DEFAULT 0,
+    uploaded_by UUID NOT NULL REFERENCES public.users(id) ON DELETE SET NULL,
+    description TEXT,
+    version INT NOT NULL DEFAULT 1,
+    is_archived BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- File Versions
+CREATE TABLE IF NOT EXISTS public.file_versions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    file_id UUID NOT NULL REFERENCES public.files(id) ON DELETE CASCADE,
+    version_number INT NOT NULL,
+    storage_path TEXT NOT NULL,
+    size_bytes BIGINT NOT NULL DEFAULT 0,
+    uploaded_by UUID NOT NULL REFERENCES public.users(id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- File Shares
+CREATE TABLE IF NOT EXISTS public.file_shares (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    file_id UUID NOT NULL REFERENCES public.files(id) ON DELETE CASCADE,
+    shared_by UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+    share_type TEXT NOT NULL CHECK (share_type IN ('org', 'project', 'member')),
+    shared_with_user_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
+    permission TEXT NOT NULL DEFAULT 'view' CHECK (permission IN ('view', 'download', 'edit')),
+    expires_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- File Stars
+CREATE TABLE IF NOT EXISTS public.file_stars (
+    file_id UUID NOT NULL REFERENCES public.files(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (file_id, user_id)
+);
+
+-- File Management Indexes
+CREATE INDEX IF NOT EXISTS idx_files_org_project_folder ON public.files (organization_id, project_id, folder_id);
+CREATE INDEX IF NOT EXISTS idx_files_uploaded_by ON public.files (uploaded_by);
+CREATE INDEX IF NOT EXISTS idx_file_shares_file_id ON public.file_shares (file_id);
+CREATE INDEX IF NOT EXISTS idx_file_folders_org_project_parent ON public.file_folders (organization_id, project_id, parent_folder_id);
+CREATE INDEX IF NOT EXISTS idx_file_versions_file_id ON public.file_versions (file_id);
+CREATE INDEX IF NOT EXISTS idx_file_stars_user_id ON public.file_stars (user_id);
+
+-- =====================================================
 -- TRIGGERS FOR UPDATED_AT
 -- =====================================================
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -288,7 +554,58 @@ CREATE TRIGGER task_completion_trigger BEFORE UPDATE ON public.tasks
     FOR EACH ROW EXECUTE FUNCTION set_task_completed_at();
 
 -- =====================================================
--- ENABLE ROW LEVEL SECURITY
+-- COMMUNICATION HUB TRIGGERS
+-- =====================================================
+DROP TRIGGER IF EXISTS update_channels_updated_at ON public.channels;
+CREATE TRIGGER update_channels_updated_at BEFORE UPDATE ON public.channels
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_messages_updated_at ON public.messages;
+CREATE TRIGGER update_messages_updated_at BEFORE UPDATE ON public.messages
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_direct_messages_updated_at ON public.direct_messages;
+CREATE TRIGGER update_direct_messages_updated_at BEFORE UPDATE ON public.direct_messages
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Reply count auto-increment
+CREATE OR REPLACE FUNCTION public.increment_reply_count()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.parent_message_id IS NOT NULL THEN
+        UPDATE public.messages
+        SET reply_count = reply_count + 1
+        WHERE id = NEW.parent_message_id;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS increment_message_reply_count ON public.messages;
+CREATE TRIGGER increment_message_reply_count
+    AFTER INSERT ON public.messages
+    FOR EACH ROW EXECUTE FUNCTION public.increment_reply_count();
+
+-- Reply count auto-decrement
+CREATE OR REPLACE FUNCTION public.decrement_reply_count()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF OLD.parent_message_id IS NOT NULL THEN
+        UPDATE public.messages
+        SET reply_count = GREATEST(reply_count - 1, 0)
+        WHERE id = OLD.parent_message_id;
+    END IF;
+    RETURN OLD;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS decrement_message_reply_count ON public.messages;
+CREATE TRIGGER decrement_message_reply_count
+    AFTER DELETE ON public.messages
+    FOR EACH ROW EXECUTE FUNCTION public.decrement_reply_count();
+
+-- =====================================================
+-- ENABLE ROW LEVEL SECURITY (all tables)
 -- =====================================================
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.organizations ENABLE ROW LEVEL SECURITY;
@@ -300,17 +617,31 @@ ALTER TABLE public.tasks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.sprints ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.sprint_events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.organization_invite_codes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.project_templates ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.template_tasks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.channels ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.channel_members ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.message_reactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.direct_message_threads ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.direct_message_participants ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.direct_messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.file_folders ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.files ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.file_versions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.file_shares ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.file_stars ENABLE ROW LEVEL SECURITY;
 
 -- =====================================================
--- SECURITY DEFINER HELPER FUNCTIONS (prevent recursion)
+-- SECURITY DEFINER HELPER FUNCTIONS
+-- All use org_id (the actual column name in organization_members)
 -- =====================================================
 
 -- Check if user is member of an organization
 CREATE OR REPLACE FUNCTION public.user_is_org_member(p_org_id uuid)
 RETURNS boolean
-LANGUAGE sql
-SECURITY DEFINER
-STABLE
+LANGUAGE sql SECURITY DEFINER STABLE
 AS $$
     SELECT EXISTS (
         SELECT 1 FROM public.organization_members
@@ -318,29 +649,89 @@ AS $$
     );
 $$;
 
--- Check if user is member of org for project operations
+-- Alias for project operations
 CREATE OR REPLACE FUNCTION public.user_is_org_member_for_project(p_org_id uuid)
 RETURNS boolean
-LANGUAGE sql
-SECURITY DEFINER
-STABLE
+LANGUAGE sql SECURITY DEFINER STABLE
 AS $$
     SELECT EXISTS (
         SELECT 1 FROM public.organization_members
         WHERE org_id = p_org_id AND user_id = auth.uid()
+    );
+$$;
+
+-- Check if user is an org admin or manager
+CREATE OR REPLACE FUNCTION public.user_is_org_admin_or_manager(p_org_id uuid)
+RETURNS boolean
+LANGUAGE sql SECURITY DEFINER STABLE
+AS $$
+    SELECT EXISTS (
+        SELECT 1 FROM public.organization_members
+        WHERE org_id = p_org_id AND user_id = auth.uid()
+        AND role IN ('admin', 'manager')
     );
 $$;
 
 -- Check if user is member of a project
 CREATE OR REPLACE FUNCTION public.user_is_project_member(p_project_id uuid)
 RETURNS boolean
-LANGUAGE sql
-SECURITY DEFINER
-STABLE
+LANGUAGE sql SECURITY DEFINER STABLE
 AS $$
     SELECT EXISTS (
         SELECT 1 FROM public.project_members
         WHERE project_id = p_project_id AND user_id = auth.uid()
+    );
+$$;
+
+-- Check if user is a project contributor or above
+CREATE OR REPLACE FUNCTION public.user_is_project_contributor(p_project_id uuid)
+RETURNS boolean
+LANGUAGE sql SECURITY DEFINER STABLE
+AS $$
+    SELECT EXISTS (
+        SELECT 1 FROM public.project_members
+        WHERE project_id = p_project_id AND user_id = auth.uid()
+        AND role IN ('owner', 'lead', 'contributor')
+    );
+$$;
+
+-- Check if user is a member of a channel
+CREATE OR REPLACE FUNCTION public.user_is_channel_member(p_channel_id uuid)
+RETURNS boolean
+LANGUAGE sql SECURITY DEFINER STABLE
+AS $$
+    SELECT EXISTS (
+        SELECT 1 FROM public.channel_members
+        WHERE channel_id = p_channel_id AND user_id = auth.uid()
+    );
+$$;
+
+-- Check if user can access a channel (member OR public channel in their org)
+CREATE OR REPLACE FUNCTION public.user_can_access_channel(p_channel_id uuid)
+RETURNS boolean
+LANGUAGE sql SECURITY DEFINER STABLE
+AS $$
+    SELECT EXISTS (
+        SELECT 1 FROM public.channel_members
+        WHERE channel_id = p_channel_id AND user_id = auth.uid()
+    ) OR EXISTS (
+        SELECT 1 FROM public.channels c
+        JOIN public.organization_members om ON om.org_id = c.organization_id
+        WHERE c.id = p_channel_id
+        AND c.type = 'public'
+        AND om.user_id = auth.uid()
+        AND c.is_archived = false
+    );
+$$;
+
+-- Check if user is a DM thread participant
+CREATE OR REPLACE FUNCTION public.user_is_dm_participant(p_thread_id uuid)
+RETURNS boolean
+LANGUAGE sql SECURITY DEFINER STABLE
+AS $$
+    SELECT EXISTS (
+        SELECT 1 FROM public.direct_message_participants
+        WHERE thread_id = p_thread_id AND user_id = auth.uid()
     );
 $$;
 
@@ -692,345 +1083,166 @@ CREATE POLICY "System can create notifications"
     WITH CHECK (true);
 
 -- =====================================================
--- INVITE CODE FUNCTIONS
+-- RLS POLICIES: ORGANIZATION INVITE CODES
+-- Uses org_id column via join to organizations
 -- =====================================================
-
--- Function to join organization by invite code (bypasses RLS)
-CREATE OR REPLACE FUNCTION public.join_organization_by_invite_code(
-    p_invite_code TEXT,
-    p_user_id UUID
-)
-RETURNS JSON
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-    v_org_id UUID;
-    v_org_name TEXT;
-    v_existing_member BOOLEAN;
-BEGIN
-    -- Find organization by invite code (case insensitive)
-    SELECT id, name INTO v_org_id, v_org_name
-    FROM public.organizations
-    WHERE UPPER(invite_code) = UPPER(p_invite_code);
-
-    IF v_org_id IS NULL THEN
-        RETURN json_build_object(
-            'success', false,
-            'error', 'Invalid invite code'
-        );
-    END IF;
-
-    -- Check if user is already a member
-    SELECT EXISTS (
-        SELECT 1 FROM public.organization_members
-        WHERE org_id = v_org_id AND user_id = p_user_id
-    ) INTO v_existing_member;
-
-    IF v_existing_member THEN
-        RETURN json_build_object(
-            'success', false,
-            'error', 'Already a member of this organization'
-        );
-    END IF;
-
-    -- Add user as member
-    INSERT INTO public.organization_members (org_id, user_id, role)
-    VALUES (v_org_id, p_user_id, 'member');
-
-    RETURN json_build_object(
-        'success', true,
-        'org_id', v_org_id,
-        'org_name', v_org_name
+CREATE POLICY "Org admins/managers can view invite codes"
+    ON public.organization_invite_codes FOR SELECT
+    USING (
+        EXISTS (
+            SELECT 1 FROM public.organization_members
+            WHERE organization_members.org_id = organization_invite_codes.organization_id
+            AND organization_members.user_id = auth.uid()
+            AND organization_members.role IN ('admin', 'manager')
+        )
     );
-END;
-$$;
 
--- Function to get organization by invite code (bypasses RLS)
-CREATE OR REPLACE FUNCTION public.get_organization_by_invite_code(p_invite_code TEXT)
-RETURNS TABLE(
-    id UUID,
-    name TEXT,
-    description TEXT,
-    owner_id UUID,
-    invite_code TEXT,
-    created_at TIMESTAMPTZ,
-    updated_at TIMESTAMPTZ
-)
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-BEGIN
-    RETURN QUERY
-    SELECT
-        o.id,
-        o.name,
-        o.description,
-        o.owner_id,
-        o.invite_code,
-        o.created_at,
-        o.updated_at
-    FROM public.organizations o
-    WHERE UPPER(o.invite_code) = UPPER(p_invite_code);
-END;
-$$;
-
--- =====================================================
--- SECURITY QUESTION COLUMNS (for password reset)
--- =====================================================
-ALTER TABLE public.users ADD COLUMN IF NOT EXISTS security_question TEXT;
-ALTER TABLE public.users ADD COLUMN IF NOT EXISTS security_answer TEXT;
-
--- =====================================================
--- COMMUNICATION HUB: ENUM TYPES
--- =====================================================
-DO $$ BEGIN
-    CREATE TYPE channel_type AS ENUM ('public', 'private', 'announcement');
-EXCEPTION WHEN duplicate_object THEN NULL;
-END $$;
-
-DO $$ BEGIN
-    CREATE TYPE channel_member_role AS ENUM ('admin', 'member');
-EXCEPTION WHEN duplicate_object THEN NULL;
-END $$;
-
-DO $$ BEGIN
-    CREATE TYPE message_type AS ENUM ('text', 'system', 'task_ref', 'file');
-EXCEPTION WHEN duplicate_object THEN NULL;
-END $$;
-
-DO $$ BEGIN
-    CREATE TYPE dm_message_type AS ENUM ('text', 'file', 'task_ref');
-EXCEPTION WHEN duplicate_object THEN NULL;
-END $$;
-
--- =====================================================
--- CHANNELS TABLE
--- =====================================================
-CREATE TABLE IF NOT EXISTS public.channels (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
-    project_id UUID REFERENCES public.projects(id) ON DELETE CASCADE,
-    name TEXT NOT NULL,
-    display_name TEXT NOT NULL,
-    description TEXT,
-    type channel_type NOT NULL DEFAULT 'public',
-    created_by UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
-    is_archived BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE(organization_id, name)
-);
-
-CREATE INDEX IF NOT EXISTS channels_org_id_idx ON public.channels(organization_id);
-CREATE INDEX IF NOT EXISTS channels_project_id_idx ON public.channels(project_id);
-CREATE INDEX IF NOT EXISTS channels_type_idx ON public.channels(type);
-CREATE INDEX IF NOT EXISTS channels_created_by_idx ON public.channels(created_by);
-
--- =====================================================
--- CHANNEL MEMBERS TABLE
--- =====================================================
-CREATE TABLE IF NOT EXISTS public.channel_members (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    channel_id UUID NOT NULL REFERENCES public.channels(id) ON DELETE CASCADE,
-    user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
-    role channel_member_role NOT NULL DEFAULT 'member',
-    last_read_at TIMESTAMPTZ DEFAULT NOW(),
-    is_muted BOOLEAN DEFAULT FALSE,
-    joined_at TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE(channel_id, user_id)
-);
-
-CREATE INDEX IF NOT EXISTS channel_members_channel_id_idx ON public.channel_members(channel_id);
-CREATE INDEX IF NOT EXISTS channel_members_user_id_idx ON public.channel_members(user_id);
-
--- =====================================================
--- MESSAGES TABLE
--- =====================================================
-CREATE TABLE IF NOT EXISTS public.messages (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    channel_id UUID NOT NULL REFERENCES public.channels(id) ON DELETE CASCADE,
-    sender_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
-    content TEXT NOT NULL,
-    type message_type NOT NULL DEFAULT 'text',
-    metadata JSONB,
-    parent_message_id UUID REFERENCES public.messages(id) ON DELETE SET NULL,
-    reply_count INTEGER DEFAULT 0,
-    is_edited BOOLEAN DEFAULT FALSE,
-    is_deleted BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE INDEX IF NOT EXISTS messages_channel_id_created_at_idx ON public.messages(channel_id, created_at DESC);
-CREATE INDEX IF NOT EXISTS messages_sender_id_idx ON public.messages(sender_id);
-CREATE INDEX IF NOT EXISTS messages_parent_message_id_idx ON public.messages(parent_message_id);
-
--- =====================================================
--- MESSAGE REACTIONS TABLE
--- =====================================================
-CREATE TABLE IF NOT EXISTS public.message_reactions (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    message_id UUID NOT NULL REFERENCES public.messages(id) ON DELETE CASCADE,
-    user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
-    emoji TEXT NOT NULL,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE(message_id, user_id, emoji)
-);
-
-CREATE INDEX IF NOT EXISTS message_reactions_message_id_idx ON public.message_reactions(message_id);
-
--- =====================================================
--- DIRECT MESSAGE THREADS TABLE
--- =====================================================
-CREATE TABLE IF NOT EXISTS public.direct_message_threads (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE INDEX IF NOT EXISTS dm_threads_org_id_idx ON public.direct_message_threads(organization_id);
-
--- =====================================================
--- DIRECT MESSAGE PARTICIPANTS TABLE
--- =====================================================
-CREATE TABLE IF NOT EXISTS public.direct_message_participants (
-    thread_id UUID NOT NULL REFERENCES public.direct_message_threads(id) ON DELETE CASCADE,
-    user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
-    last_read_at TIMESTAMPTZ DEFAULT NOW(),
-    PRIMARY KEY (thread_id, user_id)
-);
-
-CREATE INDEX IF NOT EXISTS dm_participants_user_id_idx ON public.direct_message_participants(user_id);
-
--- =====================================================
--- DIRECT MESSAGES TABLE
--- =====================================================
-CREATE TABLE IF NOT EXISTS public.direct_messages (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    thread_id UUID NOT NULL REFERENCES public.direct_message_threads(id) ON DELETE CASCADE,
-    sender_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
-    content TEXT NOT NULL,
-    type dm_message_type NOT NULL DEFAULT 'text',
-    metadata JSONB,
-    is_edited BOOLEAN DEFAULT FALSE,
-    is_deleted BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE INDEX IF NOT EXISTS dm_thread_id_created_at_idx ON public.direct_messages(thread_id, created_at DESC);
-CREATE INDEX IF NOT EXISTS dm_sender_id_idx ON public.direct_messages(sender_id);
-
--- =====================================================
--- COMMUNICATION HUB TRIGGERS
--- =====================================================
-DROP TRIGGER IF EXISTS update_channels_updated_at ON public.channels;
-CREATE TRIGGER update_channels_updated_at BEFORE UPDATE ON public.channels
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-DROP TRIGGER IF EXISTS update_messages_updated_at ON public.messages;
-CREATE TRIGGER update_messages_updated_at BEFORE UPDATE ON public.messages
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-DROP TRIGGER IF EXISTS update_direct_messages_updated_at ON public.direct_messages;
-CREATE TRIGGER update_direct_messages_updated_at BEFORE UPDATE ON public.direct_messages
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
--- Reply count auto-increment
-CREATE OR REPLACE FUNCTION public.increment_reply_count()
-RETURNS TRIGGER AS $$
-BEGIN
-    IF NEW.parent_message_id IS NOT NULL THEN
-        UPDATE public.messages
-        SET reply_count = reply_count + 1
-        WHERE id = NEW.parent_message_id;
-    END IF;
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
-DROP TRIGGER IF EXISTS increment_message_reply_count ON public.messages;
-CREATE TRIGGER increment_message_reply_count
-    AFTER INSERT ON public.messages
-    FOR EACH ROW EXECUTE FUNCTION public.increment_reply_count();
-
--- Reply count auto-decrement
-CREATE OR REPLACE FUNCTION public.decrement_reply_count()
-RETURNS TRIGGER AS $$
-BEGIN
-    IF OLD.parent_message_id IS NOT NULL THEN
-        UPDATE public.messages
-        SET reply_count = GREATEST(reply_count - 1, 0)
-        WHERE id = OLD.parent_message_id;
-    END IF;
-    RETURN OLD;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
-DROP TRIGGER IF EXISTS decrement_message_reply_count ON public.messages;
-CREATE TRIGGER decrement_message_reply_count
-    AFTER DELETE ON public.messages
-    FOR EACH ROW EXECUTE FUNCTION public.decrement_reply_count();
-
--- =====================================================
--- COMMUNICATION HUB RLS HELPER FUNCTIONS
--- =====================================================
-CREATE OR REPLACE FUNCTION public.user_is_channel_member(p_channel_id uuid)
-RETURNS boolean
-LANGUAGE sql
-SECURITY DEFINER
-STABLE
-AS $$
-    SELECT EXISTS (
-        SELECT 1 FROM public.channel_members
-        WHERE channel_id = p_channel_id AND user_id = auth.uid()
+CREATE POLICY "Org admins/managers can create invite codes"
+    ON public.organization_invite_codes FOR INSERT
+    WITH CHECK (
+        EXISTS (
+            SELECT 1 FROM public.organization_members
+            WHERE organization_members.org_id = organization_invite_codes.organization_id
+            AND organization_members.user_id = auth.uid()
+            AND organization_members.role IN ('admin', 'manager')
+        )
     );
-$$;
 
-CREATE OR REPLACE FUNCTION public.user_can_access_channel(p_channel_id uuid)
-RETURNS boolean
-LANGUAGE sql
-SECURITY DEFINER
-STABLE
-AS $$
-    SELECT EXISTS (
-        SELECT 1 FROM public.channel_members
-        WHERE channel_id = p_channel_id AND user_id = auth.uid()
-    ) OR EXISTS (
-        SELECT 1 FROM public.channels c
-        JOIN public.organization_members om ON om.org_id = c.organization_id
-        WHERE c.id = p_channel_id
-        AND c.type = 'public'
-        AND om.user_id = auth.uid()
-        AND c.is_archived = false
+CREATE POLICY "Org admins/managers can update invite codes"
+    ON public.organization_invite_codes FOR UPDATE
+    USING (
+        EXISTS (
+            SELECT 1 FROM public.organization_members
+            WHERE organization_members.org_id = organization_invite_codes.organization_id
+            AND organization_members.user_id = auth.uid()
+            AND organization_members.role IN ('admin', 'manager')
+        )
     );
-$$;
-
-CREATE OR REPLACE FUNCTION public.user_is_dm_participant(p_thread_id uuid)
-RETURNS boolean
-LANGUAGE sql
-SECURITY DEFINER
-STABLE
-AS $$
-    SELECT EXISTS (
-        SELECT 1 FROM public.direct_message_participants
-        WHERE thread_id = p_thread_id AND user_id = auth.uid()
-    );
-$$;
 
 -- =====================================================
--- ENABLE RLS ON COMMUNICATION TABLES
+-- RLS POLICIES: PROJECT TEMPLATES
+-- Uses org_id column via join to organizations
 -- =====================================================
-ALTER TABLE public.channels ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.channel_members ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.message_reactions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.direct_message_threads ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.direct_message_participants ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.direct_messages ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Anyone can view system templates"
+    ON public.project_templates FOR SELECT
+    USING (is_system = TRUE);
+
+CREATE POLICY "Org members can view org templates"
+    ON public.project_templates FOR SELECT
+    USING (
+        organization_id IS NOT NULL
+        AND EXISTS (
+            SELECT 1 FROM public.organization_members
+            WHERE organization_members.org_id = project_templates.organization_id
+            AND organization_members.user_id = auth.uid()
+        )
+    );
+
+CREATE POLICY "Admins can create org templates"
+    ON public.project_templates FOR INSERT
+    WITH CHECK (
+        organization_id IS NOT NULL
+        AND EXISTS (
+            SELECT 1 FROM public.organization_members
+            WHERE organization_members.org_id = project_templates.organization_id
+            AND organization_members.user_id = auth.uid()
+            AND organization_members.role IN ('admin', 'manager')
+        )
+    );
+
+CREATE POLICY "Admins can update org templates"
+    ON public.project_templates FOR UPDATE
+    USING (
+        is_system = FALSE
+        AND organization_id IS NOT NULL
+        AND EXISTS (
+            SELECT 1 FROM public.organization_members
+            WHERE organization_members.org_id = project_templates.organization_id
+            AND organization_members.user_id = auth.uid()
+            AND organization_members.role IN ('admin', 'manager')
+        )
+    );
+
+CREATE POLICY "Admins can delete org templates"
+    ON public.project_templates FOR DELETE
+    USING (
+        is_system = FALSE
+        AND organization_id IS NOT NULL
+        AND EXISTS (
+            SELECT 1 FROM public.organization_members
+            WHERE organization_members.org_id = project_templates.organization_id
+            AND organization_members.user_id = auth.uid()
+            AND organization_members.role IN ('admin', 'manager')
+        )
+    );
+
+-- =====================================================
+-- RLS POLICIES: TEMPLATE TASKS
+-- =====================================================
+CREATE POLICY "View template tasks"
+    ON public.template_tasks FOR SELECT
+    USING (
+        EXISTS (
+            SELECT 1 FROM public.project_templates
+            WHERE project_templates.id = template_tasks.template_id
+            AND (
+                project_templates.is_system = TRUE
+                OR EXISTS (
+                    SELECT 1 FROM public.organization_members
+                    WHERE organization_members.org_id = project_templates.organization_id
+                    AND organization_members.user_id = auth.uid()
+                )
+            )
+        )
+    );
+
+CREATE POLICY "Manage template tasks"
+    ON public.template_tasks FOR INSERT
+    WITH CHECK (
+        EXISTS (
+            SELECT 1 FROM public.project_templates
+            WHERE project_templates.id = template_tasks.template_id
+            AND project_templates.is_system = FALSE
+            AND EXISTS (
+                SELECT 1 FROM public.organization_members
+                WHERE organization_members.org_id = project_templates.organization_id
+                AND organization_members.user_id = auth.uid()
+                AND organization_members.role IN ('admin', 'manager')
+            )
+        )
+    );
+
+CREATE POLICY "Update template tasks"
+    ON public.template_tasks FOR UPDATE
+    USING (
+        EXISTS (
+            SELECT 1 FROM public.project_templates
+            WHERE project_templates.id = template_tasks.template_id
+            AND project_templates.is_system = FALSE
+            AND EXISTS (
+                SELECT 1 FROM public.organization_members
+                WHERE organization_members.org_id = project_templates.organization_id
+                AND organization_members.user_id = auth.uid()
+                AND organization_members.role IN ('admin', 'manager')
+            )
+        )
+    );
+
+CREATE POLICY "Delete template tasks"
+    ON public.template_tasks FOR DELETE
+    USING (
+        EXISTS (
+            SELECT 1 FROM public.project_templates
+            WHERE project_templates.id = template_tasks.template_id
+            AND project_templates.is_system = FALSE
+            AND EXISTS (
+                SELECT 1 FROM public.organization_members
+                WHERE organization_members.org_id = project_templates.organization_id
+                AND organization_members.user_id = auth.uid()
+                AND organization_members.role IN ('admin', 'manager')
+            )
+        )
+    );
 
 -- =====================================================
 -- RLS POLICIES: CHANNELS
@@ -1292,6 +1504,238 @@ CREATE POLICY "Senders can delete own DMs"
     USING (sender_id = auth.uid());
 
 -- =====================================================
+-- RLS POLICIES: FILE FOLDERS
+-- =====================================================
+CREATE POLICY "View org-level folders" ON public.file_folders FOR SELECT
+    USING (project_id IS NULL AND public.user_is_org_member(organization_id));
+CREATE POLICY "View project-level folders" ON public.file_folders FOR SELECT
+    USING (project_id IS NOT NULL AND public.user_is_project_member(project_id));
+CREATE POLICY "Create org-level folders" ON public.file_folders FOR INSERT
+    WITH CHECK (project_id IS NULL AND public.user_is_org_admin_or_manager(organization_id));
+CREATE POLICY "Create project-level folders" ON public.file_folders FOR INSERT
+    WITH CHECK (project_id IS NOT NULL AND public.user_is_project_contributor(project_id));
+CREATE POLICY "Update org-level folders" ON public.file_folders FOR UPDATE
+    USING (project_id IS NULL AND (created_by = auth.uid() OR public.user_is_org_admin_or_manager(organization_id)));
+CREATE POLICY "Update project-level folders" ON public.file_folders FOR UPDATE
+    USING (project_id IS NOT NULL AND (created_by = auth.uid() OR public.user_is_project_contributor(project_id)));
+CREATE POLICY "Delete org-level folders" ON public.file_folders FOR DELETE
+    USING (project_id IS NULL AND (created_by = auth.uid() OR public.user_is_org_admin_or_manager(organization_id)));
+CREATE POLICY "Delete project-level folders" ON public.file_folders FOR DELETE
+    USING (project_id IS NOT NULL AND (created_by = auth.uid() OR public.user_is_project_contributor(project_id)));
+
+-- =====================================================
+-- RLS POLICIES: FILES
+-- =====================================================
+CREATE POLICY "View org-level files" ON public.files FOR SELECT
+    USING (project_id IS NULL AND public.user_is_org_member(organization_id));
+CREATE POLICY "View project-level files" ON public.files FOR SELECT
+    USING (project_id IS NOT NULL AND public.user_is_project_member(project_id));
+CREATE POLICY "View files shared with user" ON public.files FOR SELECT
+    USING (EXISTS (
+        SELECT 1 FROM public.file_shares WHERE file_shares.file_id = files.id
+        AND file_shares.share_type = 'member' AND file_shares.shared_with_user_id = auth.uid()
+        AND (file_shares.expires_at IS NULL OR file_shares.expires_at > now())
+    ));
+CREATE POLICY "Upload org-level files" ON public.files FOR INSERT
+    WITH CHECK (project_id IS NULL AND public.user_is_org_admin_or_manager(organization_id));
+CREATE POLICY "Upload project-level files" ON public.files FOR INSERT
+    WITH CHECK (project_id IS NOT NULL AND public.user_is_project_contributor(project_id));
+CREATE POLICY "Update org-level files" ON public.files FOR UPDATE
+    USING (project_id IS NULL AND (uploaded_by = auth.uid() OR public.user_is_org_admin_or_manager(organization_id)));
+CREATE POLICY "Update project-level files" ON public.files FOR UPDATE
+    USING (project_id IS NOT NULL AND (uploaded_by = auth.uid() OR public.user_is_project_contributor(project_id)));
+CREATE POLICY "Delete org-level files" ON public.files FOR DELETE
+    USING (project_id IS NULL AND (uploaded_by = auth.uid() OR public.user_is_org_admin_or_manager(organization_id)));
+CREATE POLICY "Delete project-level files" ON public.files FOR DELETE
+    USING (project_id IS NOT NULL AND (uploaded_by = auth.uid() OR public.user_is_project_contributor(project_id)));
+
+-- =====================================================
+-- RLS POLICIES: FILE VERSIONS
+-- =====================================================
+CREATE POLICY "View file versions" ON public.file_versions FOR SELECT
+    USING (EXISTS (
+        SELECT 1 FROM public.files WHERE files.id = file_versions.file_id
+        AND ((files.project_id IS NULL AND public.user_is_org_member(files.organization_id))
+            OR (files.project_id IS NOT NULL AND public.user_is_project_member(files.project_id)))
+    ));
+CREATE POLICY "Create file versions" ON public.file_versions FOR INSERT
+    WITH CHECK (EXISTS (
+        SELECT 1 FROM public.files WHERE files.id = file_versions.file_id
+        AND ((files.project_id IS NULL AND (files.uploaded_by = auth.uid() OR public.user_is_org_admin_or_manager(files.organization_id)))
+            OR (files.project_id IS NOT NULL AND (files.uploaded_by = auth.uid() OR public.user_is_project_contributor(files.project_id))))
+    ));
+CREATE POLICY "Delete file versions" ON public.file_versions FOR DELETE
+    USING (EXISTS (
+        SELECT 1 FROM public.files WHERE files.id = file_versions.file_id
+        AND ((files.project_id IS NULL AND (files.uploaded_by = auth.uid() OR public.user_is_org_admin_or_manager(files.organization_id)))
+            OR (files.project_id IS NOT NULL AND (files.uploaded_by = auth.uid() OR public.user_is_project_contributor(files.project_id))))
+    ));
+
+-- =====================================================
+-- RLS POLICIES: FILE SHARES
+-- =====================================================
+CREATE POLICY "View org-wide shares" ON public.file_shares FOR SELECT
+    USING (share_type = 'org' AND EXISTS (
+        SELECT 1 FROM public.files WHERE files.id = file_shares.file_id AND public.user_is_org_member(files.organization_id)
+    ));
+CREATE POLICY "View project shares" ON public.file_shares FOR SELECT
+    USING (share_type = 'project' AND EXISTS (
+        SELECT 1 FROM public.files WHERE files.id = file_shares.file_id AND files.project_id IS NOT NULL AND public.user_is_project_member(files.project_id)
+    ));
+CREATE POLICY "View member shares" ON public.file_shares FOR SELECT
+    USING (share_type = 'member' AND (shared_with_user_id = auth.uid() OR shared_by = auth.uid()));
+CREATE POLICY "Create file shares" ON public.file_shares FOR INSERT
+    WITH CHECK (EXISTS (
+        SELECT 1 FROM public.files WHERE files.id = file_shares.file_id
+        AND (files.uploaded_by = auth.uid() OR public.user_is_org_admin_or_manager(files.organization_id))
+    ));
+CREATE POLICY "Delete file shares" ON public.file_shares FOR DELETE
+    USING (shared_by = auth.uid() OR EXISTS (
+        SELECT 1 FROM public.files WHERE files.id = file_shares.file_id AND public.user_is_org_admin_or_manager(files.organization_id)
+    ));
+
+-- =====================================================
+-- RLS POLICIES: FILE STARS
+-- =====================================================
+CREATE POLICY "View own stars" ON public.file_stars FOR SELECT USING (user_id = auth.uid());
+CREATE POLICY "Create own stars" ON public.file_stars FOR INSERT WITH CHECK (user_id = auth.uid());
+CREATE POLICY "Delete own stars" ON public.file_stars FOR DELETE USING (user_id = auth.uid());
+
+-- =====================================================
+-- INVITE CODE FUNCTIONS
+-- =====================================================
+
+-- Function to join organization by invite code (simple system — bypasses RLS)
+CREATE OR REPLACE FUNCTION public.join_organization_by_invite_code(
+    p_invite_code TEXT,
+    p_user_id UUID
+)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_org_id UUID;
+    v_org_name TEXT;
+    v_existing_member BOOLEAN;
+BEGIN
+    SELECT id, name INTO v_org_id, v_org_name
+    FROM public.organizations
+    WHERE UPPER(invite_code) = UPPER(p_invite_code);
+
+    IF v_org_id IS NULL THEN
+        RETURN json_build_object('success', false, 'error', 'Invalid invite code');
+    END IF;
+
+    SELECT EXISTS (
+        SELECT 1 FROM public.organization_members
+        WHERE org_id = v_org_id AND user_id = p_user_id
+    ) INTO v_existing_member;
+
+    IF v_existing_member THEN
+        RETURN json_build_object('success', false, 'error', 'Already a member of this organization');
+    END IF;
+
+    INSERT INTO public.organization_members (org_id, user_id, role)
+    VALUES (v_org_id, p_user_id, 'member');
+
+    RETURN json_build_object('success', true, 'org_id', v_org_id, 'org_name', v_org_name);
+END;
+$$;
+
+-- Function to get organization by invite code (bypasses RLS)
+CREATE OR REPLACE FUNCTION public.get_organization_by_invite_code(p_invite_code TEXT)
+RETURNS TABLE(
+    id UUID,
+    name TEXT,
+    description TEXT,
+    owner_id UUID,
+    invite_code TEXT,
+    created_at TIMESTAMPTZ,
+    updated_at TIMESTAMPTZ
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+    RETURN QUERY
+    SELECT o.id, o.name, o.description, o.owner_id, o.invite_code, o.created_at, o.updated_at
+    FROM public.organizations o
+    WHERE UPPER(o.invite_code) = UPPER(p_invite_code);
+END;
+$$;
+
+-- Advanced invite code join function (multi-code system)
+CREATE OR REPLACE FUNCTION public.join_org_via_invite_code(p_code TEXT)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_invite organization_invite_codes%ROWTYPE;
+    v_org_name TEXT;
+    v_user_id UUID;
+    v_existing UUID;
+BEGIN
+    v_user_id := auth.uid();
+    IF v_user_id IS NULL THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Not authenticated');
+    END IF;
+
+    SELECT * INTO v_invite
+    FROM organization_invite_codes
+    WHERE UPPER(code) = UPPER(p_code);
+
+    IF v_invite IS NULL THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Invalid invite code');
+    END IF;
+
+    IF NOT v_invite.is_active THEN
+        RETURN jsonb_build_object('success', false, 'error', 'This invite code has been revoked');
+    END IF;
+
+    IF v_invite.expires_at IS NOT NULL AND v_invite.expires_at < now() THEN
+        RETURN jsonb_build_object('success', false, 'error', 'This invite code has expired');
+    END IF;
+
+    IF v_invite.max_uses IS NOT NULL AND v_invite.use_count >= v_invite.max_uses THEN
+        RETURN jsonb_build_object('success', false, 'error', 'This invite code has reached its usage limit');
+    END IF;
+
+    SELECT id INTO v_existing
+    FROM organization_members
+    WHERE org_id = v_invite.organization_id AND user_id = v_user_id;
+
+    IF v_existing IS NOT NULL THEN
+        RETURN jsonb_build_object('success', false, 'error', 'You are already a member of this organization');
+    END IF;
+
+    SELECT name INTO v_org_name FROM organizations WHERE id = v_invite.organization_id;
+
+    INSERT INTO organization_members (org_id, user_id, role)
+    VALUES (v_invite.organization_id, v_user_id, v_invite.default_role);
+
+    UPDATE organization_invite_codes SET use_count = use_count + 1 WHERE id = v_invite.id;
+
+    RETURN jsonb_build_object(
+        'success', true,
+        'org_id', v_invite.organization_id,
+        'org_name', v_org_name,
+        'role', v_invite.default_role
+    );
+END;
+$$;
+
+-- =====================================================
+-- SECURITY QUESTION COLUMNS (for password reset)
+-- =====================================================
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS security_question TEXT;
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS security_answer TEXT;
+
+-- =====================================================
 -- TRIGGER: AUTO-CREATE DEFAULT ORG CHANNEL
 -- =====================================================
 CREATE OR REPLACE FUNCTION public.auto_create_org_default_channel()
@@ -1372,6 +1816,73 @@ CREATE TRIGGER auto_create_project_channel
     FOR EACH ROW EXECUTE FUNCTION public.auto_create_project_default_channel();
 
 -- =====================================================
+-- SEED: SYSTEM PROJECT TEMPLATES
+-- =====================================================
+
+-- 1. Software Sprint Template
+INSERT INTO public.project_templates (id, name, description, category, icon, color, is_system, organization_id)
+VALUES (
+    'a1b2c3d4-0001-4000-8000-000000000001',
+    'Software Sprint',
+    'Agile software development with sprint-ready tasks including planning, development, testing, and deployment phases.',
+    'engineering', 'code', '#3B82F6', TRUE, NULL
+) ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO public.template_tasks (template_id, title, description, status, priority, sort_order) VALUES
+    ('a1b2c3d4-0001-4000-8000-000000000001', 'Sprint Planning', 'Define sprint goals, estimate stories, and assign tasks to team members.', 'todo', 'high', 1),
+    ('a1b2c3d4-0001-4000-8000-000000000001', 'Set up development environment', 'Configure local dev environment, install dependencies, and verify build.', 'todo', 'high', 2),
+    ('a1b2c3d4-0001-4000-8000-000000000001', 'Implement core feature', 'Build the main feature for this sprint based on the requirements.', 'todo', 'high', 3),
+    ('a1b2c3d4-0001-4000-8000-000000000001', 'Write unit tests', 'Create unit tests covering the new feature logic.', 'todo', 'medium', 4),
+    ('a1b2c3d4-0001-4000-8000-000000000001', 'Code review', 'Review pull requests and provide feedback to team members.', 'todo', 'medium', 5),
+    ('a1b2c3d4-0001-4000-8000-000000000001', 'QA testing', 'Perform manual and automated QA testing on the sprint deliverables.', 'todo', 'medium', 6),
+    ('a1b2c3d4-0001-4000-8000-000000000001', 'Bug fixes', 'Fix any bugs found during the QA testing phase.', 'todo', 'high', 7),
+    ('a1b2c3d4-0001-4000-8000-000000000001', 'Deploy to staging', 'Deploy the sprint build to the staging environment for final review.', 'todo', 'medium', 8),
+    ('a1b2c3d4-0001-4000-8000-000000000001', 'Sprint retrospective', 'Review what went well, what can be improved, and action items for the next sprint.', 'todo', 'low', 9)
+ON CONFLICT DO NOTHING;
+
+-- 2. Marketing Campaign Template
+INSERT INTO public.project_templates (id, name, description, category, icon, color, is_system, organization_id)
+VALUES (
+    'a1b2c3d4-0002-4000-8000-000000000002',
+    'Marketing Campaign',
+    'End-to-end marketing campaign workflow covering research, content creation, launch, and performance tracking.',
+    'marketing', 'megaphone', '#8B5CF6', TRUE, NULL
+) ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO public.template_tasks (template_id, title, description, status, priority, sort_order) VALUES
+    ('a1b2c3d4-0002-4000-8000-000000000002', 'Market research & audience analysis', 'Research target audience demographics, pain points, and preferred channels.', 'todo', 'high', 1),
+    ('a1b2c3d4-0002-4000-8000-000000000002', 'Define campaign goals & KPIs', 'Set measurable objectives and key performance indicators for the campaign.', 'todo', 'high', 2),
+    ('a1b2c3d4-0002-4000-8000-000000000002', 'Create content calendar', 'Plan content topics, formats, and publishing schedule across all channels.', 'todo', 'medium', 3),
+    ('a1b2c3d4-0002-4000-8000-000000000002', 'Design visual assets', 'Create graphics, banners, social media images, and other visual materials.', 'todo', 'medium', 4),
+    ('a1b2c3d4-0002-4000-8000-000000000002', 'Write copy & messaging', 'Draft ad copy, email content, social posts, and landing page text.', 'todo', 'medium', 5),
+    ('a1b2c3d4-0002-4000-8000-000000000002', 'Set up tracking & analytics', 'Configure UTM parameters, conversion pixels, and analytics dashboards.', 'todo', 'high', 6),
+    ('a1b2c3d4-0002-4000-8000-000000000002', 'Launch campaign', 'Go live with the campaign across all planned channels.', 'todo', 'urgent', 7),
+    ('a1b2c3d4-0002-4000-8000-000000000002', 'Monitor & optimize', 'Track performance daily and make adjustments to improve results.', 'todo', 'medium', 8),
+    ('a1b2c3d4-0002-4000-8000-000000000002', 'Post-campaign report', 'Compile final results, insights, and recommendations for future campaigns.', 'todo', 'low', 9)
+ON CONFLICT DO NOTHING;
+
+-- 3. General Project Template
+INSERT INTO public.project_templates (id, name, description, category, icon, color, is_system, organization_id)
+VALUES (
+    'a1b2c3d4-0003-4000-8000-000000000003',
+    'General Project',
+    'A flexible project template suitable for any team with common planning, execution, and review tasks.',
+    'general', 'folder', '#10B981', TRUE, NULL
+) ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO public.template_tasks (template_id, title, description, status, priority, sort_order) VALUES
+    ('a1b2c3d4-0003-4000-8000-000000000003', 'Define project scope', 'Outline project objectives, deliverables, constraints, and success criteria.', 'todo', 'high', 1),
+    ('a1b2c3d4-0003-4000-8000-000000000003', 'Create project timeline', 'Break down the project into phases with milestones and deadlines.', 'todo', 'high', 2),
+    ('a1b2c3d4-0003-4000-8000-000000000003', 'Assign team responsibilities', 'Allocate tasks and responsibilities to each team member.', 'todo', 'medium', 3),
+    ('a1b2c3d4-0003-4000-8000-000000000003', 'Kickoff meeting', 'Hold an initial team meeting to align on goals and expectations.', 'todo', 'medium', 4),
+    ('a1b2c3d4-0003-4000-8000-000000000003', 'Execute Phase 1', 'Complete the first major phase of the project deliverables.', 'todo', 'high', 5),
+    ('a1b2c3d4-0003-4000-8000-000000000003', 'Mid-project review', 'Assess progress, identify risks, and adjust the plan as needed.', 'todo', 'medium', 6),
+    ('a1b2c3d4-0003-4000-8000-000000000003', 'Execute Phase 2', 'Complete the second major phase of the project deliverables.', 'todo', 'high', 7),
+    ('a1b2c3d4-0003-4000-8000-000000000003', 'Final review & sign-off', 'Review all deliverables and get stakeholder approval.', 'todo', 'high', 8),
+    ('a1b2c3d4-0003-4000-8000-000000000003', 'Project retrospective', 'Document lessons learned and best practices for future projects.', 'todo', 'low', 9)
+ON CONFLICT DO NOTHING;
+
+-- =====================================================
 -- ENABLE SUPABASE REALTIME
 -- =====================================================
 ALTER PUBLICATION supabase_realtime ADD TABLE public.messages;
@@ -1380,8 +1891,10 @@ ALTER PUBLICATION supabase_realtime ADD TABLE public.direct_messages;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.channel_members;
 
 -- =====================================================
--- STORAGE BUCKET: CHAT ATTACHMENTS (10MB limit)
+-- STORAGE BUCKETS
 -- =====================================================
+
+-- Chat attachments (10MB limit)
 INSERT INTO storage.buckets (id, name, public, file_size_limit)
 VALUES ('chat-attachments', 'chat-attachments', false, 10485760)
 ON CONFLICT (id) DO NOTHING;
@@ -1401,6 +1914,31 @@ CREATE POLICY "Users can delete own chat files"
     TO authenticated
     USING (bucket_id = 'chat-attachments' AND (storage.foldername(name))[1] = auth.uid()::text);
 
+-- Org files (25MB limit, private — access via signed URLs)
+INSERT INTO storage.buckets (id, name, public, file_size_limit)
+VALUES ('org-files', 'org-files', FALSE, 26214400)
+ON CONFLICT (id) DO NOTHING;
+
+CREATE POLICY "Authenticated users can upload to org-files"
+    ON storage.objects FOR INSERT
+    TO authenticated
+    WITH CHECK (bucket_id = 'org-files');
+
+CREATE POLICY "Authenticated users can read org-files"
+    ON storage.objects FOR SELECT
+    TO authenticated
+    USING (bucket_id = 'org-files');
+
+CREATE POLICY "Authenticated users can update org-files"
+    ON storage.objects FOR UPDATE
+    TO authenticated
+    USING (bucket_id = 'org-files');
+
+CREATE POLICY "Authenticated users can delete org-files"
+    ON storage.objects FOR DELETE
+    TO authenticated
+    USING (bucket_id = 'org-files');
+
 -- =====================================================
 -- GRANT PERMISSIONS
 -- =====================================================
@@ -1409,12 +1947,19 @@ GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated;
 GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.join_organization_by_invite_code(TEXT, UUID) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.get_organization_by_invite_code(TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.join_org_via_invite_code(TEXT) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.user_is_org_member(UUID) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.user_is_org_member_for_project(UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.user_is_org_admin_or_manager(UUID) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.user_is_project_member(UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.user_is_project_contributor(UUID) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.user_is_channel_member(UUID) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.user_can_access_channel(UUID) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.user_is_dm_participant(UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.increment_reply_count() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.decrement_reply_count() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.auto_create_org_default_channel() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.auto_create_project_default_channel() TO authenticated;
 
 -- =====================================================
 -- MIGRATION COMPLETE
