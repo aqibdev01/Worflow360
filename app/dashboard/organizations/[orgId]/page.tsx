@@ -18,10 +18,10 @@ import {
   LayoutDashboard,
 } from "lucide-react";
 import { getOrganization, getOrganizationProjects, getOrganizationMembers } from "@/lib/database";
+import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { useBreadcrumbs } from "@/components/breadcrumbs";
-import { ChatContainer } from "@/components/chat/chat-container";
 import { InviteCodeManager } from "@/components/org/InviteCodeManager";
 import { OrgMemberTable } from "@/components/org/OrgMemberTable";
 import { TemplateManager } from "@/components/projects/TemplateManager";
@@ -35,8 +35,9 @@ export default function OrganizationDashboardPage() {
   const [organization, setOrganization] = useState<any>(null);
   const [projects, setProjects] = useState<any[]>([]);
   const [members, setMembers] = useState<any[]>([]);
+  const [activeTasks, setActiveTasks] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"overview" | "members" | "chat">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "members">("overview");
 
   useBreadcrumbs([
     { label: "Organizations", href: "/dashboard/organizations" },
@@ -56,6 +57,17 @@ export default function OrganizationDashboardPage() {
         setOrganization(orgData);
         setProjects(projectsData || []);
         setMembers(membersData || []);
+
+        // Fetch active tasks count across all org projects
+        const projectIds = (projectsData || []).map((p: any) => p.id);
+        if (projectIds.length > 0) {
+          const { count } = await (supabase as any)
+            .from("tasks")
+            .select("id", { count: "exact", head: true })
+            .in("project_id", projectIds)
+            .in("status", ["todo", "in_progress", "review"]);
+          setActiveTasks(count || 0);
+        }
       } catch (error) {
         console.error("Error loading organization data:", error);
       } finally {
@@ -147,17 +159,6 @@ export default function OrganizationDashboardPage() {
             Members
           </button>
         )}
-        <button
-          onClick={() => setActiveTab("chat")}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-            activeTab === "chat"
-              ? "bg-white text-navy-900 shadow-sm"
-              : "text-muted-foreground hover:text-navy-900"
-          }`}
-        >
-          <MessageSquare className="h-4 w-4" />
-          Chat
-        </button>
         <Link href={`/dashboard/organizations/${orgId}/communication`}>
           <button
             className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all text-muted-foreground hover:text-navy-900"
@@ -211,9 +212,11 @@ export default function OrganizationDashboardPage() {
               <CardContent className="p-6">
                 <div className="flex items-start justify-between">
                   <div className="space-y-2">
-                    <p className="text-3xl font-bold text-navy-900">0</p>
+                    <p className="text-3xl font-bold text-navy-900">{activeTasks}</p>
                     <p className="text-sm text-muted-foreground">Active Tasks</p>
-                    <p className="text-xs text-muted-foreground">No tasks yet</p>
+                    <p className="text-xs text-muted-foreground">
+                      {activeTasks === 0 ? "No tasks yet" : "Across all projects"}
+                    </p>
                   </div>
                   <div className="h-12 w-12 bg-success rounded-xl flex items-center justify-center">
                     <CheckCircle2 className="h-6 w-6 text-white" />
@@ -464,16 +467,6 @@ export default function OrganizationDashboardPage() {
         </div>
       )}
 
-      {/* Chat Tab */}
-      {activeTab === "chat" && currentUserId && (
-        <ChatContainer
-          scope="org"
-          scopeId={orgId}
-          orgId={orgId}
-          currentUserId={currentUserId}
-          canManageChannels={isOrgAdmin}
-        />
-      )}
     </div>
   );
 }

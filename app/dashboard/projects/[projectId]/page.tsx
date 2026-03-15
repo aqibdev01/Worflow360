@@ -42,7 +42,6 @@ import {
   Archive,
   Layers,
   Trash2,
-  MessageSquare,
   Files,
   Paperclip,
 } from "lucide-react";
@@ -65,7 +64,6 @@ import { SprintEventDialog } from "@/components/sprint-event-dialog";
 import { SprintTimeline } from "@/components/sprint-timeline";
 import { ProjectAnalytics } from "@/components/project-analytics";
 import { ProjectCalendar } from "@/components/project-calendar";
-import { ChatContainer } from "@/components/chat/chat-container";
 import { EditProjectDialog } from "@/components/projects/EditProjectDialog";
 import { ProjectMemberManager } from "@/components/projects/ProjectMemberManager";
 import { ProjectDangerZone } from "@/components/projects/ProjectDangerZone";
@@ -796,14 +794,6 @@ export default function ProjectDashboardPage() {
                 >
                   <Calendar className="h-6 w-6" />
                   <span className="text-sm font-medium">Calendar</span>
-                </Button>
-                <Button
-                  variant="outline"
-                  className="h-auto py-4 flex-col gap-2 hover:bg-primary/5 hover:text-primary hover:border-primary/50 transition-colors"
-                  onClick={() => setActiveTab("chat")}
-                >
-                  <MessageSquare className="h-6 w-6" />
-                  <span className="text-sm font-medium">Chat</span>
                 </Button>
                 <Button
                   variant="outline"
@@ -1945,19 +1935,6 @@ export default function ProjectDashboardPage() {
                 setEditingSprintEvent(null);
                 setSprintEventDialogOpen(true);
               }}
-            />
-          )}
-        </TabsContent>
-
-        {/* Chat Tab */}
-        <TabsContent value="chat" className="space-y-4">
-          {activeTab === "chat" && (
-            <ChatContainer
-              scope="project"
-              scopeId={projectId}
-              orgId={project?.organizations?.id || ""}
-              currentUserId={currentUserId}
-              canManageChannels={isProjectManager}
             />
           )}
         </TabsContent>
