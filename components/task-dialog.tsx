@@ -46,6 +46,7 @@ import {
   deleteTask,
   getProjectMembersForAssignment,
 } from "@/lib/database";
+import { notifyTaskAssigned } from "@/lib/notifications/triggers";
 import { TaskAttachments } from "@/components/files/TaskAttachments";
 
 const taskFormSchema = z.object({
@@ -192,6 +193,10 @@ export function TaskDialog({
         ? values.assignee_id
         : null;
 
+      // Get current user's name for notifications
+      const currentMember = members.find((m) => m.user_id === currentUserId);
+      const currentUserName = currentMember?.users?.full_name || currentMember?.users?.email?.split("@")[0] || "Someone";
+
       if (isEditing && task) {
         // Update existing task
         const sprintId = values.sprint_id && values.sprint_id !== "none"
@@ -205,6 +210,17 @@ export function TaskDialog({
           due_date: values.due_date ? values.due_date.toISOString() : null,
           priority: values.priority,
         });
+
+        // Notify if assignee changed
+        if (assigneeId && assigneeId !== task.assignee_id && orgId) {
+          notifyTaskAssigned(
+            { id: task.id, title: values.title, project_id: projectId },
+            assigneeId,
+            { id: currentUserId, name: currentUserName },
+            orgId
+          ).catch(() => {});
+        }
+
         toast.success("Task updated successfully");
         onTaskUpdated?.();
       } else {
@@ -212,7 +228,7 @@ export function TaskDialog({
         const sprintId = values.sprint_id && values.sprint_id !== "none"
           ? values.sprint_id
           : null;
-        await createTask({
+        const newTask = await createTask({
           project_id: projectId,
           title: values.title,
           description: values.description || null,
@@ -223,6 +239,17 @@ export function TaskDialog({
           status: defaultStatus || "todo",
           created_by: currentUserId,
         } as any);
+
+        // Notify assignee on new task
+        if (assigneeId && orgId && newTask) {
+          notifyTaskAssigned(
+            { id: newTask.id, title: values.title, project_id: projectId },
+            assigneeId,
+            { id: currentUserId, name: currentUserName },
+            orgId
+          ).catch(() => {});
+        }
+
         toast.success("Task created successfully");
         onTaskCreated?.();
       }

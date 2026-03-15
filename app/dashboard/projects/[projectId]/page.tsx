@@ -71,6 +71,7 @@ import { ProjectMemberManager } from "@/components/projects/ProjectMemberManager
 import { ProjectDangerZone } from "@/components/projects/ProjectDangerZone";
 import { ProjectFilesTab } from "@/components/files/ProjectFilesTab";
 import { getTaskFileCounts } from "@/lib/files/files";
+import { notifyStatusChanged } from "@/lib/notifications/triggers";
 import { toast } from "sonner";
 import { useBreadcrumbs } from "@/components/breadcrumbs";
 
@@ -214,7 +215,7 @@ export default function ProjectDashboardPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const projectId = params.projectId as string;
-  const { user, loading: authLoading } = useAuth();
+  const { user, userProfile, loading: authLoading } = useAuth();
 
   const [project, setProject] = useState<any>(null);
   const [taskStats, setTaskStats] = useState<any>(null);
@@ -348,6 +349,24 @@ export default function ProjectDashboardPage() {
 
     try {
       await updateTaskStatus(taskId, newStatus as any);
+
+      // Send status change notification
+      if (project?.organizations?.id) {
+        const changedByName = userProfile?.full_name || user?.email?.split("@")[0] || "Someone";
+        notifyStatusChanged(
+          {
+            id: taskId,
+            title: task.title,
+            project_id: projectId,
+            assignee_id: task.assignee_id || task.assignee?.id || null,
+            created_by: task.created_by,
+          },
+          newStatus,
+          { id: currentUserId, name: changedByName },
+          project.organizations.id
+        ).catch(() => {});
+      }
+
       toast.success("Task status updated");
       refreshTasks();
     } catch (error) {

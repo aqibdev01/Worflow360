@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { sendMessage, uploadAttachment } from "@/lib/communication/messages";
+import { notifyMentioned } from "@/lib/notifications/triggers";
 import { TaskRefPicker } from "./TaskRefPicker";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
@@ -246,6 +247,24 @@ export function CommunicationMessageInput({
       // Send text message
       if (trimmed) {
         await sendMessage(channelId, trimmed, "text", undefined, parentMessageId);
+
+        // Parse @mentions and send notifications
+        if (orgId) {
+          const mentionRegex = /@\[([^\]]+)\]\(([^)]+)\)/g;
+          let match;
+          const currentMember = channelMembers.find((m) => m.user_id === currentUserId);
+          const senderName = currentMember?.full_name || currentMember?.email?.split("@")[0] || "Someone";
+
+          while ((match = mentionRegex.exec(trimmed)) !== null) {
+            const mentionedUserId = match[2];
+            notifyMentioned(
+              mentionedUserId,
+              { channelId, messagePreview: trimmed.replace(/@\[[^\]]+\]\([^)]+\)/g, (m) => m.split("]")[0].slice(2)) },
+              { id: currentUserId, name: senderName },
+              orgId
+            ).catch(() => {});
+          }
+        }
       }
 
       // Upload files as separate file messages

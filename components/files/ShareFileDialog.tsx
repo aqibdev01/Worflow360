@@ -42,7 +42,9 @@ import {
   revokeShare,
   type FileShare,
 } from "@/lib/files/sharing";
+import { notifyFileShared } from "@/lib/notifications/triggers";
 import { getOrganizationMembers } from "@/lib/database";
+import { supabase } from "@/lib/supabase";
 import type { FileRecord } from "@/lib/files/files";
 
 // =====================================================
@@ -175,6 +177,24 @@ export function ShareFileDialog({
         permission,
         expiresAt: expiresAt || undefined,
       });
+
+      // Send notification for member shares
+      if (shareMode === "member" && selectedUser) {
+        supabase.auth.getUser().then(({ data: { user: authUser } }) => {
+          if (authUser) {
+            const sharerName =
+              orgMembers.find((m: any) => m.users?.id === authUser.id)?.users?.full_name ||
+              authUser.email?.split("@")[0] || "Someone";
+            notifyFileShared(
+              file.id,
+              file.name,
+              selectedUser.id,
+              { id: authUser.id, name: sharerName },
+              orgId
+            ).catch(() => {});
+          }
+        });
+      }
 
       toast.success("File shared", {
         description:
