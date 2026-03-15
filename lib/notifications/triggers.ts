@@ -174,6 +174,34 @@ export async function notifyFileShared(
  * Notify org members that a new member has joined.
  * Typically called when someone joins via invite code.
  */
+/**
+ * Notify project members that a sprint deadline is approaching.
+ */
+export async function notifySprintDeadline(
+  sprint: { id: string; name: string; end_date: string; project_id: string },
+  projectName: string,
+  memberUserIds: string[],
+  orgId: string
+): Promise<void> {
+  for (const userId of memberUserIds) {
+    await createNotification({
+      orgId,
+      userId,
+      type: "sprint_deadline",
+      title: `Sprint ending soon: ${sprint.name}`,
+      body: `"${sprint.name}" in ${projectName} ends on ${new Date(sprint.end_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`,
+      link: `/dashboard/projects/${sprint.project_id}?tab=board`,
+      metadata: {
+        sprintId: sprint.id,
+        sprintName: sprint.name,
+        projectId: sprint.project_id,
+        projectName,
+        endDate: sprint.end_date,
+      },
+    }).catch(() => {});
+  }
+}
+
 export async function notifyMemberJoined(
   orgId: string,
   newMember: { id: string; name: string },

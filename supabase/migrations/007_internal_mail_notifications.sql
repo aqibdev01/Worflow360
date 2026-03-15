@@ -295,3 +295,13 @@ CREATE TRIGGER set_mail_messages_updated_at
   BEFORE UPDATE ON mail_messages
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at_column();
+
+-- =====================================================
+-- Auto-delete old notifications (older than 60 days)
+-- =====================================================
+CREATE OR REPLACE FUNCTION public.delete_old_notifications()
+RETURNS void AS $$
+  DELETE FROM public.notifications WHERE created_at < NOW() - INTERVAL '60 days';
+$$ LANGUAGE sql SECURITY DEFINER;
+
+GRANT EXECUTE ON FUNCTION public.delete_old_notifications() TO authenticated;

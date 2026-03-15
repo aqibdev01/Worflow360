@@ -107,6 +107,47 @@ export async function getInboxMails(
 }
 
 // =====================================================
+// Starred Mails
+// =====================================================
+
+/**
+ * Get starred mails for current user in an org.
+ */
+export async function getStarredMails(
+  orgId: string,
+  page = 1,
+  pageSize = 25
+): Promise<{ mails: MailRecipient[]; total: number }> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+
+  const { data, error, count } = await (supabase as any)
+    .from("mail_recipients")
+    .select(
+      `*, mail:mail_messages!mail_id(
+        id, organization_id, subject, body, sender_id, type, is_draft, sent_at, created_at, updated_at,
+        sender:users!sender_id(id, full_name, email, avatar_url)
+      )`,
+      { count: "exact" }
+    )
+    .eq("recipient_id", user.id)
+    .eq("is_starred", true)
+    .eq("mail.is_draft", false)
+    .eq("mail.organization_id", orgId)
+    .order("received_at", { ascending: false })
+    .range(from, to);
+
+  if (error) throw error;
+  const filtered = (data || []).filter((r: any) => r.mail !== null);
+  return { mails: filtered as MailRecipient[], total: count || 0 };
+}
+
+// =====================================================
 // Sent Mails
 // =====================================================
 

@@ -2124,5 +2124,15 @@ GRANT EXECUTE ON FUNCTION public.auto_create_org_default_channel() TO authentica
 GRANT EXECUTE ON FUNCTION public.auto_create_project_default_channel() TO authenticated;
 
 -- =====================================================
+-- AUTO-DELETE OLD NOTIFICATIONS (older than 60 days)
+-- =====================================================
+CREATE OR REPLACE FUNCTION public.delete_old_notifications()
+RETURNS void AS $$
+  DELETE FROM public.notifications WHERE created_at < NOW() - INTERVAL '60 days';
+$$ LANGUAGE sql SECURITY DEFINER;
+
+GRANT EXECUTE ON FUNCTION public.delete_old_notifications() TO authenticated;
+
+-- =====================================================
 -- MIGRATION COMPLETE
 -- =====================================================

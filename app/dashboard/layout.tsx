@@ -10,6 +10,7 @@ import {
   CalendarDays,
   MessageSquare,
   Files,
+  Mail,
   Menu,
   X,
   LogOut,
@@ -84,6 +85,14 @@ function getNavigation(pathname: string) {
         ? `/dashboard/organizations/${orgId}/files`
         : "/dashboard/organizations",
       icon: Files,
+      comingSoon: false,
+    },
+    {
+      name: "Mail",
+      href: orgId
+        ? `/dashboard/organizations/${orgId}/mail`
+        : "/dashboard/organizations",
+      icon: Mail,
       comingSoon: false,
     },
   ];
