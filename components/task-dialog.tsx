@@ -36,7 +36,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { CalendarIcon, Loader2, Trash2 } from "lucide-react";
+import { CalendarIcon, Loader2, Trash2, Paperclip } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -46,6 +46,7 @@ import {
   deleteTask,
   getProjectMembersForAssignment,
 } from "@/lib/database";
+import { TaskAttachments } from "@/components/files/TaskAttachments";
 
 const taskFormSchema = z.object({
   title: z.string().min(1, "Title is required").max(200, "Title is too long"),
@@ -81,6 +82,7 @@ interface TaskDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   projectId: string;
+  orgId?: string;
   currentUserId: string;
   task?: {
     id: string;
@@ -107,6 +109,7 @@ export function TaskDialog({
   open,
   onOpenChange,
   projectId,
+  orgId,
   currentUserId,
   task,
   isProjectManager,
@@ -480,6 +483,16 @@ export function TaskDialog({
                       <FormMessage />
                     </FormItem>
                   )}
+                />
+              )}
+
+              {/* Task Attachments — only shown when editing an existing task */}
+              {isEditing && task && orgId && (
+                <TaskAttachments
+                  taskId={task.id}
+                  orgId={orgId}
+                  projectId={projectId}
+                  canEdit={canEdit}
                 />
               )}
 

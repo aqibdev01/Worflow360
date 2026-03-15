@@ -9,6 +9,7 @@ import {
   BarChart3,
   CalendarDays,
   MessageSquare,
+  Files,
   Menu,
   X,
   LogOut,
@@ -74,6 +75,14 @@ function getNavigation(pathname: string) {
         ? `/dashboard/organizations/${orgId}/communication`
         : "/dashboard/organizations",
       icon: MessageSquare,
+      comingSoon: false,
+    },
+    {
+      name: "Files",
+      href: orgId
+        ? `/dashboard/organizations/${orgId}/files`
+        : "/dashboard/organizations",
+      icon: Files,
       comingSoon: false,
     },
   ];

@@ -2,7 +2,7 @@
 -- Workflow360 Complete Database Schema
 -- Version: 2.0.0
 -- Run this single migration file to set up the entire database
--- Includes: Core, Communication Hub, Invite Codes, Project Templates, File Management
+-- Includes: Core, Communication Hub, Invite Codes, Project Templates, File Management, Internal Mail, Notifications
 -- =====================================================
 
 -- Enable UUID extension
@@ -213,27 +213,15 @@ CREATE INDEX IF NOT EXISTS sprint_events_sprint_id_idx ON public.sprint_events(s
 CREATE INDEX IF NOT EXISTS sprint_events_event_date_idx ON public.sprint_events(event_date);
 
 -- =====================================================
--- NOTIFICATIONS TABLE
+-- NOTIFICATIONS TABLE (legacy enum kept for backward compat, new table below in NOTIFICATION CENTRE section)
 -- =====================================================
 DO $$ BEGIN
     CREATE TYPE notification_type AS ENUM ('info', 'success', 'warning', 'error', 'event');
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 
-CREATE TABLE IF NOT EXISTS public.notifications (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
-    title TEXT NOT NULL,
-    message TEXT NOT NULL,
-    type notification_type NOT NULL DEFAULT 'info',
-    read BOOLEAN DEFAULT FALSE,
-    link TEXT,
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE INDEX IF NOT EXISTS notifications_user_id_idx ON public.notifications(user_id);
-CREATE INDEX IF NOT EXISTS notifications_read_idx ON public.notifications(read);
-CREATE INDEX IF NOT EXISTS notifications_created_at_idx ON public.notifications(created_at DESC);
+-- NOTE: notifications table is now defined in the NOTIFICATION CENTRE section below
+-- with expanded columns (organization_id, metadata, is_read, etc.)
 
 -- =====================================================
 -- ORGANIZATION INVITE CODES TABLE (advanced multi-code system)
@@ -447,6 +435,7 @@ CREATE TABLE IF NOT EXISTS public.files (
     organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
     project_id UUID REFERENCES public.projects(id) ON DELETE CASCADE,
     folder_id UUID REFERENCES public.file_folders(id) ON DELETE SET NULL,
+    task_id UUID REFERENCES public.tasks(id) ON DELETE SET NULL,
     name TEXT NOT NULL,
     storage_path TEXT NOT NULL,
     public_url TEXT,
@@ -498,6 +487,81 @@ CREATE INDEX IF NOT EXISTS idx_file_shares_file_id ON public.file_shares (file_i
 CREATE INDEX IF NOT EXISTS idx_file_folders_org_project_parent ON public.file_folders (organization_id, project_id, parent_folder_id);
 CREATE INDEX IF NOT EXISTS idx_file_versions_file_id ON public.file_versions (file_id);
 CREATE INDEX IF NOT EXISTS idx_file_stars_user_id ON public.file_stars (user_id);
+CREATE INDEX IF NOT EXISTS idx_files_task_id ON public.files (task_id) WHERE task_id IS NOT NULL;
+
+-- =====================================================
+-- INTERNAL MAIL SYSTEM
+-- =====================================================
+
+-- Mail Messages
+CREATE TABLE IF NOT EXISTS public.mail_messages (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+    subject TEXT NOT NULL,
+    body TEXT NOT NULL DEFAULT '',
+    sender_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+    type TEXT NOT NULL DEFAULT 'direct' CHECK (type IN ('direct', 'announcement', 'newsletter')),
+    is_draft BOOLEAN NOT NULL DEFAULT FALSE,
+    sent_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Mail Recipients
+CREATE TABLE IF NOT EXISTS public.mail_recipients (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    mail_id UUID NOT NULL REFERENCES public.mail_messages(id) ON DELETE CASCADE,
+    recipient_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+    recipient_type TEXT NOT NULL DEFAULT 'to' CHECK (recipient_type IN ('to', 'cc')),
+    is_read BOOLEAN NOT NULL DEFAULT FALSE,
+    read_at TIMESTAMPTZ,
+    is_starred BOOLEAN NOT NULL DEFAULT FALSE,
+    is_archived BOOLEAN NOT NULL DEFAULT FALSE,
+    folder TEXT NOT NULL DEFAULT 'inbox' CHECK (folder IN ('inbox', 'archived', 'trash')),
+    received_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Mail Attachments
+CREATE TABLE IF NOT EXISTS public.mail_attachments (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    mail_id UUID NOT NULL REFERENCES public.mail_messages(id) ON DELETE CASCADE,
+    file_name TEXT NOT NULL,
+    storage_path TEXT NOT NULL,
+    mime_type TEXT NOT NULL,
+    size_bytes BIGINT NOT NULL DEFAULT 0,
+    uploaded_by UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- =====================================================
+-- NOTIFICATION CENTRE
+-- =====================================================
+
+CREATE TABLE IF NOT EXISTS public.notifications (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+    type TEXT NOT NULL CHECK (type IN (
+        'task_assigned', 'task_status_changed', 'mentioned',
+        'sprint_deadline', 'mail_received', 'member_joined',
+        'project_invite', 'comment', 'file_shared'
+    )),
+    title TEXT NOT NULL,
+    body TEXT NOT NULL DEFAULT '',
+    link TEXT,
+    metadata JSONB,
+    is_read BOOLEAN NOT NULL DEFAULT FALSE,
+    read_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Internal Mail & Notification Indexes
+CREATE INDEX IF NOT EXISTS idx_notifications_user_read_created ON public.notifications (user_id, is_read, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_mail_recipients_user_read_folder ON public.mail_recipients (recipient_id, is_read, folder);
+CREATE INDEX IF NOT EXISTS idx_mail_messages_org_sender_sent ON public.mail_messages (organization_id, sender_id, sent_at DESC);
+CREATE INDEX IF NOT EXISTS idx_mail_recipients_mail_id ON public.mail_recipients (mail_id);
+CREATE INDEX IF NOT EXISTS idx_mail_attachments_mail_id ON public.mail_attachments (mail_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_org_id ON public.notifications (organization_id);
 
 -- =====================================================
 -- TRIGGERS FOR UPDATED_AT
@@ -568,6 +632,9 @@ DROP TRIGGER IF EXISTS update_direct_messages_updated_at ON public.direct_messag
 CREATE TRIGGER update_direct_messages_updated_at BEFORE UPDATE ON public.direct_messages
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+CREATE TRIGGER update_mail_messages_updated_at BEFORE UPDATE ON public.mail_messages
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
 -- Reply count auto-increment
 CREATE OR REPLACE FUNCTION public.increment_reply_count()
 RETURNS TRIGGER AS $$
@@ -616,7 +683,7 @@ ALTER TABLE public.project_custom_roles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.tasks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.sprints ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.sprint_events ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
+-- notifications RLS enabled in NOTIFICATION CENTRE section below
 ALTER TABLE public.organization_invite_codes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.project_templates ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.template_tasks ENABLE ROW LEVEL SECURITY;
@@ -1060,27 +1127,7 @@ CREATE POLICY "Project leads can manage sprint events"
         )
     );
 
--- =====================================================
--- RLS POLICIES: NOTIFICATIONS
--- =====================================================
-DROP POLICY IF EXISTS "Users can view own notifications" ON public.notifications;
-DROP POLICY IF EXISTS "Users can update own notifications" ON public.notifications;
-DROP POLICY IF EXISTS "System can create notifications" ON public.notifications;
-
-CREATE POLICY "Users can view own notifications"
-    ON public.notifications FOR SELECT
-    TO authenticated
-    USING (user_id = auth.uid());
-
-CREATE POLICY "Users can update own notifications"
-    ON public.notifications FOR UPDATE
-    TO authenticated
-    USING (user_id = auth.uid());
-
-CREATE POLICY "System can create notifications"
-    ON public.notifications FOR INSERT
-    TO authenticated
-    WITH CHECK (true);
+-- (Old notifications RLS policies removed — see NOTIFICATION CENTRE RLS section below)
 
 -- =====================================================
 -- RLS POLICIES: ORGANIZATION INVITE CODES
@@ -1549,6 +1596,22 @@ CREATE POLICY "Delete org-level files" ON public.files FOR DELETE
 CREATE POLICY "Delete project-level files" ON public.files FOR DELETE
     USING (project_id IS NOT NULL AND (uploaded_by = auth.uid() OR public.user_is_project_contributor(project_id)));
 
+-- Task-attached files
+CREATE POLICY "View task-attached files" ON public.files FOR SELECT
+    USING (task_id IS NOT NULL AND EXISTS (
+        SELECT 1 FROM public.tasks t
+        JOIN public.project_members pm ON pm.project_id = t.project_id AND pm.user_id = auth.uid()
+        WHERE t.id = files.task_id
+    ));
+CREATE POLICY "Upload task-attached files" ON public.files FOR INSERT
+    WITH CHECK (task_id IS NOT NULL AND EXISTS (
+        SELECT 1 FROM public.tasks t
+        JOIN public.project_members pm ON pm.project_id = t.project_id
+            AND pm.user_id = auth.uid()
+            AND pm.role IN ('owner', 'lead', 'contributor')
+        WHERE t.id = files.task_id
+    ));
+
 -- =====================================================
 -- RLS POLICIES: FILE VERSIONS
 -- =====================================================
@@ -1600,6 +1663,83 @@ CREATE POLICY "Delete file shares" ON public.file_shares FOR DELETE
 CREATE POLICY "View own stars" ON public.file_stars FOR SELECT USING (user_id = auth.uid());
 CREATE POLICY "Create own stars" ON public.file_stars FOR INSERT WITH CHECK (user_id = auth.uid());
 CREATE POLICY "Delete own stars" ON public.file_stars FOR DELETE USING (user_id = auth.uid());
+
+-- =====================================================
+-- RLS POLICIES: MAIL MESSAGES
+-- =====================================================
+ALTER TABLE public.mail_messages ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Sender can view own messages" ON public.mail_messages FOR SELECT
+    USING (sender_id = auth.uid());
+CREATE POLICY "Recipients can view received messages" ON public.mail_messages FOR SELECT
+    USING (is_draft = FALSE AND EXISTS (
+        SELECT 1 FROM public.mail_recipients WHERE mail_recipients.mail_id = mail_messages.id
+        AND mail_recipients.recipient_id = auth.uid()
+    ));
+CREATE POLICY "Org members can view announcements" ON public.mail_messages FOR SELECT
+    USING (type = 'announcement' AND is_draft = FALSE AND EXISTS (
+        SELECT 1 FROM public.organization_members WHERE org_id = mail_messages.organization_id AND user_id = auth.uid()
+    ));
+CREATE POLICY "Org members can create messages" ON public.mail_messages FOR INSERT
+    WITH CHECK (sender_id = auth.uid() AND EXISTS (
+        SELECT 1 FROM public.organization_members WHERE org_id = mail_messages.organization_id AND user_id = auth.uid()
+    ));
+CREATE POLICY "Sender can update own messages" ON public.mail_messages FOR UPDATE
+    USING (sender_id = auth.uid());
+CREATE POLICY "Sender can delete own drafts" ON public.mail_messages FOR DELETE
+    USING (sender_id = auth.uid() AND is_draft = TRUE);
+
+-- =====================================================
+-- RLS POLICIES: MAIL RECIPIENTS
+-- =====================================================
+ALTER TABLE public.mail_recipients ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users see own recipient rows" ON public.mail_recipients FOR SELECT
+    USING (recipient_id = auth.uid());
+CREATE POLICY "Mail sender can add recipients" ON public.mail_recipients FOR INSERT
+    WITH CHECK (EXISTS (
+        SELECT 1 FROM public.mail_messages WHERE mail_messages.id = mail_recipients.mail_id AND mail_messages.sender_id = auth.uid()
+    ));
+CREATE POLICY "Recipients can update own rows" ON public.mail_recipients FOR UPDATE
+    USING (recipient_id = auth.uid());
+CREATE POLICY "Recipients can delete own rows" ON public.mail_recipients FOR DELETE
+    USING (recipient_id = auth.uid());
+
+-- =====================================================
+-- RLS POLICIES: MAIL ATTACHMENTS
+-- =====================================================
+ALTER TABLE public.mail_attachments ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "View mail attachments" ON public.mail_attachments FOR SELECT
+    USING (EXISTS (
+        SELECT 1 FROM public.mail_messages WHERE mail_messages.id = mail_attachments.mail_id
+        AND (mail_messages.sender_id = auth.uid() OR EXISTS (
+            SELECT 1 FROM public.mail_recipients WHERE mail_recipients.mail_id = mail_messages.id AND mail_recipients.recipient_id = auth.uid()
+        ))
+    ));
+CREATE POLICY "Sender can upload attachments" ON public.mail_attachments FOR INSERT
+    WITH CHECK (uploaded_by = auth.uid() AND EXISTS (
+        SELECT 1 FROM public.mail_messages WHERE mail_messages.id = mail_attachments.mail_id AND mail_messages.sender_id = auth.uid()
+    ));
+CREATE POLICY "Sender can delete draft attachments" ON public.mail_attachments FOR DELETE
+    USING (uploaded_by = auth.uid() AND EXISTS (
+        SELECT 1 FROM public.mail_messages WHERE mail_messages.id = mail_attachments.mail_id
+        AND mail_messages.sender_id = auth.uid() AND mail_messages.is_draft = TRUE
+    ));
+
+-- =====================================================
+-- RLS POLICIES: NOTIFICATIONS
+-- =====================================================
+ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users see own notifications" ON public.notifications FOR SELECT
+    USING (user_id = auth.uid());
+CREATE POLICY "Authenticated users can create notifications" ON public.notifications FOR INSERT
+    TO authenticated WITH CHECK (TRUE);
+CREATE POLICY "Users can update own notifications" ON public.notifications FOR UPDATE
+    USING (user_id = auth.uid());
+CREATE POLICY "Users can delete own notifications" ON public.notifications FOR DELETE
+    USING (user_id = auth.uid());
 
 -- =====================================================
 -- INVITE CODE FUNCTIONS
@@ -1889,6 +2029,8 @@ ALTER PUBLICATION supabase_realtime ADD TABLE public.messages;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.message_reactions;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.direct_messages;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.channel_members;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.notifications;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.mail_recipients;
 
 -- =====================================================
 -- STORAGE BUCKETS
@@ -1938,6 +2080,26 @@ CREATE POLICY "Authenticated users can delete org-files"
     ON storage.objects FOR DELETE
     TO authenticated
     USING (bucket_id = 'org-files');
+
+-- Mail attachments (25MB limit, private)
+INSERT INTO storage.buckets (id, name, public, file_size_limit)
+VALUES ('mail-attachments', 'mail-attachments', FALSE, 26214400)
+ON CONFLICT (id) DO NOTHING;
+
+CREATE POLICY "Authenticated users can upload to mail-attachments"
+    ON storage.objects FOR INSERT
+    TO authenticated
+    WITH CHECK (bucket_id = 'mail-attachments');
+
+CREATE POLICY "Authenticated users can read mail-attachments"
+    ON storage.objects FOR SELECT
+    TO authenticated
+    USING (bucket_id = 'mail-attachments');
+
+CREATE POLICY "Authenticated users can delete mail-attachments"
+    ON storage.objects FOR DELETE
+    TO authenticated
+    USING (bucket_id = 'mail-attachments');
 
 -- =====================================================
 -- GRANT PERMISSIONS

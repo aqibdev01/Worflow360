@@ -43,6 +43,8 @@ import {
   Layers,
   Trash2,
   MessageSquare,
+  Files,
+  Paperclip,
 } from "lucide-react";
 import {
   getProjectDetails,
@@ -67,6 +69,8 @@ import { ChatContainer } from "@/components/chat/chat-container";
 import { EditProjectDialog } from "@/components/projects/EditProjectDialog";
 import { ProjectMemberManager } from "@/components/projects/ProjectMemberManager";
 import { ProjectDangerZone } from "@/components/projects/ProjectDangerZone";
+import { ProjectFilesTab } from "@/components/files/ProjectFilesTab";
+import { getTaskFileCounts } from "@/lib/files/files";
 import { toast } from "sonner";
 import { useBreadcrumbs } from "@/components/breadcrumbs";
 
@@ -252,6 +256,9 @@ export default function ProjectDashboardPage() {
   // Calendar → Kanban highlight
   const [highlightTaskId, setHighlightTaskId] = useState<string | null>(null);
 
+  // File attachment counts per task
+  const [taskFileCounts, setTaskFileCounts] = useState<Record<string, number>>({});
+
   // Edit project dialog state
   const [editProjectOpen, setEditProjectOpen] = useState(false);
 
@@ -297,6 +304,12 @@ export default function ProjectDashboardPage() {
       setTaskStats(stats);
       setTasks(projectTasks || []);
       setSprints(projectSprints || []);
+
+      // Load file counts for tasks
+      if (projectTasks && projectTasks.length > 0) {
+        const ids = projectTasks.map((t: any) => t.id);
+        getTaskFileCounts(ids).then(setTaskFileCounts).catch(() => {});
+      }
     } catch (error) {
       console.error("Error loading project data:", error);
     } finally {
@@ -312,6 +325,12 @@ export default function ProjectDashboardPage() {
       ]);
       setTaskStats(stats);
       setTasks(projectTasks || []);
+
+      // Load file counts for all tasks
+      if (projectTasks && projectTasks.length > 0) {
+        const ids = projectTasks.map((t: any) => t.id);
+        getTaskFileCounts(ids).then(setTaskFileCounts).catch(() => {});
+      }
     } catch (error) {
       console.error("Error refreshing tasks:", error);
     }
@@ -767,6 +786,14 @@ export default function ProjectDashboardPage() {
                   <MessageSquare className="h-6 w-6" />
                   <span className="text-sm font-medium">Chat</span>
                 </Button>
+                <Button
+                  variant="outline"
+                  className="h-auto py-4 flex-col gap-2 hover:bg-primary/5 hover:text-primary hover:border-primary/50 transition-colors"
+                  onClick={() => setActiveTab("files")}
+                >
+                  <Files className="h-6 w-6" />
+                  <span className="text-sm font-medium">Files</span>
+                </Button>
               </div>
             </CardContent>
           </Card>
@@ -996,6 +1023,12 @@ export default function ProjectDashboardPage() {
                                   {new Date(task.due_date).toLocaleDateString()}
                                 </Badge>
                               )}
+                              {taskFileCounts[task.id] > 0 && (
+                                <Badge variant="outline" className="text-xs gap-1">
+                                  <Paperclip className="h-3 w-3" />
+                                  {taskFileCounts[task.id]}
+                                </Badge>
+                              )}
                             </div>
                             {task.assignee && (
                               <div className="flex items-center gap-2 pt-1">
@@ -1177,6 +1210,12 @@ export default function ProjectDashboardPage() {
                                             <Badge variant="outline" className="text-xs gap-1">
                                               <Calendar className="h-3 w-3" />
                                               {new Date(task.due_date).toLocaleDateString()}
+                                            </Badge>
+                                          )}
+                                          {taskFileCounts[task.id] > 0 && (
+                                            <Badge variant="outline" className="text-xs gap-1">
+                                              <Paperclip className="h-3 w-3" />
+                                              {taskFileCounts[task.id]}
                                             </Badge>
                                           )}
                                         </div>
@@ -1417,6 +1456,7 @@ export default function ProjectDashboardPage() {
             open={taskDialogOpen}
             onOpenChange={setTaskDialogOpen}
             projectId={projectId}
+            orgId={project?.organizations?.id}
             currentUserId={currentUserId}
             task={editingTask}
             isProjectManager={isProjectManager}
@@ -1899,6 +1939,16 @@ export default function ProjectDashboardPage() {
               orgId={project?.organizations?.id || ""}
               currentUserId={currentUserId}
               canManageChannels={isProjectManager}
+            />
+          )}
+        </TabsContent>
+
+        {/* Files Tab */}
+        <TabsContent value="files" className="space-y-4">
+          {activeTab === "files" && project?.organizations?.id && (
+            <ProjectFilesTab
+              orgId={project.organizations.id}
+              projectId={projectId}
             />
           )}
         </TabsContent>
