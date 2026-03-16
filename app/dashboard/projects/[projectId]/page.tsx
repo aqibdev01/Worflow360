@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import Link from "next/link";
@@ -208,7 +208,7 @@ function DraggableTaskCard({ taskId, canDrag, children }: {
 
 // ─── Main Component ──────────────────────────────────────────────────────────
 
-export default function ProjectDashboardPage() {
+function ProjectDashboardContent() {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -1960,5 +1960,13 @@ export default function ProjectDashboardPage() {
         />
       )}
     </div>
+  );
+}
+
+export default function ProjectDashboardPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen" />}>
+      <ProjectDashboardContent />
+    </Suspense>
   );
 }

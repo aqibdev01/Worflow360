@@ -1,14 +1,14 @@
 "use client";
 
+import { Suspense } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import { ComposeMailForm } from "@/components/mail/ComposeMailForm";
 
-export default function ComposeMailPage() {
+function ComposeMailContent() {
   const params = useParams();
   const searchParams = useSearchParams();
   const orgId = params.orgId as string;
 
-  // Pre-fill from reply/forward/draft
   const replyTo = searchParams.get("replyTo") || undefined;
   const subject = searchParams.get("subject") || undefined;
   const quotedBody = searchParams.get("quotedBody") || undefined;
@@ -24,5 +24,13 @@ export default function ComposeMailPage() {
         draftId={draftId}
       />
     </div>
+  );
+}
+
+export default function ComposeMailPage() {
+  return (
+    <Suspense fallback={<div className="flex flex-col h-full" />}>
+      <ComposeMailContent />
+    </Suspense>
   );
 }
