@@ -75,7 +75,7 @@ export async function signUp(
     getOrCreateUserProfile(authData.user.id, email)
       .then(() => {
         if (fullName) {
-          supabase
+          (supabase as any)
             .from("users")
             .update({ full_name: fullName })
             .eq("id", authData.user.id)
