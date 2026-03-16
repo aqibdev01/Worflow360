@@ -9,6 +9,8 @@ import {
   BarChart3,
   CalendarDays,
   MessageSquare,
+  Files,
+  Mail,
   Menu,
   X,
   LogOut,
@@ -33,6 +35,7 @@ import { toast } from "sonner";
 import { AlertBanner, AlertItem } from "@/components/dismissible-alert";
 import { Logo } from "@/components/Logo";
 import { BreadcrumbProvider, BreadcrumbNav } from "@/components/breadcrumbs";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
 
 const baseNavigation = [
   {
@@ -76,6 +79,22 @@ function getNavigation(pathname: string) {
       icon: MessageSquare,
       comingSoon: false,
     },
+    {
+      name: "Files",
+      href: orgId
+        ? `/dashboard/organizations/${orgId}/files`
+        : "/dashboard/organizations",
+      icon: Files,
+      comingSoon: false,
+    },
+    {
+      name: "Mail",
+      href: orgId
+        ? `/dashboard/organizations/${orgId}/mail`
+        : "/dashboard/organizations",
+      icon: Mail,
+      comingSoon: false,
+    },
   ];
 }
 
@@ -89,6 +108,10 @@ export default function DashboardLayout({
   const { user, userProfile } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  // Extract orgId from path for notification bell
+  const orgMatch = pathname.match(/\/dashboard\/organizations\/([^/]+)/);
+  const currentOrgId = orgMatch ? orgMatch[1] : null;
 
   // System alerts - these can be dynamically updated from backend or state
   const [alerts] = useState<AlertItem[]>([
@@ -227,8 +250,11 @@ export default function DashboardLayout({
             <BreadcrumbNav />
           </div>
 
-          {/* Right side - User profile */}
-          <div className="ml-auto flex items-center gap-4">
+          {/* Right side - Notifications + User profile */}
+          <div className="ml-auto flex items-center gap-2">
+            {/* Notification bell */}
+            <NotificationBell orgId={currentOrgId} />
+
             {/* User menu */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

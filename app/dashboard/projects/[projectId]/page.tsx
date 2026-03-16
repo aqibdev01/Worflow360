@@ -42,7 +42,8 @@ import {
   Archive,
   Layers,
   Trash2,
-  MessageSquare,
+  Files,
+  Paperclip,
 } from "lucide-react";
 import {
   getProjectDetails,
@@ -63,7 +64,12 @@ import { SprintEventDialog } from "@/components/sprint-event-dialog";
 import { SprintTimeline } from "@/components/sprint-timeline";
 import { ProjectAnalytics } from "@/components/project-analytics";
 import { ProjectCalendar } from "@/components/project-calendar";
-import { ChatContainer } from "@/components/chat/chat-container";
+import { EditProjectDialog } from "@/components/projects/EditProjectDialog";
+import { ProjectMemberManager } from "@/components/projects/ProjectMemberManager";
+import { ProjectDangerZone } from "@/components/projects/ProjectDangerZone";
+import { ProjectFilesTab } from "@/components/files/ProjectFilesTab";
+import { getTaskFileCounts } from "@/lib/files/files";
+import { notifyStatusChanged } from "@/lib/notifications/triggers";
 import { toast } from "sonner";
 import { useBreadcrumbs } from "@/components/breadcrumbs";
 
@@ -207,7 +213,7 @@ export default function ProjectDashboardPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const projectId = params.projectId as string;
-  const { user, loading: authLoading } = useAuth();
+  const { user, userProfile, loading: authLoading } = useAuth();
 
   const [project, setProject] = useState<any>(null);
   const [taskStats, setTaskStats] = useState<any>(null);
@@ -249,8 +255,15 @@ export default function ProjectDashboardPage() {
   // Calendar → Kanban highlight
   const [highlightTaskId, setHighlightTaskId] = useState<string | null>(null);
 
+  // File attachment counts per task
+  const [taskFileCounts, setTaskFileCounts] = useState<Record<string, number>>({});
+
+  // Edit project dialog state
+  const [editProjectOpen, setEditProjectOpen] = useState(false);
+
   // Check if user is project manager (owner, lead, or has Project Manager custom role)
   const isProjectManager = userRole?.role === "owner" || userRole?.role === "lead" || userRole?.custom_role === "Project Manager";
+  const isProjectOwner = userRole?.role === "owner";
 
   useBreadcrumbs([
     { label: "Organizations", href: "/dashboard/organizations" },
@@ -290,6 +303,12 @@ export default function ProjectDashboardPage() {
       setTaskStats(stats);
       setTasks(projectTasks || []);
       setSprints(projectSprints || []);
+
+      // Load file counts for tasks
+      if (projectTasks && projectTasks.length > 0) {
+        const ids = projectTasks.map((t: any) => t.id);
+        getTaskFileCounts(ids).then(setTaskFileCounts).catch(() => {});
+      }
     } catch (error) {
       console.error("Error loading project data:", error);
     } finally {
@@ -305,6 +324,12 @@ export default function ProjectDashboardPage() {
       ]);
       setTaskStats(stats);
       setTasks(projectTasks || []);
+
+      // Load file counts for all tasks
+      if (projectTasks && projectTasks.length > 0) {
+        const ids = projectTasks.map((t: any) => t.id);
+        getTaskFileCounts(ids).then(setTaskFileCounts).catch(() => {});
+      }
     } catch (error) {
       console.error("Error refreshing tasks:", error);
     }
@@ -322,6 +347,24 @@ export default function ProjectDashboardPage() {
 
     try {
       await updateTaskStatus(taskId, newStatus as any);
+
+      // Send status change notification
+      if (project?.organizations?.id) {
+        const changedByName = userProfile?.full_name || user?.email?.split("@")[0] || "Someone";
+        notifyStatusChanged(
+          {
+            id: taskId,
+            title: task.title,
+            project_id: projectId,
+            assignee_id: task.assignee_id || task.assignee?.id || null,
+            created_by: task.created_by,
+          },
+          newStatus,
+          { id: currentUserId, name: changedByName },
+          project.organizations.id
+        ).catch(() => {});
+      }
+
       toast.success("Task status updated");
       refreshTasks();
     } catch (error) {
@@ -531,7 +574,20 @@ export default function ProjectDashboardPage() {
                 <p className="text-sm text-muted-foreground">
                   {project.organizations.name}
                 </p>
-                <h1 className="text-3xl font-bold tracking-tight">{project.name}</h1>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-3xl font-bold tracking-tight">{project.name}</h1>
+                  {isProjectManager && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0 text-muted-foreground hover:text-brand-blue"
+                      onClick={() => setEditProjectOpen(true)}
+                      title="Edit project"
+                    >
+                      <Settings className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
             <p className="text-muted-foreground max-w-3xl">
@@ -742,10 +798,10 @@ export default function ProjectDashboardPage() {
                 <Button
                   variant="outline"
                   className="h-auto py-4 flex-col gap-2 hover:bg-primary/5 hover:text-primary hover:border-primary/50 transition-colors"
-                  onClick={() => setActiveTab("chat")}
+                  onClick={() => setActiveTab("files")}
                 >
-                  <MessageSquare className="h-6 w-6" />
-                  <span className="text-sm font-medium">Chat</span>
+                  <Files className="h-6 w-6" />
+                  <span className="text-sm font-medium">Files</span>
                 </Button>
               </div>
             </CardContent>
@@ -976,6 +1032,12 @@ export default function ProjectDashboardPage() {
                                   {new Date(task.due_date).toLocaleDateString()}
                                 </Badge>
                               )}
+                              {taskFileCounts[task.id] > 0 && (
+                                <Badge variant="outline" className="text-xs gap-1">
+                                  <Paperclip className="h-3 w-3" />
+                                  {taskFileCounts[task.id]}
+                                </Badge>
+                              )}
                             </div>
                             {task.assignee && (
                               <div className="flex items-center gap-2 pt-1">
@@ -1157,6 +1219,12 @@ export default function ProjectDashboardPage() {
                                             <Badge variant="outline" className="text-xs gap-1">
                                               <Calendar className="h-3 w-3" />
                                               {new Date(task.due_date).toLocaleDateString()}
+                                            </Badge>
+                                          )}
+                                          {taskFileCounts[task.id] > 0 && (
+                                            <Badge variant="outline" className="text-xs gap-1">
+                                              <Paperclip className="h-3 w-3" />
+                                              {taskFileCounts[task.id]}
                                             </Badge>
                                           )}
                                         </div>
@@ -1397,6 +1465,7 @@ export default function ProjectDashboardPage() {
             open={taskDialogOpen}
             onOpenChange={setTaskDialogOpen}
             projectId={projectId}
+            orgId={project?.organizations?.id}
             currentUserId={currentUserId}
             task={editingTask}
             isProjectManager={isProjectManager}
@@ -1730,26 +1799,101 @@ export default function ProjectDashboardPage() {
         </TabsContent>
 
         {/* Settings Tab */}
-        <TabsContent value="settings">
-          <Card>
-            <CardHeader>
-              <CardTitle>Project Settings</CardTitle>
-              <CardDescription>
-                Manage project configuration and preferences
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center justify-center py-12">
-                <div className="text-center space-y-3">
-                  <Settings className="h-12 w-12 text-muted-foreground mx-auto" />
-                  <h3 className="text-lg font-semibold">Settings Coming Soon</h3>
-                  <p className="text-sm text-muted-foreground max-w-md">
-                    Configure project settings, permissions, and preferences.
-                  </p>
+        <TabsContent value="settings" className="space-y-6">
+          {isProjectManager ? (
+            <>
+              {/* General Settings */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle>General</CardTitle>
+                      <CardDescription>
+                        Project name, description, status, and dates
+                      </CardDescription>
+                    </div>
+                    <Button
+                      size="sm"
+                      className="bg-brand-blue hover:bg-brand-blue/90 gap-1.5"
+                      onClick={() => setEditProjectOpen(true)}
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                      Edit Details
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-1">
+                      <p className="text-xs font-medium text-muted-foreground">Name</p>
+                      <p className="text-sm font-medium text-navy-900">{project.name}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-xs font-medium text-muted-foreground">Status</p>
+                      <Badge
+                        variant="outline"
+                        className={`${statusConfig[project.status as keyof typeof statusConfig]?.color} border text-xs`}
+                      >
+                        {statusConfig[project.status as keyof typeof statusConfig]?.label || project.status}
+                      </Badge>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-xs font-medium text-muted-foreground">Start Date</p>
+                      <p className="text-sm">{project.start_date ? new Date(project.start_date).toLocaleDateString() : "Not set"}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-xs font-medium text-muted-foreground">End Date</p>
+                      <p className="text-sm">{project.end_date ? new Date(project.end_date).toLocaleDateString() : "Not set"}</p>
+                    </div>
+                    <div className="space-y-1 md:col-span-2">
+                      <p className="text-xs font-medium text-muted-foreground">Description</p>
+                      <p className="text-sm text-muted-foreground">{project.description || "No description"}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Members */}
+              <Card>
+                <CardContent className="p-6">
+                  <ProjectMemberManager
+                    projectId={projectId}
+                    orgId={project.organizations?.id || ""}
+                    members={project.project_members || []}
+                    currentUserId={currentUserId}
+                    isOwner={isProjectOwner}
+                    isManager={isProjectManager}
+                    onMembersChanged={() => loadProjectData(currentUserId)}
+                  />
+                </CardContent>
+              </Card>
+
+              {/* Danger Zone */}
+              <Card>
+                <CardContent className="p-6">
+                  <ProjectDangerZone
+                    project={project}
+                    isOwner={isProjectOwner}
+                    onUpdated={() => loadProjectData(currentUserId)}
+                  />
+                </CardContent>
+              </Card>
+            </>
+          ) : (
+            <Card>
+              <CardContent className="py-12">
+                <div className="flex items-center justify-center">
+                  <div className="text-center space-y-3">
+                    <Settings className="h-12 w-12 text-muted-foreground mx-auto" />
+                    <h3 className="text-lg font-semibold">Access Restricted</h3>
+                    <p className="text-sm text-muted-foreground max-w-md">
+                      Only project owners and leads can access project settings.
+                    </p>
+                  </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
         {/* Analytics Tab */}
@@ -1795,19 +1939,26 @@ export default function ProjectDashboardPage() {
           )}
         </TabsContent>
 
-        {/* Chat Tab */}
-        <TabsContent value="chat" className="space-y-4">
-          {activeTab === "chat" && (
-            <ChatContainer
-              scope="project"
-              scopeId={projectId}
-              orgId={project?.organizations?.id || ""}
-              currentUserId={currentUserId}
-              canManageChannels={isProjectManager}
+        {/* Files Tab */}
+        <TabsContent value="files" className="space-y-4">
+          {activeTab === "files" && project?.organizations?.id && (
+            <ProjectFilesTab
+              orgId={project.organizations.id}
+              projectId={projectId}
             />
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Edit Project Dialog */}
+      {isProjectManager && (
+        <EditProjectDialog
+          open={editProjectOpen}
+          onOpenChange={setEditProjectOpen}
+          project={project}
+          onUpdated={() => loadProjectData(currentUserId)}
+        />
+      )}
     </div>
   );
 }

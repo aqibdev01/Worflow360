@@ -19,7 +19,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
-import { joinOrganizationByInviteCode } from "@/lib/database";
+import { joinOrganizationByInviteCode, getOrganizationMembers } from "@/lib/database";
+import { notifyMemberJoined } from "@/lib/notifications/triggers";
 
 // Validation schema
 const joinCodeSchema = z.object({
@@ -30,7 +31,7 @@ type JoinCodeFormData = z.infer<typeof joinCodeSchema>;
 
 export default function JoinOrganizationPage() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, userProfile } = useAuth();
   const [isJoining, setIsJoining] = useState(false);
 
   const {
@@ -70,6 +71,17 @@ export default function JoinOrganizationPage() {
       toast.success("Successfully joined!", {
         description: `You've been added to ${result.org_name}.`,
       });
+
+      // Notify existing org members
+      if (result.org_id) {
+        getOrganizationMembers(result.org_id).then((members) => {
+          const otherMemberIds = (members || [])
+            .map((m: any) => m.users?.id)
+            .filter((id: string) => id && id !== user.id);
+          const memberName = userProfile?.full_name || user.email?.split("@")[0] || "A new member";
+          notifyMemberJoined(result.org_id!, { id: user.id, name: memberName }, otherMemberIds).catch(() => {});
+        }).catch(() => {});
+      }
 
       reset();
 

@@ -21,6 +21,10 @@ import {
   Bug,
   TrendingUp,
   Briefcase,
+  LayoutTemplate,
+  Megaphone,
+  Folder,
+  FileText,
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -36,6 +40,11 @@ import {
   getOrganizationMembers,
   getOrganization,
 } from "@/lib/database";
+import {
+  getAvailableTemplates,
+  applyTemplate,
+  type ProjectTemplate,
+} from "@/lib/projects/templates";
 
 // Validation schema
 const projectSchema = z.object({
@@ -84,6 +93,8 @@ export default function NewProjectPage() {
   const [organizationName, setOrganizationName] = useState("");
   const [customRoles, setCustomRoles] = useState<Array<{ name: string; description: string }>>([]);
   const [newCustomRoleName, setNewCustomRoleName] = useState("");
+  const [templates, setTemplates] = useState<ProjectTemplate[]>([]);
+  const [selectedTemplate, setSelectedTemplate] = useState<ProjectTemplate | null>(null);
 
   const {
     register,
@@ -124,6 +135,15 @@ export default function NewProjectPage() {
         // Get organization members
         const members = await getOrganizationMembers(orgId);
         setOrganizationMembers(members);
+
+        // Load available templates
+        try {
+          const tmpl = await getAvailableTemplates(orgId);
+          setTemplates(tmpl);
+        } catch {
+          // Templates are optional, don't block page load
+          console.warn("Could not load templates");
+        }
       } catch (error) {
         console.error("Error loading organization data:", error);
         toast.error("Failed to load organization data");
@@ -139,13 +159,15 @@ export default function NewProjectPage() {
     let isValid = false;
 
     if (currentStep === 1) {
-      isValid = await trigger(["name", "description", "start_date", "end_date", "status"]);
+      isValid = true; // Template selection is optional
     } else if (currentStep === 2) {
+      isValid = await trigger(["name", "description", "start_date", "end_date", "status"]);
+    } else if (currentStep === 3) {
       isValid = true; // Members are optional
     }
 
     if (isValid) {
-      setCurrentStep((prev) => Math.min(prev + 1, 3));
+      setCurrentStep((prev) => Math.min(prev + 1, 4));
     }
   };
 
@@ -154,7 +176,7 @@ export default function NewProjectPage() {
   };
 
   const onSubmit = async (data: ProjectFormData) => {
-    if (currentStep < 3) {
+    if (currentStep < 4) {
       handleNext();
       return;
     }
@@ -192,6 +214,11 @@ export default function NewProjectPage() {
             createCustomRole(newProject.id, role.name, role.description)
           )
         );
+      }
+
+      // Apply template if selected
+      if (selectedTemplate) {
+        await applyTemplate(newProject.id, selectedTemplate.id, user.id);
       }
 
       // Add creator as project owner
@@ -289,9 +316,10 @@ export default function NewProjectPage() {
   }
 
   const STEPS = [
-    { number: 1, title: "Project Details", description: "Basic information" },
-    { number: 2, title: "Team & Roles", description: "Add members with roles" },
-    { number: 3, title: "Review", description: "Confirm and create" },
+    { number: 1, title: "Template", description: "Choose a template" },
+    { number: 2, title: "Project Details", description: "Basic information" },
+    { number: 3, title: "Team & Roles", description: "Add members with roles" },
+    { number: 4, title: "Review", description: "Confirm and create" },
   ];
 
   return (
@@ -350,8 +378,138 @@ export default function NewProjectPage() {
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-        {/* Step 1: Project Details */}
+        {/* Step 1: Choose Template */}
         {currentStep === 1 && (
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <LayoutTemplate className="h-5 w-5 text-primary" />
+                <CardTitle>Choose a Template (Optional)</CardTitle>
+              </div>
+              <CardDescription>
+                Start with a pre-built set of tasks, or create a blank project from scratch
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {/* Blank Project card — always first */}
+                <div
+                  onClick={() => setSelectedTemplate(null)}
+                  className={`relative cursor-pointer rounded-xl border-2 p-5 transition-all hover:shadow-md ${
+                    selectedTemplate === null
+                      ? "border-primary bg-primary/5 shadow-sm"
+                      : "border-muted hover:border-muted-foreground/30"
+                  }`}
+                >
+                  {selectedTemplate === null && (
+                    <div className="absolute top-3 right-3">
+                      <CheckCircle2 className="h-5 w-5 text-primary" />
+                    </div>
+                  )}
+                  <div
+                    className="h-10 w-10 rounded-lg flex items-center justify-center mb-3"
+                    style={{ backgroundColor: "#6B728020" }}
+                  >
+                    <FileText className="h-5 w-5" style={{ color: "#6B7280" }} />
+                  </div>
+                  <h3 className="font-semibold text-sm mb-1">Blank Project</h3>
+                  <p className="text-xs text-muted-foreground">
+                    Start from scratch with no pre-defined tasks.
+                  </p>
+                </div>
+
+                {/* Template cards */}
+                {templates.map((tmpl) => {
+                  const isSelected = selectedTemplate?.id === tmpl.id;
+                  const taskCount = tmpl.template_tasks?.length || 0;
+                  const TemplateIcon =
+                    tmpl.icon === "code"
+                      ? Code
+                      : tmpl.icon === "megaphone"
+                      ? Megaphone
+                      : Folder;
+
+                  return (
+                    <div
+                      key={tmpl.id}
+                      onClick={() => setSelectedTemplate(tmpl)}
+                      className={`relative cursor-pointer rounded-xl border-2 p-5 transition-all hover:shadow-md ${
+                        isSelected
+                          ? "border-primary bg-primary/5 shadow-sm"
+                          : "border-muted hover:border-muted-foreground/30"
+                      }`}
+                    >
+                      {isSelected && (
+                        <div className="absolute top-3 right-3">
+                          <CheckCircle2 className="h-5 w-5 text-primary" />
+                        </div>
+                      )}
+                      <div
+                        className="h-10 w-10 rounded-lg flex items-center justify-center mb-3"
+                        style={{ backgroundColor: tmpl.color + "20" }}
+                      >
+                        <TemplateIcon
+                          className="h-5 w-5"
+                          style={{ color: tmpl.color }}
+                        />
+                      </div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <h3 className="font-semibold text-sm">{tmpl.name}</h3>
+                        <Badge
+                          variant="secondary"
+                          className="text-[10px] px-1.5 py-0 capitalize"
+                        >
+                          {tmpl.category}
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground mb-3 line-clamp-2">
+                        {tmpl.description}
+                      </p>
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <FolderKanban className="h-3 w-3" />
+                        {taskCount} pre-built task{taskCount !== 1 ? "s" : ""}
+                      </div>
+                      {isSelected && taskCount > 0 && (
+                        <div className="mt-3 pt-3 border-t space-y-1.5">
+                          <p className="text-xs font-medium text-muted-foreground">
+                            Tasks included:
+                          </p>
+                          {tmpl.template_tasks
+                            ?.slice(0, 4)
+                            .map((task, i) => (
+                              <div
+                                key={i}
+                                className="flex items-center gap-2 text-xs"
+                              >
+                                <div className="h-1.5 w-1.5 rounded-full bg-primary flex-shrink-0" />
+                                <span className="truncate">{task.title}</span>
+                              </div>
+                            ))}
+                          {taskCount > 4 && (
+                            <p className="text-xs text-muted-foreground pl-3.5">
+                              +{taskCount - 4} more...
+                            </p>
+                          )}
+                        </div>
+                      )}
+                      {tmpl.is_system && (
+                        <Badge
+                          variant="outline"
+                          className="absolute bottom-3 right-3 text-[10px] px-1.5 py-0"
+                        >
+                          System
+                        </Badge>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Step 2: Project Details */}
+        {currentStep === 2 && (
           <Card>
             <CardHeader>
               <div className="flex items-center gap-2">
@@ -435,8 +593,8 @@ export default function NewProjectPage() {
           </Card>
         )}
 
-        {/* Step 2: Team Members with Roles (Combined with Custom Roles) */}
-        {currentStep === 2 && (
+        {/* Step 3: Team Members with Roles (Combined with Custom Roles) */}
+        {currentStep === 3 && (
           <div className="space-y-6">
             <Card>
               <CardHeader>
@@ -664,8 +822,8 @@ export default function NewProjectPage() {
           </div>
         )}
 
-        {/* Step 3: Review */}
-        {currentStep === 3 && (
+        {/* Step 4: Review */}
+        {currentStep === 4 && (
           <Card>
             <CardHeader>
               <CardTitle>Review & Create</CardTitle>
@@ -674,6 +832,19 @@ export default function NewProjectPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
+              {selectedTemplate && (
+                <div>
+                  <h3 className="text-sm font-medium text-muted-foreground mb-1">Template</h3>
+                  <div className="flex items-center gap-2">
+                    <LayoutTemplate className="h-4 w-4" style={{ color: selectedTemplate.color }} />
+                    <p className="text-sm font-medium">{selectedTemplate.name}</p>
+                    <Badge variant="secondary" className="text-xs capitalize">
+                      {selectedTemplate.template_tasks?.length || 0} tasks
+                    </Badge>
+                  </div>
+                </div>
+              )}
+
               <div>
                 <h3 className="text-sm font-medium text-muted-foreground mb-1">Project Name</h3>
                 <p className="text-lg font-semibold">{formData.name}</p>
@@ -793,7 +964,7 @@ export default function NewProjectPage() {
             {currentStep === 1 ? "Cancel" : "Back"}
           </Button>
 
-          {currentStep < 3 ? (
+          {currentStep < 4 ? (
             <Button type="button" onClick={handleNext} disabled={isCreating}>
               Next
               <CheckCircle2 className="ml-2 h-4 w-4" />
