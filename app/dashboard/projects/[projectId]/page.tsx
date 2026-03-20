@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import Link from "next/link";
@@ -81,12 +81,6 @@ const statusConfig = {
   archived: { label: "Archived", color: "bg-gray-500/10 text-gray-700 dark:text-gray-400 border-gray-500/20" },
 };
 
-const roleIcons: { [key: string]: any } = {
-  Developer: Code,
-  "QA Engineer": Bug,
-  Designer: Palette,
-  "Project Manager": Briefcase,
-};
 
 // ─── Drag-and-drop: Priority Card (draggable from the tray) ──────────────────
 
@@ -208,7 +202,7 @@ function DraggableTaskCard({ taskId, canDrag, children }: {
 
 // ─── Main Component ──────────────────────────────────────────────────────────
 
-export default function ProjectDashboardPage() {
+function ProjectDashboardContent() {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -261,9 +255,27 @@ export default function ProjectDashboardPage() {
   // Edit project dialog state
   const [editProjectOpen, setEditProjectOpen] = useState(false);
 
-  // Check if user is project manager (owner, lead, or has Project Manager custom role)
-  const isProjectManager = userRole?.role === "owner" || userRole?.role === "lead" || userRole?.custom_role === "Project Manager";
+const roleIcons: { [key: string]: any } = {
+  Developer: Code,
+  developer: Code,
+  "QA Engineer": Bug,
+  qa: Bug,
+  Designer: Palette,
+  designer: Palette,
+  "Business Analyst": TrendingUp,
+  business_analyst: TrendingUp,
+  "Project Manager": Briefcase,
+  project_manager: Briefcase,
+};
+
+  // Check if user is project owner
+  const isProjectManager = userRole?.role === "owner";
   const isProjectOwner = userRole?.role === "owner";
+
+  // Members see only their own tasks; owners see all
+  const visibleTasks = isProjectManager
+    ? tasks
+    : tasks.filter((t: any) => t.assignee_id === currentUserId || t.assignee?.id === currentUserId || t.created_by === currentUserId);
 
   useBreadcrumbs([
     { label: "Organizations", href: "/dashboard/organizations" },
@@ -338,7 +350,7 @@ export default function ProjectDashboardPage() {
   // Handle task status change (drag and drop simulation)
   const handleTaskStatusChange = async (taskId: string, newStatus: string, task: any) => {
     // Check permissions: only assignee or creator can move tasks
-    const canMoveTask = task.assignee_id === currentUserId || task.created_by === currentUserId || isProjectManager;
+    const canMoveTask = isProjectManager || task.assignee_id === currentUserId || task.assignee?.id === currentUserId || task.created_by === currentUserId || (task.created_by_user?.id === currentUserId);
 
     if (!canMoveTask) {
       toast.error("Only the assignee or task creator can move this task");
@@ -941,7 +953,6 @@ export default function ProjectDashboardPage() {
               <h3 className="text-lg font-semibold">Kanban Board</h3>
               <p className="text-sm text-muted-foreground">
                 Visualize and manage tasks across different stages
-                {!isProjectManager && " (Only project managers can create/edit tasks)"}
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -954,7 +965,7 @@ export default function ProjectDashboardPage() {
                 <Archive className="h-4 w-4" />
                 Backlog
                 {(() => {
-                  const backlogCount = tasks.filter((t) => !t.sprint_id).length;
+                  const backlogCount = visibleTasks.filter((t) => !t.sprint_id).length;
                   return backlogCount > 0 ? (
                     <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px]">{backlogCount}</Badge>
                   ) : null;
@@ -973,7 +984,7 @@ export default function ProjectDashboardPage() {
 
           {/* Backlog Section */}
           {showBacklog && (() => {
-            const backlogTasks = tasks.filter((t) => !t.sprint_id);
+            const backlogTasks = visibleTasks.filter((t) => !t.sprint_id);
             return (
               <Card className="bg-amber-50/50 dark:bg-amber-950/10 border-amber-200">
                 <CardHeader className="pb-3">
@@ -1062,7 +1073,7 @@ export default function ProjectDashboardPage() {
           })()}
 
           {/* Kanban Board with Drag-and-Drop */}
-          {isProjectManager && (
+          {visibleTasks.length > 0 && (
             <DndContext
               sensors={sensors}
               onDragStart={(event: DragStartEvent) => {
@@ -1133,7 +1144,7 @@ export default function ProjectDashboardPage() {
               )}
 
               <BoardDropZone active={!!activeDragPriority}>
-                {tasks.length === 0 ? (
+                {visibleTasks.length === 0 ? (
                   <Card className={`transition-all ${activeDragPriority ? "ring-2 ring-brand-blue/30 ring-dashed" : ""}`}>
                     <CardContent className="flex flex-col items-center justify-center py-12">
                       <LayoutGrid className="h-12 w-12 text-muted-foreground mb-4" />
@@ -1148,7 +1159,7 @@ export default function ProjectDashboardPage() {
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     {["todo", "in_progress", "review", "done"].map((status) => {
-                      const statusTasks = tasks.filter((t) => t.status === status);
+                      const statusTasks = visibleTasks.filter((t) => t.status === status);
                       const statusLabels: { [key: string]: { title: string; color: string; bgColor: string } } = {
                         todo: { title: "To Do", color: "bg-orange-500", bgColor: "bg-orange-50 dark:bg-orange-950/20" },
                         in_progress: { title: "Work in Progress", color: "bg-blue-500", bgColor: "bg-blue-50 dark:bg-blue-950/20" },
@@ -1175,7 +1186,7 @@ export default function ProjectDashboardPage() {
                             </CardHeader>
                             <CardContent className="flex-1 space-y-3 overflow-y-auto">
                               {statusTasks.map((task) => {
-                                const canMoveTask = task.assignee_id === currentUserId || task.created_by === currentUserId || isProjectManager;
+                                const canMoveTask = isProjectManager || task.assignee_id === currentUserId || task.assignee?.id === currentUserId || task.created_by === currentUserId || (task.created_by_user?.id === currentUserId);
                                 const isHighlighted = task.id === highlightTaskId;
 
                                 return (
@@ -1342,11 +1353,11 @@ export default function ProjectDashboardPage() {
             );
           })()}
 
-          {/* Non-PM view (no drag-and-drop) */}
-          {!isProjectManager && tasks.length > 0 && (
+          {/* Fallback list view (hidden — DnD board is used instead) */}
+          {false && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               {["todo", "in_progress", "review", "done"].map((status) => {
-                const statusTasks = tasks.filter((t) => t.status === status);
+                const statusTasks = visibleTasks.filter((t) => t.status === status);
                 const statusLabels: { [key: string]: { title: string; color: string; bgColor: string } } = {
                   todo: { title: "To Do", color: "bg-orange-500", bgColor: "bg-orange-50 dark:bg-orange-950/20" },
                   in_progress: { title: "Work in Progress", color: "bg-blue-500", bgColor: "bg-blue-50 dark:bg-blue-950/20" },
@@ -1372,7 +1383,7 @@ export default function ProjectDashboardPage() {
                     </CardHeader>
                     <CardContent className="flex-1 space-y-3 overflow-y-auto">
                       {statusTasks.map((task) => {
-                        const canMoveTask = task.assignee_id === currentUserId || task.created_by === currentUserId;
+                        const canMoveTask = isProjectManager || task.assignee_id === currentUserId || task.assignee?.id === currentUserId || task.created_by === currentUserId || (task.created_by_user?.id === currentUserId);
                         const isHighlighted = task.id === highlightTaskId;
 
                         return (
@@ -1448,13 +1459,13 @@ export default function ProjectDashboardPage() {
             </div>
           )}
 
-          {!isProjectManager && tasks.length === 0 && (
+          {visibleTasks.length === 0 && (
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-12">
                 <LayoutGrid className="h-12 w-12 text-muted-foreground mb-4" />
                 <h3 className="text-lg font-semibold mb-2">No Tasks Yet</h3>
                 <p className="text-sm text-muted-foreground mb-4">
-                  No tasks have been created yet. Ask your project manager to create tasks.
+                  No tasks have been created yet. Click "Add Task" to get started.
                 </p>
               </CardContent>
             </Card>
@@ -1469,6 +1480,7 @@ export default function ProjectDashboardPage() {
             currentUserId={currentUserId}
             task={editingTask}
             isProjectManager={isProjectManager}
+            projectEndDate={project?.end_date}
             availableSprints={sprints.filter((s: any) => s.status !== "cancelled")}
             defaultSprintId={taskDialogDefaultSprintId}
             defaultPriority={taskDialogDefaultPriority}
@@ -1495,18 +1507,16 @@ export default function ProjectDashboardPage() {
                 Back to Sprints
               </Button>
 
-              {isProjectManager && (
-                <div className="flex justify-end">
-                  <Button
-                    className="gap-2"
-                    size="sm"
-                    onClick={() => openCreateTaskDialog(selectedSprint.id)}
-                  >
-                    <Plus className="h-4 w-4" />
-                    Add Task to Sprint
-                  </Button>
-                </div>
-              )}
+              <div className="flex justify-end">
+                <Button
+                  className="gap-2"
+                  size="sm"
+                  onClick={() => openCreateTaskDialog(selectedSprint.id)}
+                >
+                  <Plus className="h-4 w-4" />
+                  Add Task to Sprint
+                </Button>
+              </div>
 
               <SprintTimeline
                 sprint={selectedSprint}
@@ -1528,6 +1538,7 @@ export default function ProjectDashboardPage() {
                 currentUserId={currentUserId}
                 task={editingTask}
                 isProjectManager={isProjectManager}
+                projectEndDate={project?.end_date}
                 availableSprints={sprints.filter((s: any) => s.status !== "cancelled")}
                 defaultSprintId={taskDialogDefaultSprintId}
                 onTaskCreated={refreshTasks}
@@ -1770,7 +1781,7 @@ export default function ProjectDashboardPage() {
                           </p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2">
                         {member.custom_role && (
                           <Badge variant="secondary" className="gap-1">
                             {roleIcons[member.custom_role] && (
@@ -1782,8 +1793,8 @@ export default function ProjectDashboardPage() {
                             {member.custom_role}
                           </Badge>
                         )}
-                        <Badge variant="outline">
-                          {member.role.charAt(0).toUpperCase() + member.role.slice(1)}
+                        <Badge variant="outline" className="capitalize">
+                          {member.role}
                         </Badge>
                       </div>
                     </div>
@@ -1960,5 +1971,13 @@ export default function ProjectDashboardPage() {
         />
       )}
     </div>
+  );
+}
+
+export default function ProjectDashboardPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen" />}>
+      <ProjectDashboardContent />
+    </Suspense>
   );
 }

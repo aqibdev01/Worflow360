@@ -124,9 +124,8 @@ export function ProjectDangerZone({
           </Button>
         </div>
 
-        {/* Delete (owner only) */}
-        {isOwner && (
-          <div className="flex items-center justify-between p-4">
+        {/* Delete */}
+        <div className="flex items-center justify-between p-4">
             <div>
               <p className="text-sm font-medium text-navy-900">Delete Project</p>
               <p className="text-xs text-muted-foreground mt-0.5">
@@ -143,7 +142,6 @@ export function ProjectDangerZone({
               Delete
             </Button>
           </div>
-        )}
       </div>
 
       {/* Delete confirmation dialog */}

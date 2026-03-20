@@ -6,10 +6,10 @@ import React, {
   useEffect,
   useState,
   useCallback,
+  useRef,
 } from "react";
 import { User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
-import { getOrCreateUserProfile } from "@/lib/database";
 import type { User as UserProfile } from "@/types";
 
 interface AuthContextType {
@@ -26,9 +26,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const profileCache = useRef<Record<string, UserProfile>>({});
 
-  // Fetch user profile from database
+  // Fetch user profile — cached to avoid redundant DB calls
   const fetchUserProfile = useCallback(async (userId: string) => {
+    // Return cached profile if we have it
+    if (profileCache.current[userId]) {
+      setUserProfile(profileCache.current[userId]);
+      return;
+    }
+
     try {
       const { data, error } = await supabase
         .from("users")
@@ -37,117 +44,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .single();
 
       if (error) throw error;
-      setUserProfile(data);
+      if (data) {
+        profileCache.current[userId] = data;
+        setUserProfile(data);
+      }
     } catch (error) {
       console.error("Error fetching user profile:", error);
       setUserProfile(null);
     }
   }, []);
 
-  // Initialize auth state
-  useEffect(() => {
-    let mounted = true;
-
-    async function initializeAuth() {
-      try {
-        // Get current session
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-
-        if (mounted) {
-          if (session?.user) {
-            setUser(session.user);
-            // Try to fetch profile directly (single DB call for existing users)
-            try {
-              const { data: profile } = await supabase
-                .from("users")
-                .select("*")
-                .eq("id", session.user.id)
-                .single();
-
-              if (profile) {
-                setUserProfile(profile);
-              } else {
-                // Profile missing — create it in background, don't block loading
-                getOrCreateUserProfile(session.user.id, session.user.email || "")
-                  .then(() => {
-                    if (mounted) fetchUserProfile(session.user.id);
-                  })
-                  .catch(() => {});
-              }
-            } catch (profileError) {
-              console.error("Error fetching profile during init:", profileError);
-            }
-          } else {
-            setUser(null);
-            setUserProfile(null);
-          }
-          setLoading(false);
-        }
-      } catch (error) {
-        console.error("Error initializing auth:", error);
-        if (mounted) {
-          setLoading(false);
-        }
-      }
-    }
-
-    initializeAuth();
-
-    return () => {
-      mounted = false;
-    };
-  }, [fetchUserProfile]);
-
-  // Listen to auth state changes
+  // Single initialization via onAuthStateChange only — no duplicate getSession()
   useEffect(() => {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log("Auth state changed:", event);
-
-      try {
-        if (session?.user) {
-          setUser(session.user);
-          // Fetch profile (non-blocking create if missing)
-          try {
-            const { data: profile } = await supabase
-              .from("users")
-              .select("*")
-              .eq("id", session.user.id)
-              .single();
-            if (profile) {
-              setUserProfile(profile);
-            } else {
-              getOrCreateUserProfile(session.user.id, session.user.email || "")
-                .then(() => fetchUserProfile(session.user.id))
-                .catch(() => {});
-            }
-          } catch (error) {
-            console.error("Error handling auth state change:", error);
-          }
-        } else {
-          setUser(null);
-          setUserProfile(null);
-        }
-
-        // Handle specific events
-        if (event === "SIGNED_IN") {
-          console.log("User signed in");
-        } else if (event === "SIGNED_OUT") {
-          console.log("User signed out");
-        } else if (event === "TOKEN_REFRESHED") {
-          console.log("Token refreshed");
-        } else if (event === "USER_UPDATED") {
-          console.log("User updated");
-          if (session?.user) {
-            await fetchUserProfile(session.user.id);
-          }
-        }
-      } finally {
-        setLoading(false);
+      if (session?.user) {
+        setUser(session.user);
+        // Fetch profile (non-blocking)
+        await fetchUserProfile(session.user.id);
+      } else {
+        setUser(null);
+        setUserProfile(null);
       }
+      setLoading(false);
     });
 
     return () => {
@@ -155,52 +75,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, [fetchUserProfile]);
 
-  // Auto-refresh session before expiry
-  useEffect(() => {
-    let refreshInterval: NodeJS.Timeout;
-
-    const setupAutoRefresh = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      if (session) {
-        // Refresh token 5 minutes before expiry
-        const expiresAt = session.expires_at;
-        if (expiresAt) {
-          const expiresIn = expiresAt * 1000 - Date.now();
-          const refreshTime = Math.max(expiresIn - 5 * 60 * 1000, 0);
-
-          refreshInterval = setTimeout(async () => {
-            console.log("Auto-refreshing session...");
-            const { error } = await supabase.auth.refreshSession();
-            if (error) {
-              console.error("Error refreshing session:", error);
-            }
-            // Setup next refresh
-            setupAutoRefresh();
-          }, refreshTime);
-        }
-      }
-    };
-
-    setupAutoRefresh();
-
-    return () => {
-      if (refreshInterval) {
-        clearTimeout(refreshInterval);
-      }
-    };
-  }, [user]);
-
-  // Sign out function
+  // Sign out
   const handleSignOut = useCallback(async () => {
     try {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
-
       setUser(null);
       setUserProfile(null);
+      profileCache.current = {};
     } catch (error) {
       console.error("Error signing out:", error);
       throw error;
@@ -211,12 +93,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const refreshUser = useCallback(async () => {
     try {
       const {
-        data: { user },
+        data: { user: freshUser },
       } = await supabase.auth.getUser();
 
-      if (user) {
-        setUser(user);
-        await fetchUserProfile(user.id);
+      if (freshUser) {
+        setUser(freshUser);
+        // Force re-fetch profile (bust cache)
+        delete profileCache.current[freshUser.id];
+        await fetchUserProfile(freshUser.id);
       }
     } catch (error) {
       console.error("Error refreshing user:", error);

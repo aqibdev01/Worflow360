@@ -77,6 +77,8 @@ interface Sprint {
   id: string;
   name: string;
   status: string;
+  start_date?: string;
+  end_date?: string;
 }
 
 interface TaskDialogProps {
@@ -96,6 +98,7 @@ interface TaskDialogProps {
     created_by: string;
   } | null;
   isProjectManager: boolean;
+  projectEndDate?: string | null;
   availableSprints?: Sprint[];
   defaultSprintId?: string;
   defaultPriority?: "low" | "medium" | "high";
@@ -114,6 +117,7 @@ export function TaskDialog({
   currentUserId,
   task,
   isProjectManager,
+  projectEndDate,
   availableSprints = [],
   defaultSprintId,
   defaultPriority,
@@ -184,6 +188,9 @@ export function TaskDialog({
       }
     }
   }, [open, task, form]);
+
+  const selectedSprintId = form.watch("sprint_id");
+  const selectedSprint = availableSprints.find((s) => s.id === selectedSprintId);
 
   async function onSubmit(values: TaskFormValues) {
     setLoading(true);
@@ -279,7 +286,7 @@ export function TaskDialog({
     }
   }
 
-  // Only project managers can create/edit/delete tasks
+  // Only project managers can create and edit tasks
   const canEdit = isProjectManager;
   const canDelete = isProjectManager && isEditing;
 
@@ -297,9 +304,9 @@ export function TaskDialog({
           </DialogDescription>
         </DialogHeader>
 
-        {!canEdit && !isEditing ? (
+        {!canEdit ? (
           <div className="py-6 text-center text-muted-foreground">
-            Only project managers can create tasks.
+            Only project managers can {isEditing ? "edit" : "create"} tasks.
           </div>
         ) : (
           <Form {...form}>
@@ -415,10 +422,11 @@ export function TaskDialog({
                 render={({ field }) => (
                   <FormItem className="flex flex-col">
                     <FormLabel>Due Date (Optional)</FormLabel>
-                    <Popover>
+                    <Popover modal={true}>
                       <PopoverTrigger asChild>
                         <FormControl>
                           <Button
+                            type="button"
                             variant="outline"
                             className={cn(
                               "w-full pl-3 text-left font-normal",
@@ -435,14 +443,32 @@ export function TaskDialog({
                           </Button>
                         </FormControl>
                       </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
+                      <PopoverContent className="w-auto p-0 z-[200]" align="start">
                         <Calendar
                           mode="single"
                           selected={field.value}
                           onSelect={field.onChange}
-                          disabled={(date) =>
-                            date < new Date(new Date().setHours(0, 0, 0, 0))
-                          }
+                          disabled={(date) => {
+                            const today = new Date();
+                            today.setHours(0, 0, 0, 0);
+                            // Can't select dates before today
+                            if (date < today) return true;
+                            // Can't select dates after project end date
+                            if (projectEndDate) {
+                              const endDate = new Date(projectEndDate);
+                              endDate.setHours(23, 59, 59, 999);
+                              if (date > endDate) return true;
+                            }
+                            // If sprint selected, further constrain to sprint range
+                            if (selectedSprint?.start_date && selectedSprint?.end_date) {
+                              const sprintStart = new Date(selectedSprint.start_date);
+                              sprintStart.setHours(0, 0, 0, 0);
+                              const sprintEnd = new Date(selectedSprint.end_date);
+                              sprintEnd.setHours(23, 59, 59, 999);
+                              return date < sprintStart || date > sprintEnd;
+                            }
+                            return false;
+                          }}
                           initialFocus
                         />
                       </PopoverContent>

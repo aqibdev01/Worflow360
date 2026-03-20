@@ -4,68 +4,74 @@ import { supabase } from "../supabase";
 // Direct Message Operations
 // =====================================================
 
-export async function getOrCreateDMThread(targetUserId: string, orgId: string) {
+async function resolveUserId(currentUserId?: string): Promise<string> {
+  if (currentUserId && currentUserId.length > 0) return currentUserId;
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("Not authenticated");
+  return user.id;
+}
 
-  // Find existing thread between these two users in this org
-  const { data: existingThreads } = await (supabase as any)
+
+export async function getOrCreateDMThread(targetUserId: string, orgId: string, currentUserId?: string) {
+  const userId = await resolveUserId(currentUserId);
+
+  // Find all threads the current user is in for this org
+  const { data: myThreads } = await (supabase as any)
     .from("direct_message_participants")
     .select("thread_id")
-    .eq("user_id", user.id);
+    .eq("user_id", userId);
 
-  if (existingThreads && existingThreads.length > 0) {
-    const threadIds = (existingThreads as any[]).map((t: any) => t.thread_id);
+  if (myThreads && myThreads.length > 0) {
+    const threadIds = (myThreads as any[]).map((t: any) => t.thread_id);
 
-    // Check if target user is also a participant in any of these threads
+    // Single query: find if target user shares any of these threads in this org
     const { data: sharedThreads } = await (supabase as any)
       .from("direct_message_participants")
       .select("thread_id, direct_message_threads(organization_id)")
       .eq("user_id", targetUserId)
       .in("thread_id", threadIds);
 
-    if (sharedThreads && sharedThreads.length > 0) {
-      // Find thread in the correct org
-      const matchingThread = (sharedThreads as any[]).find(
+    if (sharedThreads) {
+      const match = (sharedThreads as any[]).find(
         (t: any) => t.direct_message_threads?.organization_id === orgId
       );
-      if (matchingThread) {
-        return matchingThread.thread_id as string;
-      }
+      if (match) return match.thread_id as string;
     }
   }
 
-  // Create new thread
+  // No existing thread — create new
+  // Use .select('id') and don't rely on RLS for the immediate return
   const { data: thread, error: threadError } = await (supabase as any)
     .from("direct_message_threads")
     .insert({ organization_id: orgId })
-    .select()
+    .select("id")
     .single();
 
   if (threadError) throw threadError;
+  if (!thread?.id) throw new Error("Failed to create DM thread — no ID returned");
 
-  // Add both participants
+  const threadId = thread.id as string;
+
   const { error: participantError } = await (supabase as any)
     .from("direct_message_participants")
     .insert([
-      { thread_id: thread.id, user_id: user.id },
-      { thread_id: thread.id, user_id: targetUserId },
+      { thread_id: threadId, user_id: userId },
+      { thread_id: threadId, user_id: targetUserId },
     ]);
 
   if (participantError) throw participantError;
 
-  return thread.id as string;
+  return threadId;
 }
 
-export async function getDMThreads(orgId: string) {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("Not authenticated");
+export async function getDMThreads(orgId: string, currentUserId?: string) {
+  const userId = await resolveUserId(currentUserId);
 
   // Get all threads the user is a participant in for this org
   const { data: participations, error: partError } = await (supabase as any)
     .from("direct_message_participants")
     .select("thread_id")
-    .eq("user_id", user.id);
+    .eq("user_id", userId);
 
   if (partError) throw partError;
   if (!participations || participations.length === 0) return [];
@@ -92,21 +98,20 @@ export async function getDMThreads(orgId: string) {
   // For each thread, get the last message
   const threadsWithLastMessage = await Promise.all(
     (threads as any[]).map(async (thread: any) => {
-      const { data: lastMsg } = await (supabase as any)
+      const { data: lastMsgArr } = await (supabase as any)
         .from("direct_messages")
         .select("*")
         .eq("thread_id", thread.id)
         .eq("is_deleted", false)
         .order("created_at", { ascending: false })
-        .limit(1)
-        .single();
+        .limit(1);
+      const lastMsg = lastMsgArr?.[0] || null;
 
       return {
         ...thread,
         last_message: lastMsg || null,
-        // Filter out current user from participants for display
         other_participants: (thread.direct_message_participants || []).filter(
-          (p: any) => p.user_id !== user.id
+          (p: any) => p.user_id !== userId
         ),
       };
     })
@@ -145,16 +150,16 @@ export async function sendDM(
   threadId: string,
   content: string,
   type: string = "text",
-  metadata?: Record<string, any>
+  metadata?: Record<string, any>,
+  currentUserId?: string
 ) {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("Not authenticated");
+  const userId = await resolveUserId(currentUserId);
 
   const { data: message, error } = await (supabase as any)
     .from("direct_messages")
     .insert({
       thread_id: threadId,
-      sender_id: user.id,
+      sender_id: userId,
       content,
       type,
       metadata: metadata || null,
@@ -166,15 +171,32 @@ export async function sendDM(
   return message;
 }
 
-export async function updateDMLastRead(threadId: string) {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("Not authenticated");
+export async function editDMMessage(messageId: string, content: string) {
+  const { error } = await (supabase as any)
+    .from("direct_messages")
+    .update({ content, edited_at: new Date().toISOString() })
+    .eq("id", messageId);
+
+  if (error) throw error;
+}
+
+export async function deleteDMMessage(messageId: string) {
+  const { error } = await (supabase as any)
+    .from("direct_messages")
+    .update({ is_deleted: true, content: "" })
+    .eq("id", messageId);
+
+  if (error) throw error;
+}
+
+export async function updateDMLastRead(threadId: string, currentUserId?: string) {
+  const userId = await resolveUserId(currentUserId);
 
   const { error } = await (supabase as any)
     .from("direct_message_participants")
     .update({ last_read_at: new Date().toISOString() })
     .eq("thread_id", threadId)
-    .eq("user_id", user.id);
+    .eq("user_id", userId);
 
   if (error) throw error;
 }

@@ -176,6 +176,7 @@ export function EditProjectDialog({
                 id="end-date"
                 type="date"
                 value={endDate}
+                min={startDate || undefined}
                 onChange={(e) => setEndDate(e.target.value)}
               />
               {errors.endDate && (
