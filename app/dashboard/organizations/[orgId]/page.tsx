@@ -22,9 +22,7 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { useBreadcrumbs } from "@/components/breadcrumbs";
-import { InviteCodeManager } from "@/components/org/InviteCodeManager";
 import { OrgMemberTable } from "@/components/org/OrgMemberTable";
-import { TemplateManager } from "@/components/projects/TemplateManager";
 
 export default function OrganizationDashboardPage() {
   const params = useParams();
@@ -431,13 +429,6 @@ export default function OrganizationDashboardPage() {
       {/* Members Tab */}
       {activeTab === "members" && isOrgAdmin && (
         <div className="space-y-8">
-          {/* Invite Code Manager */}
-          <Card className="bg-white border border-[#E7E9EF] shadow-sm">
-            <CardContent className="p-6">
-              <InviteCodeManager orgId={orgId} isAdmin={currentMember?.role === "admin"} />
-            </CardContent>
-          </Card>
-
           {/* Org Member Table */}
           <Card className="bg-white border border-[#E7E9EF] shadow-sm">
             <CardContent className="p-6">
@@ -454,16 +445,6 @@ export default function OrganizationDashboardPage() {
             </CardContent>
           </Card>
 
-          {/* Template Manager */}
-          <Card className="bg-white border border-[#E7E9EF] shadow-sm">
-            <CardContent className="p-6">
-              <TemplateManager
-                orgId={orgId}
-                currentUserId={currentUserId}
-                isAdmin={currentMember?.role === "admin" || currentMember?.role === "manager"}
-              />
-            </CardContent>
-          </Card>
         </div>
       )}
 

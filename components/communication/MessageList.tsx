@@ -21,6 +21,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
@@ -196,6 +204,7 @@ function MessageRow({
   const [showReactionPicker, setShowReactionPicker] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(message.content);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const isOwn = message.sender_id === currentUserId;
 
@@ -426,7 +435,7 @@ function MessageRow({
               variant="ghost"
               size="sm"
               className="h-7 w-7 p-0 text-destructive hover:text-destructive"
-              onClick={handleDelete}
+              onClick={() => setShowDeleteConfirm(true)}
               title="Delete"
             >
               <Trash2 className="h-3.5 w-3.5" />
@@ -453,6 +462,32 @@ function MessageRow({
           />
         </div>
       )}
+
+      {/* Delete confirmation dialog */}
+      <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Delete Message</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this message? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDeleteConfirm(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                handleDelete();
+                setShowDeleteConfirm(false);
+              }}
+            >
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

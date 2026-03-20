@@ -47,7 +47,7 @@ export function NewDMDialog({
   // Filter out current user and apply search
   const filteredMembers = useMemo(() => {
     const others = members.filter(
-      (m: any) => m.user_id !== currentUserId
+      (m: any) => m.user_id && m.user_id !== currentUserId
     );
     if (!search) return others;
     const q = search.toLowerCase();
@@ -63,7 +63,7 @@ export function NewDMDialog({
   const handleStartDM = async (targetUserId: string) => {
     setStartingDM(targetUserId);
     try {
-      const threadId = await getOrCreateDMThread(targetUserId, orgId);
+      const threadId = await getOrCreateDMThread(targetUserId, orgId, currentUserId);
       onOpenChange(false);
       setSearch("");
       onDMCreated(threadId);

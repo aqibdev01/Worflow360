@@ -1,14 +1,26 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { ChevronDown, Loader2 } from "lucide-react";
+import { ChevronDown, Loader2, Trash2, Pencil, Check, X } from "lucide-react";
 import { useDMMessages, DMMessageData } from "@/hooks/useDMMessages";
 import { usePresence } from "@/hooks/usePresence";
 import { supabase } from "@/lib/supabase";
+import { editDMMessage, deleteDMMessage } from "@/lib/communication/dm";
 import { FileMessageCard } from "./FileMessageCard";
 import { TaskRefCard } from "./TaskRefCard";
 import { DMMessageInput } from "./DMMessageInput";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { isSameDay, format, isToday, isYesterday } from "date-fns";
+import { toast } from "sonner";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -97,11 +109,42 @@ function DMMessageRow({
   message,
   currentUserId,
   showHeader,
+  onDeleted,
 }: {
   message: DMMessageData;
   currentUserId: string;
   showHeader: boolean;
+  onDeleted?: () => void;
 }) {
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editContent, setEditContent] = useState(message.content);
+  const isOwn = message.sender_id === currentUserId;
+
+  const handleDelete = async () => {
+    try {
+      await deleteDMMessage(message.id);
+      setShowDeleteConfirm(false);
+      onDeleted?.();
+    } catch {
+      toast.error("Failed to delete message");
+    }
+  };
+
+  const handleEdit = async () => {
+    if (!editContent.trim() || editContent === message.content) {
+      setIsEditing(false);
+      return;
+    }
+    try {
+      await editDMMessage(message.id, editContent.trim());
+      setIsEditing(false);
+      onDeleted?.();
+    } catch {
+      toast.error("Failed to edit message");
+    }
+  };
+
   if (message.is_deleted) {
     return (
       <div className="flex items-start gap-2.5 px-4 py-1 opacity-50">
@@ -190,7 +233,7 @@ function DMMessageRow({
 
   // Regular text message
   return (
-    <div className="group flex items-start gap-2.5 px-4 py-1 hover:bg-muted/30 transition-colors">
+    <div className="group relative flex items-start gap-2.5 px-4 py-1 hover:bg-muted/30 transition-colors">
       {showHeader ? (
         <div className="h-8 w-8 rounded-full bg-gradient-to-br from-brand-blue to-brand-cyan flex items-center justify-center flex-shrink-0 mt-0.5">
           <span className="text-xs font-medium text-white">
@@ -215,14 +258,90 @@ function DMMessageRow({
             </span>
           </div>
         )}
-        <p className="text-sm text-foreground whitespace-pre-wrap break-words">
-          {renderMarkdownLite(message.content)}
-        </p>
+        {isEditing ? (
+          <div className="space-y-2 mt-1">
+            <Textarea
+              value={editContent}
+              onChange={(e) => setEditContent(e.target.value)}
+              className="min-h-[60px] text-sm"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleEdit(); }
+                if (e.key === "Escape") { setIsEditing(false); setEditContent(message.content); }
+              }}
+            />
+            <div className="flex items-center gap-2">
+              <Button size="sm" className="h-7 gap-1" onClick={handleEdit}>
+                <Check className="h-3 w-3" /> Save
+              </Button>
+              <Button size="sm" variant="ghost" className="h-7 gap-1" onClick={() => { setIsEditing(false); setEditContent(message.content); }}>
+                <X className="h-3 w-3" /> Cancel
+              </Button>
+              <span className="text-xs text-muted-foreground">Enter to save, Esc to cancel</span>
+            </div>
+          </div>
+        ) : (
+          <>
+            <p className="text-sm text-foreground whitespace-pre-wrap break-words">
+              {renderMarkdownLite(message.content)}
+            </p>
+            {(message as any).edited_at && (
+              <span className="text-[10px] text-muted-foreground">(edited)</span>
+            )}
+          </>
+        )}
         {/* Legacy file attachments */}
         {message.type === "text" && message.metadata?.url && (
           <FileMessageCard metadata={message.metadata as any} />
         )}
       </div>
+
+      {/* Action buttons */}
+      {!isEditing && (
+        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+          {isOwn && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 w-7 p-0"
+              onClick={() => { setIsEditing(true); setEditContent(message.content); }}
+              title="Edit"
+            >
+              <Pencil className="h-3.5 w-3.5" />
+            </Button>
+          )}
+          {isOwn && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+              onClick={() => setShowDeleteConfirm(true)}
+              title="Delete"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
+          )}
+        </div>
+      )}
+
+      {/* Delete confirmation */}
+      <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Delete Message</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this message? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDeleteConfirm(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleDelete}>
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

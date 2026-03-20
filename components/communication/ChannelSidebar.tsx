@@ -9,7 +9,7 @@ import {
   Plus,
   ChevronDown,
   ChevronRight,
-  MessageCircle,
+
   Search,
   Archive,
 } from "lucide-react";
@@ -95,7 +95,7 @@ export function CommunicationSidebar({
   // Fetch DM threads
   const loadDMThreads = useCallback(async () => {
     try {
-      const dmData = await getDMThreads(orgId);
+      const dmData = await getDMThreads(orgId, currentUserId);
       setDMThreads(dmData || []);
     } catch (err) {
       console.error("Error loading DM threads:", err);
@@ -206,9 +206,9 @@ export function CommunicationSidebar({
             <>
               {/* ── Channels Section ── */}
               <div>
-                <button
+                <div
                   onClick={() => setShowChannels(!showChannels)}
-                  className="flex items-center gap-1 px-4 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-full hover:text-navy-900"
+                  className="flex items-center gap-1 px-4 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-full hover:text-navy-900 cursor-pointer select-none"
                 >
                   {showChannels ? (
                     <ChevronDown className="h-3 w-3" />
@@ -233,7 +233,7 @@ export function CommunicationSidebar({
                       <Plus className="h-3 w-3" />
                     </Button>
                   )}
-                </button>
+                </div>
 
                 {showChannels &&
                   filteredChannels.map((channel) => {
@@ -307,9 +307,9 @@ export function CommunicationSidebar({
 
               {/* ── Direct Messages Section ── */}
               <div className="mt-3">
-                <button
+                <div
                   onClick={() => setShowDMs(!showDMs)}
-                  className="flex items-center gap-1 px-4 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-full hover:text-navy-900"
+                  className="flex items-center gap-1 px-4 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-full hover:text-navy-900 cursor-pointer select-none"
                 >
                   {showDMs ? (
                     <ChevronDown className="h-3 w-3" />
@@ -329,7 +329,7 @@ export function CommunicationSidebar({
                   >
                     <Plus className="h-3 w-3" />
                   </Button>
-                </button>
+                </div>
 
                 {showDMs &&
                   filteredDMs.map((dm) => {

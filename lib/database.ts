@@ -215,6 +215,7 @@ export async function getOrganizationMembers(orgId: string) {
     .select(
       `
       id,
+      user_id,
       role,
       joined_at,
       users(id, email, full_name, avatar_url)

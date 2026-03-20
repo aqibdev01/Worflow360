@@ -5,13 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -29,10 +22,7 @@ import {
   Trash2,
   AlertTriangle,
 } from "lucide-react";
-import {
-  updateOrganizationMemberRole,
-  removeOrganizationMember,
-} from "@/lib/database";
+import { removeOrganizationMember } from "@/lib/database";
 import { toast } from "sonner";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -91,8 +81,6 @@ export function OrgMemberTable({
   onMembersChanged,
 }: OrgMemberTableProps) {
   const [search, setSearch] = useState("");
-  const [roleFilter, setRoleFilter] = useState<string>("all");
-  const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [removeMember, setRemoveMember] = useState<OrgMember | null>(null);
   const [removing, setRemoving] = useState(false);
 
@@ -104,32 +92,9 @@ export function OrgMemberTable({
         m.users?.email ||
         ""
       ).toLowerCase();
-      const matchesSearch = !search || name.includes(search.toLowerCase());
-      const matchesRole = roleFilter === "all" || m.role === roleFilter;
-      return matchesSearch && matchesRole;
+      return !search || name.includes(search.toLowerCase());
     });
-  }, [members, search, roleFilter]);
-
-  const handleRoleChange = async (
-    member: OrgMember,
-    newRole: "admin" | "manager" | "member"
-  ) => {
-    if (newRole === member.role) return;
-
-    setUpdatingId(member.id);
-    try {
-      await updateOrganizationMemberRole(member.id, newRole);
-      toast.success(
-        `${member.users?.full_name || "Member"} is now a ${newRole}`
-      );
-      onMembersChanged();
-    } catch (err) {
-      console.error("Error updating role:", err);
-      toast.error("Failed to update role");
-    } finally {
-      setUpdatingId(null);
-    }
-  };
+  }, [members, search]);
 
   const handleRemoveMember = async () => {
     if (!removeMember) return;
@@ -162,28 +127,15 @@ export function OrgMemberTable({
         </span>
       </div>
 
-      {/* Filters */}
-      <div className="flex items-center gap-3">
-        <div className="relative flex-1 max-w-xs">
-          <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
-          <Input
-            placeholder="Search by name or email..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-8 h-9 text-sm"
-          />
-        </div>
-        <Select value={roleFilter} onValueChange={setRoleFilter}>
-          <SelectTrigger className="w-[140px] h-9 text-sm">
-            <SelectValue placeholder="All roles" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Roles</SelectItem>
-            <SelectItem value="admin">Admin</SelectItem>
-            <SelectItem value="manager">Manager</SelectItem>
-            <SelectItem value="member">Member</SelectItem>
-          </SelectContent>
-        </Select>
+      {/* Search */}
+      <div className="relative max-w-xs">
+        <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+        <Input
+          placeholder="Search by name or email..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="pl-8 h-9 text-sm"
+        />
       </div>
 
       {/* Table */}
@@ -256,36 +208,9 @@ export function OrgMemberTable({
 
                   {/* Role */}
                   <td className="px-4 py-3">
-                    {isAdmin && !isSelf ? (
-                      <div className="relative">
-                        {updatingId === member.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                        ) : (
-                          <Select
-                            value={member.role}
-                            onValueChange={(v) =>
-                              handleRoleChange(
-                                member,
-                                v as "admin" | "manager" | "member"
-                              )
-                            }
-                          >
-                            <SelectTrigger className="h-7 w-[120px] text-xs">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="admin">Admin</SelectItem>
-                              <SelectItem value="manager">Manager</SelectItem>
-                              <SelectItem value="member">Member</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        )}
-                      </div>
-                    ) : (
-                      <Badge className={`capitalize ${roleConf.color}`}>
-                        {roleConf.label}
-                      </Badge>
-                    )}
+                    <Badge className={`capitalize ${roleConf.color}`}>
+                      {roleConf.label}
+                    </Badge>
                   </td>
 
                   {/* Joined */}

@@ -144,7 +144,7 @@ export function DMMessageInput({
     try {
       // Send text message
       if (trimmed) {
-        await sendDM(threadId, trimmed, "text");
+        await sendDM(threadId, trimmed, "text", undefined, currentUserId);
       }
 
       // Upload files as separate file messages
@@ -170,7 +170,7 @@ export function DMMessageInput({
               size: file.size,
               mimeType: file.type,
               storagePath: fileName,
-            });
+            }, currentUserId);
           } catch {
             toast.error(`Failed to upload ${file.name}`);
           }
@@ -351,7 +351,7 @@ export function DMMessageInput({
               assignee: taskRef.assignee,
               url: `/dashboard/organizations/${orgId}/projects/${taskRef.projectId}?tab=board&task=${taskRef.taskId}`,
             };
-            await sendDM(threadId, `📋 ${taskRef.taskTitle}`, "task_ref", metadata);
+            await sendDM(threadId, `📋 ${taskRef.taskTitle}`, "task_ref", metadata, currentUserId);
             onMessageSent?.();
           } catch {
             toast.error("Failed to send task reference");

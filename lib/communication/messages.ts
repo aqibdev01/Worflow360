@@ -90,7 +90,7 @@ export async function toggleReaction(messageId: string, emoji: string) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("Not authenticated");
 
-  // Check if reaction already exists
+  // Check if this exact reaction already exists
   const { data: existing } = await (supabase as any)
     .from("message_reactions")
     .select("id")
@@ -100,7 +100,7 @@ export async function toggleReaction(messageId: string, emoji: string) {
     .single();
 
   if (existing) {
-    // Remove reaction
+    // Remove reaction (toggle off)
     const { error } = await (supabase as any)
       .from("message_reactions")
       .delete()
@@ -108,7 +108,14 @@ export async function toggleReaction(messageId: string, emoji: string) {
     if (error) throw error;
     return { action: "removed" as const };
   } else {
-    // Add reaction
+    // Remove any other reaction by this user on this message (only one at a time)
+    await (supabase as any)
+      .from("message_reactions")
+      .delete()
+      .eq("message_id", messageId)
+      .eq("user_id", user.id);
+
+    // Add new reaction
     const { error } = await (supabase as any)
       .from("message_reactions")
       .insert({ message_id: messageId, user_id: user.id, emoji });

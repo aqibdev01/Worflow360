@@ -14,7 +14,7 @@ export default function CommunicationLayout({
 }) {
   const params = useParams();
   const orgId = params.orgId as string;
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
 
   const [orgMembers, setOrgMembers] = useState<any[]>([]);
   const [canManage, setCanManage] = useState(false);
@@ -43,12 +43,20 @@ export default function CommunicationLayout({
     loadOrgData();
   }, [orgId, user]);
 
+  if (authLoading || !user) {
+    return (
+      <div className="flex h-[calc(100vh-5rem)] -mx-4 lg:-mx-6 -mb-4 lg:-mb-6 bg-white rounded-t-xl border shadow-sm overflow-hidden items-center justify-center">
+        <div className="h-6 w-6 border-2 border-brand-blue/30 border-t-brand-blue rounded-full animate-spin" />
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-[calc(100vh-5rem)] -mx-4 lg:-mx-6 -mb-4 lg:-mb-6 bg-white rounded-t-xl border shadow-sm overflow-hidden">
       {/* Left sidebar — 260px fixed */}
       <CommunicationSidebar
         orgId={orgId}
-        currentUserId={user?.id || ""}
+        currentUserId={user.id}
         canManageChannels={canManage}
       />
 

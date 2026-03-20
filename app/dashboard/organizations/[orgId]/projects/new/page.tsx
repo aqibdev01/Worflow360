@@ -21,10 +21,6 @@ import {
   Bug,
   TrendingUp,
   Briefcase,
-  LayoutTemplate,
-  Megaphone,
-  Folder,
-  FileText,
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -36,15 +32,9 @@ import { useAuth } from "@/hooks/useAuth";
 import {
   createProject,
   addProjectMemberWithRole,
-  createCustomRole,
   getOrganizationMembers,
   getOrganization,
 } from "@/lib/database";
-import {
-  getAvailableTemplates,
-  applyTemplate,
-  type ProjectTemplate,
-} from "@/lib/projects/templates";
 
 // Validation schema
 const projectSchema = z.object({
@@ -64,20 +54,13 @@ const projectSchema = z.object({
 
 type ProjectFormData = z.infer<typeof projectSchema>;
 
-// Default role options with icons
+// Functional role options with icons
 const DEFAULT_ROLES = [
   { value: "developer", label: "Developer", icon: Code, color: "text-blue-600" },
   { value: "qa", label: "QA Engineer", icon: Bug, color: "text-green-600" },
   { value: "designer", label: "Designer", icon: Palette, color: "text-purple-600" },
   { value: "business_analyst", label: "Business Analyst", icon: TrendingUp, color: "text-orange-600" },
   { value: "project_manager", label: "Project Manager", icon: Briefcase, color: "text-red-600" },
-];
-
-// Project-level roles (owner, lead, contributor, viewer)
-const PROJECT_LEVEL_ROLES = [
-  { value: "lead", label: "Project Lead" },
-  { value: "contributor", label: "Contributor" },
-  { value: "viewer", label: "Viewer" },
 ];
 
 export default function NewProjectPage() {
@@ -91,16 +74,13 @@ export default function NewProjectPage() {
   const [isLoadingMembers, setIsLoadingMembers] = useState(true);
   const [organizationMembers, setOrganizationMembers] = useState<any[]>([]);
   const [organizationName, setOrganizationName] = useState("");
-  const [customRoles, setCustomRoles] = useState<Array<{ name: string; description: string }>>([]);
-  const [newCustomRoleName, setNewCustomRoleName] = useState("");
-  const [templates, setTemplates] = useState<ProjectTemplate[]>([]);
-  const [selectedTemplate, setSelectedTemplate] = useState<ProjectTemplate | null>(null);
 
   const {
     register,
     handleSubmit,
     control,
     watch,
+    setError,
     formState: { errors },
     trigger,
   } = useForm<ProjectFormData>({
@@ -136,14 +116,6 @@ export default function NewProjectPage() {
         const members = await getOrganizationMembers(orgId);
         setOrganizationMembers(members);
 
-        // Load available templates
-        try {
-          const tmpl = await getAvailableTemplates(orgId);
-          setTemplates(tmpl);
-        } catch {
-          // Templates are optional, don't block page load
-          console.warn("Could not load templates");
-        }
       } catch (error) {
         console.error("Error loading organization data:", error);
         toast.error("Failed to load organization data");
@@ -159,15 +131,21 @@ export default function NewProjectPage() {
     let isValid = false;
 
     if (currentStep === 1) {
-      isValid = true; // Template selection is optional
-    } else if (currentStep === 2) {
       isValid = await trigger(["name", "description", "start_date", "end_date", "status"]);
-    } else if (currentStep === 3) {
+      if (isValid) {
+        const startDate = watch("start_date");
+        const endDate = watch("end_date");
+        if (startDate && endDate && new Date(endDate) < new Date(startDate)) {
+          setError("end_date", { message: "End date must be on or after start date" });
+          isValid = false;
+        }
+      }
+    } else if (currentStep === 2) {
       isValid = true; // Members are optional
     }
 
     if (isValid) {
-      setCurrentStep((prev) => Math.min(prev + 1, 4));
+      setCurrentStep((prev) => Math.min(prev + 1, 3));
     }
   };
 
@@ -176,7 +154,7 @@ export default function NewProjectPage() {
   };
 
   const onSubmit = async (data: ProjectFormData) => {
-    if (currentStep < 4) {
+    if (currentStep < 3) {
       handleNext();
       return;
     }
@@ -206,27 +184,11 @@ export default function NewProjectPage() {
 
       console.log("Project created:", newProject);
 
-      // Create custom roles first
-      if (customRoles.length > 0) {
-        console.log("Creating custom roles:", customRoles);
-        await Promise.all(
-          customRoles.map((role) =>
-            createCustomRole(newProject.id, role.name, role.description)
-          )
-        );
-      }
-
-      // Apply template if selected
-      if (selectedTemplate) {
-        await applyTemplate(newProject.id, selectedTemplate.id, user.id);
-      }
-
       // Add creator as project owner
       await addProjectMemberWithRole({
         project_id: newProject.id,
         user_id: user.id,
         role: "owner",
-        custom_role: "Project Manager",
       });
 
       // Add selected team members with their roles
@@ -237,7 +199,7 @@ export default function NewProjectPage() {
             addProjectMemberWithRole({
               project_id: newProject.id,
               user_id: member.user_id,
-              role: member.role || "contributor",
+              role: "member",
               custom_role: member.custom_role,
             })
           )
@@ -270,39 +232,10 @@ export default function NewProjectPage() {
       return;
     }
 
-    append({ user_id: userId, role: "contributor", custom_role: "developer" });
+    append({ user_id: userId, role: "member", custom_role: "developer" });
     toast.success(`Added ${userName} to project team`);
   };
 
-  const addCustomRole = () => {
-    if (!newCustomRoleName.trim()) {
-      toast.error("Please enter a role name");
-      return;
-    }
-
-    // Check if role already exists
-    const existsInDefaults = DEFAULT_ROLES.some(
-      r => r.label.toLowerCase() === newCustomRoleName.toLowerCase() ||
-           r.value.toLowerCase() === newCustomRoleName.toLowerCase()
-    );
-    const existsInCustom = customRoles.some(
-      r => r.name.toLowerCase() === newCustomRoleName.toLowerCase()
-    );
-    const exists = existsInDefaults || existsInCustom;
-
-    if (exists) {
-      toast.error("This role already exists");
-      return;
-    }
-
-    setCustomRoles([...customRoles, { name: newCustomRoleName.trim(), description: "" }]);
-    setNewCustomRoleName("");
-    toast.success(`Custom role "${newCustomRoleName}" added`);
-  };
-
-  const removeCustomRole = (index: number) => {
-    setCustomRoles(customRoles.filter((_, i) => i !== index));
-  };
 
   if (isLoadingMembers) {
     return (
@@ -316,10 +249,9 @@ export default function NewProjectPage() {
   }
 
   const STEPS = [
-    { number: 1, title: "Template", description: "Choose a template" },
-    { number: 2, title: "Project Details", description: "Basic information" },
-    { number: 3, title: "Team & Roles", description: "Add members with roles" },
-    { number: 4, title: "Review", description: "Confirm and create" },
+    { number: 1, title: "Project Details", description: "Basic information" },
+    { number: 2, title: "Team & Roles", description: "Add members with roles" },
+    { number: 3, title: "Review", description: "Confirm and create" },
   ];
 
   return (
@@ -378,138 +310,9 @@ export default function NewProjectPage() {
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-        {/* Step 1: Choose Template */}
-        {currentStep === 1 && (
-          <Card>
-            <CardHeader>
-              <div className="flex items-center gap-2">
-                <LayoutTemplate className="h-5 w-5 text-primary" />
-                <CardTitle>Choose a Template (Optional)</CardTitle>
-              </div>
-              <CardDescription>
-                Start with a pre-built set of tasks, or create a blank project from scratch
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {/* Blank Project card — always first */}
-                <div
-                  onClick={() => setSelectedTemplate(null)}
-                  className={`relative cursor-pointer rounded-xl border-2 p-5 transition-all hover:shadow-md ${
-                    selectedTemplate === null
-                      ? "border-primary bg-primary/5 shadow-sm"
-                      : "border-muted hover:border-muted-foreground/30"
-                  }`}
-                >
-                  {selectedTemplate === null && (
-                    <div className="absolute top-3 right-3">
-                      <CheckCircle2 className="h-5 w-5 text-primary" />
-                    </div>
-                  )}
-                  <div
-                    className="h-10 w-10 rounded-lg flex items-center justify-center mb-3"
-                    style={{ backgroundColor: "#6B728020" }}
-                  >
-                    <FileText className="h-5 w-5" style={{ color: "#6B7280" }} />
-                  </div>
-                  <h3 className="font-semibold text-sm mb-1">Blank Project</h3>
-                  <p className="text-xs text-muted-foreground">
-                    Start from scratch with no pre-defined tasks.
-                  </p>
-                </div>
-
-                {/* Template cards */}
-                {templates.map((tmpl) => {
-                  const isSelected = selectedTemplate?.id === tmpl.id;
-                  const taskCount = tmpl.template_tasks?.length || 0;
-                  const TemplateIcon =
-                    tmpl.icon === "code"
-                      ? Code
-                      : tmpl.icon === "megaphone"
-                      ? Megaphone
-                      : Folder;
-
-                  return (
-                    <div
-                      key={tmpl.id}
-                      onClick={() => setSelectedTemplate(tmpl)}
-                      className={`relative cursor-pointer rounded-xl border-2 p-5 transition-all hover:shadow-md ${
-                        isSelected
-                          ? "border-primary bg-primary/5 shadow-sm"
-                          : "border-muted hover:border-muted-foreground/30"
-                      }`}
-                    >
-                      {isSelected && (
-                        <div className="absolute top-3 right-3">
-                          <CheckCircle2 className="h-5 w-5 text-primary" />
-                        </div>
-                      )}
-                      <div
-                        className="h-10 w-10 rounded-lg flex items-center justify-center mb-3"
-                        style={{ backgroundColor: tmpl.color + "20" }}
-                      >
-                        <TemplateIcon
-                          className="h-5 w-5"
-                          style={{ color: tmpl.color }}
-                        />
-                      </div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-semibold text-sm">{tmpl.name}</h3>
-                        <Badge
-                          variant="secondary"
-                          className="text-[10px] px-1.5 py-0 capitalize"
-                        >
-                          {tmpl.category}
-                        </Badge>
-                      </div>
-                      <p className="text-xs text-muted-foreground mb-3 line-clamp-2">
-                        {tmpl.description}
-                      </p>
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <FolderKanban className="h-3 w-3" />
-                        {taskCount} pre-built task{taskCount !== 1 ? "s" : ""}
-                      </div>
-                      {isSelected && taskCount > 0 && (
-                        <div className="mt-3 pt-3 border-t space-y-1.5">
-                          <p className="text-xs font-medium text-muted-foreground">
-                            Tasks included:
-                          </p>
-                          {tmpl.template_tasks
-                            ?.slice(0, 4)
-                            .map((task, i) => (
-                              <div
-                                key={i}
-                                className="flex items-center gap-2 text-xs"
-                              >
-                                <div className="h-1.5 w-1.5 rounded-full bg-primary flex-shrink-0" />
-                                <span className="truncate">{task.title}</span>
-                              </div>
-                            ))}
-                          {taskCount > 4 && (
-                            <p className="text-xs text-muted-foreground pl-3.5">
-                              +{taskCount - 4} more...
-                            </p>
-                          )}
-                        </div>
-                      )}
-                      {tmpl.is_system && (
-                        <Badge
-                          variant="outline"
-                          className="absolute bottom-3 right-3 text-[10px] px-1.5 py-0"
-                        >
-                          System
-                        </Badge>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
-        )}
 
         {/* Step 2: Project Details */}
-        {currentStep === 2 && (
+        {currentStep === 1 && (
           <Card>
             <CardHeader>
               <div className="flex items-center gap-2">
@@ -555,7 +358,17 @@ export default function NewProjectPage() {
                   <Input
                     id="start_date"
                     type="date"
-                    {...register("start_date")}
+                    {...register("start_date", {
+                      onChange: (e) => {
+                        const startVal = e.target.value;
+                        const endVal = watch("end_date");
+                        if (startVal && endVal && endVal < startVal) {
+                          // Clear end date if it's now before start date
+                          (document.getElementById("end_date") as HTMLInputElement).value = "";
+                          trigger("end_date");
+                        }
+                      },
+                    })}
                     disabled={isCreating}
                   />
                 </div>
@@ -568,9 +381,21 @@ export default function NewProjectPage() {
                   <Input
                     id="end_date"
                     type="date"
-                    {...register("end_date")}
+                    {...register("end_date", {
+                      validate: (value) => {
+                        const startVal = watch("start_date");
+                        if (value && startVal && value < startVal) {
+                          return "End date must be on or after start date";
+                        }
+                        return true;
+                      },
+                    })}
+                    min={watch("start_date") || undefined}
                     disabled={isCreating}
                   />
+                  {errors.end_date && (
+                    <p className="text-xs text-red-600">{errors.end_date.message}</p>
+                  )}
                 </div>
               </div>
 
@@ -593,237 +418,155 @@ export default function NewProjectPage() {
           </Card>
         )}
 
-        {/* Step 3: Team Members with Roles (Combined with Custom Roles) */}
-        {currentStep === 3 && (
-          <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <Users className="h-5 w-5 text-primary" />
-                  <CardTitle>Team Members & Roles</CardTitle>
-                </div>
-                <CardDescription>
-                  Add team members and assign them roles
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {/* Custom Roles Section */}
-                <div className="space-y-3 p-4 bg-secondary/30 rounded-lg border">
-                  <Label>Custom Roles (Optional)</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Create project-specific roles beyond the default ones
-                  </p>
-
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder="Enter custom role name..."
-                      value={newCustomRoleName}
-                      onChange={(e) => setNewCustomRoleName(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addCustomRole())}
-                    />
-                    <Button type="button" onClick={addCustomRole} variant="outline">
-                      <Plus className="h-4 w-4 mr-1" />
-                      Add
-                    </Button>
-                  </div>
-
-                  {customRoles.length > 0 && (
-                    <div className="flex flex-wrap gap-2 mt-2">
-                      {customRoles.map((role, index) => (
-                        <Badge key={index} variant="secondary" className="gap-1">
-                          {role.name}
-                          <button
-                            type="button"
-                            onClick={() => removeCustomRole(index)}
-                            className="ml-1 hover:text-destructive"
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
-                        </Badge>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* Selected Team Members */}
-                {fields.length > 0 && (
-                  <div className="space-y-2">
-                    <Label>Selected Members ({fields.length})</Label>
-                    <div className="space-y-2">
-                      {fields.map((field, index) => {
-                        const member = organizationMembers.find(
-                          (m) => m.users.id === field.user_id
-                        );
-                        const selectedRole = watch(`team_members.${index}.custom_role`);
-                        const RoleIcon = DEFAULT_ROLES.find(r => r.value === selectedRole)?.icon || Briefcase;
-                        const roleColor = DEFAULT_ROLES.find(r => r.value === selectedRole)?.color || "text-gray-600";
-
-                        return (
-                          <div
-                            key={field.id}
-                            className="flex items-center justify-between p-4 border rounded-lg"
-                          >
-                            <div className="flex items-center gap-3 flex-1">
-                              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                                <span className="text-sm font-medium text-primary">
-                                  {member?.users.full_name?.charAt(0) || "?"}
-                                </span>
-                              </div>
-                              <div className="flex-1">
-                                <p className="text-sm font-medium">
-                                  {member?.users.full_name || member?.users.email}
-                                </p>
-                                <p className="text-xs text-muted-foreground">
-                                  {member?.users.email}
-                                </p>
-                              </div>
-
-                              {/* Role Selection */}
-                              <div className="flex items-center gap-2">
-                                <select
-                                  className="h-9 rounded-md border border-input bg-background px-3 text-sm"
-                                  {...register(`team_members.${index}.role`)}
-                                  disabled={isCreating}
-                                >
-                                  {PROJECT_LEVEL_ROLES.map((role) => (
-                                    <option key={role.value} value={role.value}>
-                                      {role.label}
-                                    </option>
-                                  ))}
-                                </select>
-
-                                {/* Custom Role Selection */}
-                                <select
-                                  className={`h-9 rounded-md border border-input bg-background px-3 text-sm ${roleColor}`}
-                                  {...register(`team_members.${index}.custom_role`)}
-                                  disabled={isCreating}
-                                >
-                                  {DEFAULT_ROLES.map((role) => (
-                                    <option key={role.value} value={role.value}>
-                                      {role.label}
-                                    </option>
-                                  ))}
-                                  {customRoles.map((role, i) => (
-                                    <option key={`custom-${i}`} value={role.name}>
-                                      {role.name}
-                                    </option>
-                                  ))}
-                                </select>
-
-                                <RoleIcon className={`h-4 w-4 ${roleColor}`} />
-                              </div>
-                            </div>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => remove(index)}
-                              disabled={isCreating}
-                              className="ml-2"
-                            >
-                              <X className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {/* Available Members */}
+        {/* Step 2: Team Members */}
+        {currentStep === 2 && (
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Users className="h-5 w-5 text-primary" />
+                <CardTitle>Team Members</CardTitle>
+              </div>
+              <CardDescription>
+                Add team members to this project. You will be the project owner.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Selected Team Members */}
+              {fields.length > 0 && (
                 <div className="space-y-2">
-                  <Label>Available Organization Members</Label>
-                  {organizationMembers.length === 0 ? (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <Users className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                      <p className="text-sm">No other members in this organization yet</p>
-                    </div>
-                  ) : (
-                    <div className="max-h-64 overflow-y-auto space-y-2 border rounded-lg p-3">
-                      {organizationMembers
-                        .filter((member) => member.users.id !== user?.id)
-                        .map((member) => {
-                          const isAdded = fields.some(
-                            (field) => field.user_id === member.users.id
-                          );
-                          return (
-                            <div
-                              key={member.id}
-                              className="flex items-center justify-between p-2 hover:bg-accent rounded-md transition-colors"
-                            >
-                              <div className="flex items-center gap-3">
-                                <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                                  <span className="text-xs font-medium text-primary">
-                                    {member.users.full_name?.charAt(0) || "?"}
-                                  </span>
-                                </div>
-                                <div>
-                                  <p className="text-sm font-medium">
-                                    {member.users.full_name || member.users.email}
-                                  </p>
-                                  <div className="flex items-center gap-2">
-                                    <p className="text-xs text-muted-foreground">
-                                      {member.users.email}
-                                    </p>
-                                    <Badge variant="secondary" className="text-xs">
-                                      {member.role}
-                                    </Badge>
-                                  </div>
-                                </div>
-                              </div>
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant={isAdded ? "secondary" : "outline"}
-                                onClick={() =>
-                                  addTeamMember(
-                                    member.users.id,
-                                    member.users.full_name || member.users.email
-                                  )
-                                }
-                                disabled={isCreating || isAdded}
-                              >
-                                {isAdded ? (
-                                  <>
-                                    <CheckCircle2 className="h-4 w-4 mr-1" />
-                                    Added
-                                  </>
-                                ) : (
-                                  <>
-                                    <Plus className="h-4 w-4 mr-1" />
-                                    Add
-                                  </>
-                                )}
-                              </Button>
-                            </div>
-                          );
-                        })}
-                    </div>
-                  )}
-                </div>
+                  <Label>Selected Members ({fields.length})</Label>
+                  <div className="space-y-2">
+                    {fields.map((field, index) => {
+                      const member = organizationMembers.find(
+                        (m) => m.users.id === field.user_id
+                      );
+                      const selectedRole = watch(`team_members.${index}.custom_role`);
+                      const RoleIcon = DEFAULT_ROLES.find(r => r.value === selectedRole)?.icon || Briefcase;
+                      const roleColor = DEFAULT_ROLES.find(r => r.value === selectedRole)?.color || "text-gray-600";
 
-                {/* Role Legend */}
-                <div className="bg-secondary/50 border rounded-lg p-4">
-                  <h4 className="text-sm font-medium mb-3">Default Roles</h4>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                    {DEFAULT_ROLES.map((role) => {
-                      const Icon = role.icon;
                       return (
-                        <div key={role.value} className="flex items-center gap-2">
-                          <Icon className={`h-4 w-4 ${role.color}`} />
-                          <span className="text-sm">{role.label}</span>
+                        <div
+                          key={field.id}
+                          className="flex items-center justify-between p-3 border rounded-lg"
+                        >
+                          <div className="flex items-center gap-3 flex-1">
+                            <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                              <span className="text-xs font-medium text-primary">
+                                {member?.users.full_name?.charAt(0) || "?"}
+                              </span>
+                            </div>
+                            <div className="flex-1">
+                              <p className="text-sm font-medium">
+                                {member?.users.full_name || member?.users.email}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {member?.users.email}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <select
+                                className={`h-9 rounded-md border border-input bg-background px-3 text-sm ${roleColor}`}
+                                {...register(`team_members.${index}.custom_role`)}
+                                disabled={isCreating}
+                              >
+                                {DEFAULT_ROLES.map((role) => (
+                                  <option key={role.value} value={role.value}>
+                                    {role.label}
+                                  </option>
+                                ))}
+                              </select>
+                              <RoleIcon className={`h-4 w-4 ${roleColor}`} />
+                            </div>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => remove(index)}
+                            disabled={isCreating}
+                            className="ml-2 h-8 w-8"
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
                         </div>
                       );
                     })}
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-          </div>
+              )}
+
+              {/* Available Members */}
+              <div className="space-y-2">
+                <Label>Available Organization Members</Label>
+                {organizationMembers.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Users className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">No other members in this organization yet</p>
+                  </div>
+                ) : (
+                  <div className="max-h-64 overflow-y-auto space-y-2 border rounded-lg p-3">
+                    {organizationMembers
+                      .filter((member) => member.users.id !== user?.id)
+                      .map((member) => {
+                        const isAdded = fields.some(
+                          (field) => field.user_id === member.users.id
+                        );
+                        return (
+                          <div
+                            key={member.id}
+                            className="flex items-center justify-between p-2 hover:bg-accent rounded-md transition-colors"
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                                <span className="text-xs font-medium text-primary">
+                                  {member.users.full_name?.charAt(0) || "?"}
+                                </span>
+                              </div>
+                              <div>
+                                <p className="text-sm font-medium">
+                                  {member.users.full_name || member.users.email}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  {member.users.email}
+                                </p>
+                              </div>
+                            </div>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant={isAdded ? "secondary" : "outline"}
+                              onClick={() =>
+                                addTeamMember(
+                                  member.users.id,
+                                  member.users.full_name || member.users.email
+                                )
+                              }
+                              disabled={isCreating || isAdded}
+                            >
+                              {isAdded ? (
+                                <>
+                                  <CheckCircle2 className="h-4 w-4 mr-1" />
+                                  Added
+                                </>
+                              ) : (
+                                <>
+                                  <Plus className="h-4 w-4 mr-1" />
+                                  Add
+                                </>
+                              )}
+                            </Button>
+                          </div>
+                        );
+                      })}
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
         )}
 
         {/* Step 4: Review */}
-        {currentStep === 4 && (
+        {currentStep === 3 && (
           <Card>
             <CardHeader>
               <CardTitle>Review & Create</CardTitle>
@@ -832,19 +575,6 @@ export default function NewProjectPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              {selectedTemplate && (
-                <div>
-                  <h3 className="text-sm font-medium text-muted-foreground mb-1">Template</h3>
-                  <div className="flex items-center gap-2">
-                    <LayoutTemplate className="h-4 w-4" style={{ color: selectedTemplate.color }} />
-                    <p className="text-sm font-medium">{selectedTemplate.name}</p>
-                    <Badge variant="secondary" className="text-xs capitalize">
-                      {selectedTemplate.template_tasks?.length || 0} tasks
-                    </Badge>
-                  </div>
-                </div>
-              )}
-
               <div>
                 <h3 className="text-sm font-medium text-muted-foreground mb-1">Project Name</h3>
                 <p className="text-lg font-semibold">{formData.name}</p>
@@ -898,7 +628,6 @@ export default function NewProjectPage() {
                     const member = organizationMembers.find(m => m.users.id === teamMember.user_id);
                     const roleInfo = DEFAULT_ROLES.find(r => r.value === teamMember.custom_role);
                     const RoleIcon = roleInfo?.icon || Briefcase;
-
                     return (
                       <div
                         key={index}
@@ -914,40 +643,20 @@ export default function NewProjectPage() {
                             <p className="text-sm font-medium">
                               {member?.users.full_name || member?.users.email}
                             </p>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1">
                               <RoleIcon className={`h-3 w-3 ${roleInfo?.color}`} />
-                              <p className="text-xs text-muted-foreground capitalize">
-                                {teamMember.custom_role?.replace("_", " ")}
+                              <p className="text-xs text-muted-foreground">
+                                {roleInfo?.label || teamMember.custom_role}
                               </p>
                             </div>
                           </div>
                         </div>
-                        <Badge variant="secondary" className="capitalize">
-                          {teamMember.role}
-                        </Badge>
+                        <Badge variant="secondary">Member</Badge>
                       </div>
                     );
                   })}
                 </div>
               </div>
-
-              {customRoles.length > 0 && (
-                <>
-                  <Separator />
-                  <div>
-                    <h3 className="text-sm font-medium text-muted-foreground mb-3">
-                      Custom Roles ({customRoles.length})
-                    </h3>
-                    <div className="flex flex-wrap gap-2">
-                      {customRoles.map((role, index) => (
-                        <Badge key={index} variant="outline">
-                          {role.name}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                </>
-              )}
             </CardContent>
           </Card>
         )}
@@ -964,7 +673,7 @@ export default function NewProjectPage() {
             {currentStep === 1 ? "Cancel" : "Back"}
           </Button>
 
-          {currentStep < 4 ? (
+          {currentStep < 3 ? (
             <Button type="button" onClick={handleNext} disabled={isCreating}>
               Next
               <CheckCircle2 className="ml-2 h-4 w-4" />
