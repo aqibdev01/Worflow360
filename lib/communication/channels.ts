@@ -40,6 +40,7 @@ export async function createChannel(
     created_by: string;
   }
 ) {
+  // Insert channel — .select() works because RLS SELECT policy includes created_by check
   const { data: channel, error } = await (supabase as any)
     .from("channels")
     .insert({
@@ -66,6 +67,30 @@ export async function createChannel(
     });
 
   return channel;
+}
+
+export async function updateChannel(
+  channelId: string,
+  data: { name?: string; display_name?: string; description?: string; type?: "public" | "private" | "announcement" }
+) {
+  const { data: channel, error } = await (supabase as any)
+    .from("channels")
+    .update(data)
+    .eq("id", channelId)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return channel;
+}
+
+export async function deleteChannel(channelId: string) {
+  const { error } = await (supabase as any)
+    .from("channels")
+    .delete()
+    .eq("id", channelId);
+
+  if (error) throw error;
 }
 
 export async function joinChannel(channelId: string) {

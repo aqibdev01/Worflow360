@@ -45,6 +45,7 @@ interface FolderSidebarProps {
   onRenameFolder: (folderId: string, currentName: string) => void;
   onDeleteFolder: (folderId: string) => void;
   onChangeColor: (folderId: string) => void;
+  onShareFolder?: (folderId: string) => void;
   projectFolders?: { projectId: string; projectName: string; folders: FolderNode[] }[];
 }
 
@@ -63,6 +64,7 @@ function FolderTreeItem({
   onRenameFolder,
   onDeleteFolder,
   onChangeColor,
+  onShareFolder,
 }: {
   folder: FolderNode;
   depth: number;
@@ -73,6 +75,7 @@ function FolderTreeItem({
   onCreateFolder: (parentId?: string) => void;
   onRenameFolder: (id: string, name: string) => void;
   onDeleteFolder: (id: string) => void;
+  onShareFolder?: (id: string) => void;
   onChangeColor: (id: string) => void;
 }) {
   const isActive = currentFolderId === folder.id;
@@ -148,6 +151,12 @@ function FolderTreeItem({
               <Palette className="h-4 w-4 mr-2" />
               Change Color
             </DropdownMenuItem>
+            {onShareFolder && (
+              <DropdownMenuItem onClick={() => onShareFolder(folder.id)}>
+                <Share2 className="h-4 w-4 mr-2" />
+                Share
+              </DropdownMenuItem>
+            )}
             <DropdownMenuSeparator />
             <DropdownMenuItem
               className="text-destructive focus:text-destructive"
@@ -176,6 +185,7 @@ function FolderTreeItem({
               onRenameFolder={onRenameFolder}
               onDeleteFolder={onDeleteFolder}
               onChangeColor={onChangeColor}
+              onShareFolder={onShareFolder}
             />
           ))}
         </div>
@@ -211,6 +221,7 @@ export function FolderSidebar({
   onRenameFolder,
   onDeleteFolder,
   onChangeColor,
+  onShareFolder,
   projectFolders,
 }: FolderSidebarProps) {
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
@@ -312,6 +323,7 @@ export function FolderSidebar({
               onRenameFolder={onRenameFolder}
               onDeleteFolder={onDeleteFolder}
               onChangeColor={onChangeColor}
+              onShareFolder={onShareFolder}
             />
           ))}
 
@@ -359,6 +371,7 @@ export function FolderSidebar({
                             onRenameFolder={onRenameFolder}
                             onDeleteFolder={onDeleteFolder}
                             onChangeColor={onChangeColor}
+                            onShareFolder={onShareFolder}
                           />
                         ))}
                         {pf.folders.length === 0 && (

@@ -304,9 +304,9 @@ export function TaskDialog({
           </DialogDescription>
         </DialogHeader>
 
-        {!canEdit ? (
+        {!canEdit && !isEditing ? (
           <div className="py-6 text-center text-muted-foreground">
-            Only project managers can {isEditing ? "edit" : "create"} tasks.
+            Only project managers can create tasks.
           </div>
         ) : (
           <Form {...form}>
