@@ -286,9 +286,8 @@ export function TaskDialog({
     }
   }
 
-  // Project managers can always edit; members can edit tasks assigned to them or created by them
-  const isTaskOwner = isEditing && task && (task.assignee_id === currentUserId || task.created_by === currentUserId);
-  const canEdit = isProjectManager || isTaskOwner || !isEditing;
+  // Only project managers can create and edit tasks
+  const canEdit = isProjectManager;
   const canDelete = isProjectManager && isEditing;
 
   return (
@@ -305,9 +304,9 @@ export function TaskDialog({
           </DialogDescription>
         </DialogHeader>
 
-        {!canEdit && !isEditing ? (
+        {!canEdit ? (
           <div className="py-6 text-center text-muted-foreground">
-            Only project managers can create tasks.
+            Only project managers can {isEditing ? "edit" : "create"} tasks.
           </div>
         ) : (
           <Form {...form}>

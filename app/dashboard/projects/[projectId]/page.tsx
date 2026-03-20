@@ -386,9 +386,8 @@ const roleIcons: { [key: string]: any } = {
   };
 
   const openEditTaskDialog = (task: any) => {
-    const canEditThisTask = isProjectManager || task.assignee_id === currentUserId || task.assignee?.id === currentUserId || task.created_by === currentUserId;
-    if (!canEditThisTask) {
-      toast.error("You can only edit tasks assigned to you or created by you");
+    if (!isProjectManager) {
+      toast.error("Only project managers can edit tasks");
       return;
     }
     setEditingTask(task);
@@ -407,6 +406,10 @@ const roleIcons: { [key: string]: any } = {
   };
 
   const openCreateTaskDialog = (sprintId?: string, priority?: "low" | "medium" | "high", status?: string) => {
+    if (!isProjectManager) {
+      toast.error("Only project managers can create tasks");
+      return;
+    }
     setEditingTask(null);
     setTaskDialogDefaultSprintId(sprintId);
     setTaskDialogDefaultPriority(priority);
@@ -971,6 +974,7 @@ const roleIcons: { [key: string]: any } = {
               <Button
                 className="gap-2"
                 onClick={() => openCreateTaskDialog()}
+                disabled={!isProjectManager}
               >
                 <Plus className="h-4 w-4" />
                 Add Task
@@ -1011,15 +1015,17 @@ const roleIcons: { [key: string]: any } = {
                                 : task.priority === "medium" ? "#3b82f6"
                                 : "#6b7280",
                           }}
-                          onClick={() => openEditTaskDialog(task)}
+                          onClick={() => isProjectManager && openEditTaskDialog(task)}
                         >
                           <CardContent className="p-3 space-y-2">
                             <div className="flex items-start justify-between gap-2">
                               <h5 className="font-medium text-sm leading-tight line-clamp-2 flex-1">{task.title}</h5>
-                              <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0"
-                                onClick={(e) => { e.stopPropagation(); openEditTaskDialog(task); }}>
-                                <Pencil className="h-3 w-3" />
-                              </Button>
+                              {isProjectManager && (
+                                <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0"
+                                  onClick={(e) => { e.stopPropagation(); openEditTaskDialog(task); }}>
+                                  <Pencil className="h-3 w-3" />
+                                </Button>
+                              )}
                             </div>
                             <div className="flex flex-wrap items-center gap-1.5">
                               <Badge variant="outline" className={`text-xs capitalize ${
