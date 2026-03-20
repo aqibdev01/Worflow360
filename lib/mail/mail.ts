@@ -137,6 +137,7 @@ export async function getStarredMails(
     )
     .eq("recipient_id", user.id)
     .eq("is_starred", true)
+    .eq("is_trashed", false)
     .eq("mail.is_draft", false)
     .eq("mail.organization_id", orgId)
     .order("received_at", { ascending: false })
@@ -435,7 +436,7 @@ export async function updateDraft(
  */
 export async function sendDraft(
   draftId: string,
-  recipientData: { to: string[]; cc?: string[] }
+  recipientData: { to: string[]; cc?: string[]; attachments?: File[] }
 ): Promise<MailMessage> {
   const {
     data: { user },
@@ -481,6 +482,11 @@ export async function sendDraft(
     .insert(recipients);
 
   if (recipErr) throw recipErr;
+
+  // Upload attachments if provided
+  if (recipientData.attachments && recipientData.attachments.length > 0) {
+    await uploadMailAttachments(draftId, recipientData.attachments, user.id);
+  }
 
   // Notifications
   const { createNotification } = await import("../notifications/notifications");

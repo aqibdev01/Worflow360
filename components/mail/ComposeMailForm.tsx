@@ -307,7 +307,11 @@ export function ComposeMailForm({
           body: mailBody,
           type: mailType,
         });
-        await sendDraft(currentDraftId, { to: toIds, cc: ccIds });
+        await sendDraft(currentDraftId, {
+          to: toIds,
+          cc: ccIds,
+          attachments: attachments.length > 0 ? attachments : undefined,
+        });
       } else {
         await composeMail(orgId, {
           subject,
