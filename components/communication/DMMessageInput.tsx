@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { sendDM } from "@/lib/communication/dm";
+import { notifyDMReceived } from "@/lib/notifications/triggers";
 import { TaskRefPicker } from "./TaskRefPicker";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
@@ -23,6 +24,8 @@ import { toast } from "sonner";
 interface DMMessageInputProps {
   threadId: string;
   currentUserId: string;
+  currentUserName?: string;
+  otherParticipantIds?: string[];
   orgId: string;
   placeholder?: string;
   onMessageSent?: () => void;
@@ -33,6 +36,8 @@ interface DMMessageInputProps {
 export function DMMessageInput({
   threadId,
   currentUserId,
+  currentUserName,
+  otherParticipantIds = [],
   orgId,
   placeholder = "Type a message...",
   onMessageSent,
@@ -97,7 +102,7 @@ export function DMMessageInput({
     channel.send({
       type: "broadcast",
       event: "typing",
-      payload: { user_id: currentUserId, user_name: "Someone" },
+      payload: { user_id: currentUserId, user_name: currentUserName || "Someone" },
     });
   }, [threadId, currentUserId]);
 
@@ -145,6 +150,16 @@ export function DMMessageInput({
       // Send text message
       if (trimmed) {
         await sendDM(threadId, trimmed, "text", undefined, currentUserId);
+        // Notify other participants
+        for (const recipientId of otherParticipantIds) {
+          notifyDMReceived(
+            recipientId,
+            { id: currentUserId, name: currentUserName || "Someone" },
+            trimmed,
+            threadId,
+            orgId
+          ).catch(() => {});
+        }
       }
 
       // Upload files as separate file messages

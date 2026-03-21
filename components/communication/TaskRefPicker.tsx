@@ -36,6 +36,7 @@ interface TaskRefPickerProps {
     projectId: string;
     status: string;
     assignee: string | null;
+    assigneeId: string | null;
   }) => void;
 }
 
@@ -146,6 +147,7 @@ export function TaskRefPicker({
       projectId: task.project_id,
       status: task.status,
       assignee: task.assignee?.full_name || null,
+      assigneeId: task.assignee_id || null,
     });
     onOpenChange(false);
     setSearch("");

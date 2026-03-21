@@ -207,6 +207,102 @@ function DraggableTaskCard({ taskId, canDrag, children }: {
   );
 }
 
+// ─── Backlog Section ─────────────────────────────────────────────────────────
+
+function BacklogSection({ tasks, taskFileCounts, isProjectManager, onEditTask, onViewTask }: {
+  tasks: any[];
+  taskFileCounts: Record<string, number>;
+  isProjectManager: boolean;
+  onEditTask: (task: any) => void;
+  onViewTask: (task: any) => void;
+}) {
+  return (
+    <Card className="bg-amber-50/50 dark:bg-amber-950/10 border-amber-200">
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Archive className="h-4 w-4 text-amber-600" />
+            <h4 className="font-semibold text-amber-900">Backlog</h4>
+            <span className="text-xs text-amber-600">Tasks not assigned to any sprint</span>
+          </div>
+          <Badge variant="secondary" className="font-bold">{tasks.length}</Badge>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {tasks.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-4">
+            No backlog tasks. All tasks are assigned to sprints.
+          </p>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+            {tasks.map((task: any) => (
+              <Card
+                key={task.id}
+                className="cursor-pointer border-l-4 bg-white hover:shadow-md transition-shadow"
+                style={{
+                  borderLeftColor:
+                    task.priority === "urgent" ? "#ef4444"
+                      : task.priority === "high" ? "#f97316"
+                      : task.priority === "medium" ? "#3b82f6"
+                      : "#6b7280",
+                }}
+                onClick={() => isProjectManager ? onEditTask(task) : onViewTask(task)}
+              >
+                <CardContent className="p-3 space-y-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <h5 className="font-medium text-sm leading-tight line-clamp-2 flex-1">{task.title}</h5>
+                    {isProjectManager && (
+                      <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0"
+                        onClick={(e: any) => { e.stopPropagation(); onEditTask(task); }}>
+                        <Pencil className="h-3 w-3" />
+                      </Button>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <Badge variant="outline" className={`text-xs capitalize ${
+                      task.priority === "high" ? "border-orange-500 text-orange-600"
+                        : task.priority === "urgent" ? "border-red-500 text-red-600" : ""
+                    }`}>
+                      {task.priority}
+                    </Badge>
+                    <Badge variant="secondary" className="text-xs capitalize">
+                      {task.status === "in_progress" ? "In Progress" : task.status}
+                    </Badge>
+                    {task.due_date && (
+                      <Badge variant="outline" className="text-xs gap-1">
+                        <Calendar className="h-3 w-3" />
+                        {new Date(task.due_date).toLocaleDateString()}
+                      </Badge>
+                    )}
+                    {taskFileCounts[task.id] > 0 && (
+                      <Badge variant="outline" className="text-xs gap-1">
+                        <Paperclip className="h-3 w-3" />
+                        {taskFileCounts[task.id]}
+                      </Badge>
+                    )}
+                  </div>
+                  {task.assignee && (
+                    <div className="flex items-center gap-2 pt-1">
+                      <div className="h-5 w-5 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-medium text-primary">
+                        {task.assignee.full_name
+                          ? task.assignee.full_name.split(" ").map((n: string) => n[0]).join("").toUpperCase()
+                          : task.assignee.email?.[0]?.toUpperCase() || "?"}
+                      </div>
+                      <span className="text-xs text-muted-foreground truncate">
+                        {task.assignee.full_name || task.assignee.email}
+                      </span>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 // ─── Main Component ──────────────────────────────────────────────────────────
 
 function ProjectDashboardContent() {
@@ -987,94 +1083,15 @@ const roleIcons: { [key: string]: any } = {
           </div>
 
           {/* Backlog Section */}
-          {showBacklog && (() => {
-            const backlogTasks = visibleTasks.filter((t) => !t.sprint_id);
-            return (
-              <Card className="bg-amber-50/50 dark:bg-amber-950/10 border-amber-200">
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Archive className="h-4 w-4 text-amber-600" />
-                      <h4 className="font-semibold text-amber-900">Backlog</h4>
-                      <span className="text-xs text-amber-600">Tasks not assigned to any sprint</span>
-                    </div>
-                    <Badge variant="secondary" className="font-bold">{backlogTasks.length}</Badge>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  {backlogTasks.length === 0 ? (
-                    <p className="text-sm text-muted-foreground text-center py-4">
-                      No backlog tasks. All tasks are assigned to sprints.
-                    </p>
-                  ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                      {backlogTasks.map((task) => (
-                        <Card
-                          key={task.id}
-                          className="cursor-pointer border-l-4 bg-white hover:shadow-md transition-shadow"
-                          style={{
-                            borderLeftColor:
-                              task.priority === "urgent" ? "#ef4444"
-                                : task.priority === "high" ? "#f97316"
-                                : task.priority === "medium" ? "#3b82f6"
-                                : "#6b7280",
-                          }}
-                          onClick={() => isProjectManager ? openEditTaskDialog(task) : setViewingTask(task)}
-                        >
-                          <CardContent className="p-3 space-y-2">
-                            <div className="flex items-start justify-between gap-2">
-                              <h5 className="font-medium text-sm leading-tight line-clamp-2 flex-1">{task.title}</h5>
-                              {isProjectManager && (
-                                <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0"
-                                  onClick={(e) => { e.stopPropagation(); openEditTaskDialog(task); }}>
-                                  <Pencil className="h-3 w-3" />
-                                </Button>
-                              )}
-                            </div>
-                            <div className="flex flex-wrap items-center gap-1.5">
-                              <Badge variant="outline" className={`text-xs capitalize ${
-                                task.priority === "high" ? "border-orange-500 text-orange-600"
-                                  : task.priority === "urgent" ? "border-red-500 text-red-600" : ""
-                              }`}>
-                                {task.priority}
-                              </Badge>
-                              <Badge variant="secondary" className="text-xs capitalize">
-                                {task.status === "in_progress" ? "In Progress" : task.status}
-                              </Badge>
-                              {task.due_date && (
-                                <Badge variant="outline" className="text-xs gap-1">
-                                  <Calendar className="h-3 w-3" />
-                                  {new Date(task.due_date).toLocaleDateString()}
-                                </Badge>
-                              )}
-                              {taskFileCounts[task.id] > 0 && (
-                                <Badge variant="outline" className="text-xs gap-1">
-                                  <Paperclip className="h-3 w-3" />
-                                  {taskFileCounts[task.id]}
-                                </Badge>
-                              )}
-                            </div>
-                            {task.assignee && (
-                              <div className="flex items-center gap-2 pt-1">
-                                <div className="h-5 w-5 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-medium text-primary">
-                                  {task.assignee.full_name
-                                    ? task.assignee.full_name.split(" ").map((n: string) => n[0]).join("").toUpperCase()
-                                    : task.assignee.email?.[0]?.toUpperCase() || "?"}
-                                </div>
-                                <span className="text-xs text-muted-foreground truncate">
-                                  {task.assignee.full_name || task.assignee.email}
-                                </span>
-                              </div>
-                            )}
-                          </CardContent>
-                        </Card>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            );
-          })()}
+          {showBacklog && (
+            <BacklogSection
+              tasks={visibleTasks.filter((t: any) => !t.sprint_id)}
+              taskFileCounts={taskFileCounts}
+              isProjectManager={isProjectManager}
+              onEditTask={openEditTaskDialog}
+              onViewTask={(task: any) => setViewingTask(task)}
+            />
+          )}
 
           {/* Kanban Board with Drag-and-Drop */}
           {visibleTasks.length > 0 && (

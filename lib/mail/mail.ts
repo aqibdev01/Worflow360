@@ -346,11 +346,11 @@ export async function composeMail(
   // Get sender name for notification
   const { data: senderProfile } = await (supabase as any)
     .from("users")
-    .select("full_name")
+    .select("full_name, email")
     .eq("id", user.id)
     .single();
 
-  const senderName = senderProfile?.full_name || "Someone";
+  const senderName = senderProfile?.full_name || senderProfile?.email?.split("@")[0] || user.email?.split("@")[0] || "Someone";
 
   for (const recipientId of uniqueRecipients) {
     await createNotification({
@@ -492,11 +492,11 @@ export async function sendDraft(
   const { createNotification } = await import("../notifications/notifications");
   const { data: senderProfile } = await (supabase as any)
     .from("users")
-    .select("full_name")
+    .select("full_name, email")
     .eq("id", user.id)
     .single();
 
-  const senderName = senderProfile?.full_name || "Someone";
+  const senderName = senderProfile?.full_name || senderProfile?.email?.split("@")[0] || "Someone";
   const allRecipientIds = [...new Set([...recipientData.to, ...(recipientData.cc || [])])];
 
   for (const recipientId of allRecipientIds) {

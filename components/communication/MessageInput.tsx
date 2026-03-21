@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { sendMessage, uploadAttachment } from "@/lib/communication/messages";
-import { notifyMentioned } from "@/lib/notifications/triggers";
+import { notifyMentioned, notifyTaskReferenced } from "@/lib/notifications/triggers";
 import { TaskRefPicker } from "./TaskRefPicker";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
@@ -497,6 +497,17 @@ export function CommunicationMessageInput({
                 metadata,
                 parentMessageId
               );
+              // Notify task assignee
+              if (taskRef.assigneeId && orgId) {
+                const currentMember = channelMembers.find((m) => m.user_id === currentUserId);
+                const senderName = currentMember?.full_name || currentMember?.email?.split("@")[0] || "Someone";
+                notifyTaskReferenced(
+                  { id: taskRef.taskId, title: taskRef.taskTitle, assignee_id: taskRef.assigneeId, project_id: taskRef.projectId },
+                  { id: currentUserId, name: senderName },
+                  channelId,
+                  orgId
+                ).catch(() => {});
+              }
               onMessageSent?.();
             } catch {
               toast.error("Failed to send task reference");

@@ -202,6 +202,61 @@ export async function notifySprintDeadline(
   }
 }
 
+/**
+ * Notify a user that they received a DM.
+ */
+export async function notifyDMReceived(
+  recipientId: string,
+  sender: { id: string; name: string },
+  messagePreview: string,
+  threadId: string,
+  orgId: string
+): Promise<void> {
+  if (recipientId === sender.id) return;
+
+  await createNotification({
+    orgId,
+    userId: recipientId,
+    type: "mentioned", // reuse mention type for DMs
+    title: `New message from ${sender.name}`,
+    body: messagePreview.slice(0, 100),
+    link: `/dashboard/organizations/${orgId}/communication/dm/${threadId}`,
+    metadata: {
+      threadId,
+      senderId: sender.id,
+      senderName: sender.name,
+    },
+  }).catch(() => {});
+}
+
+/**
+ * Notify task assignee when their task is referenced in a channel message.
+ */
+export async function notifyTaskReferenced(
+  task: { id: string; title: string; assignee_id: string | null; project_id: string },
+  referencedBy: { id: string; name: string },
+  channelId: string,
+  orgId: string
+): Promise<void> {
+  if (!task.assignee_id || task.assignee_id === referencedBy.id) return;
+
+  await createNotification({
+    orgId,
+    userId: task.assignee_id,
+    type: "task_assigned", // reuse task type
+    title: `${referencedBy.name} referenced your task`,
+    body: task.title,
+    link: `/dashboard/organizations/${orgId}/communication/${channelId}`,
+    metadata: {
+      taskId: task.id,
+      taskTitle: task.title,
+      channelId,
+      referencedById: referencedBy.id,
+      referencedByName: referencedBy.name,
+    },
+  }).catch(() => {});
+}
+
 export async function notifyMemberJoined(
   orgId: string,
   newMember: { id: string; name: string },

@@ -350,6 +350,7 @@ function DMMessageRow({
 
 export function DMWindow({ threadId, currentUserId, orgId }: DMWindowProps) {
   const [otherUser, setOtherUser] = useState<OtherUser | null>(null);
+  const [currentUserName, setCurrentUserName] = useState<string | undefined>(undefined);
   const [showNewMessagePill, setShowNewMessagePill] = useState(false);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -366,6 +367,7 @@ export function DMWindow({ threadId, currentUserId, orgId }: DMWindowProps) {
     if (!threadId || !currentUserId) return;
     async function loadParticipant() {
       try {
+        // Get other participant
         const { data } = await (supabase as any)
           .from("direct_message_participants")
           .select("user_id, users(id, email, full_name, avatar_url)")
@@ -373,6 +375,13 @@ export function DMWindow({ threadId, currentUserId, orgId }: DMWindowProps) {
           .neq("user_id", currentUserId)
           .single();
         setOtherUser(data?.users || null);
+        // Get current user's name
+        const { data: meData } = await (supabase as any)
+          .from("users")
+          .select("full_name, email")
+          .eq("id", currentUserId)
+          .single();
+        setCurrentUserName(meData?.full_name || meData?.email?.split("@")[0] || "Someone");
       } catch (err) {
         console.error("Error loading DM participant:", err);
       }
@@ -549,6 +558,8 @@ export function DMWindow({ threadId, currentUserId, orgId }: DMWindowProps) {
       <DMMessageInput
         threadId={threadId}
         currentUserId={currentUserId}
+        currentUserName={currentUserName}
+        otherParticipantIds={otherUser ? [otherUser.id] : []}
         orgId={orgId}
         placeholder={`Message ${otherName}...`}
         onMessageSent={() => markRead().catch(() => {})}
