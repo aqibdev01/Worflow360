@@ -21,11 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Hash, Lock, Megaphone, Loader2 } from "lucide-react";
-import {
-  createChannel,
-  addAllOrgMembersToChannel,
-  addAllProjectMembersToChannel,
-} from "@/lib/communication/channels";
+import { createChannel, addAllOrgMembersToChannel } from "@/lib/communication/channels";
 import { getOrganizationProjects } from "@/lib/database";
 import { toast } from "sonner";
 
@@ -101,13 +97,9 @@ export function CreateChannelDialog({
         created_by: currentUserId,
       });
 
-      // For public channels, auto-add all members
-      if (channelType === "public") {
-        if (projectId !== "none") {
-          await addAllProjectMembersToChannel(channel.id, projectId);
-        } else {
-          await addAllOrgMembersToChannel(channel.id, orgId);
-        }
+      // For announcement channels, auto-add all org members
+      if (channelType === "announcement") {
+        await addAllOrgMembersToChannel(channel.id, orgId);
       }
 
       toast.success(`Channel ${slugPreview} created`);

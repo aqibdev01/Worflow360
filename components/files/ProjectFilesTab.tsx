@@ -309,6 +309,16 @@ export function ProjectFilesTab({ orgId, projectId }: ProjectFilesTabProps) {
         onRenameFolder={openRenameFolder}
         onDeleteFolder={openDeleteFolder}
         onChangeColor={openColorDialog}
+        onShareFolder={(folderId) => {
+          // Find a file in this folder to open share dialog, or share all files
+          const folderFiles = fileManager.files.filter((f: any) => f.folder_id === folderId);
+          if (folderFiles.length > 0) {
+            setShareFileTarget(folderFiles[0]);
+            setShareOpen(true);
+          } else {
+            toast.info("No files in this folder to share");
+          }
+        }}
       />
 
       {/* Main area */}

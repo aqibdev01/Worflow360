@@ -146,7 +146,7 @@ export async function createNotification(data: {
   link?: string;
   metadata?: Record<string, any>;
 }): Promise<Notification> {
-  const { data: notification, error } = await (supabase as any)
+  const { error } = await (supabase as any)
     .from("notifications")
     .insert({
       organization_id: data.orgId,
@@ -156,12 +156,10 @@ export async function createNotification(data: {
       body: data.body,
       link: data.link || null,
       metadata: data.metadata || null,
-    })
-    .select()
-    .single();
+    });
 
   if (error) throw error;
-  return notification as Notification;
+  return { user_id: data.userId, type: data.type, title: data.title } as any;
 }
 
 // =====================================================

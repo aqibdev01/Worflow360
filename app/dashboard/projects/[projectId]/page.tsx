@@ -59,6 +59,13 @@ import {
   getSprintEvents,
 } from "@/lib/database";
 import { TaskDialog } from "@/components/task-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { SprintDialog } from "@/components/sprint-dialog";
 import { SprintEventDialog } from "@/components/sprint-event-dialog";
 import { SprintTimeline } from "@/components/sprint-timeline";
@@ -200,6 +207,102 @@ function DraggableTaskCard({ taskId, canDrag, children }: {
   );
 }
 
+// ─── Backlog Section ─────────────────────────────────────────────────────────
+
+function BacklogSection({ tasks, taskFileCounts, isProjectManager, onEditTask, onViewTask }: {
+  tasks: any[];
+  taskFileCounts: Record<string, number>;
+  isProjectManager: boolean;
+  onEditTask: (task: any) => void;
+  onViewTask: (task: any) => void;
+}) {
+  return (
+    <Card className="bg-amber-50/50 dark:bg-amber-950/10 border-amber-200">
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Archive className="h-4 w-4 text-amber-600" />
+            <h4 className="font-semibold text-amber-900">Backlog</h4>
+            <span className="text-xs text-amber-600">Tasks not assigned to any sprint</span>
+          </div>
+          <Badge variant="secondary" className="font-bold">{tasks.length}</Badge>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {tasks.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-4">
+            No backlog tasks. All tasks are assigned to sprints.
+          </p>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+            {tasks.map((task: any) => (
+              <Card
+                key={task.id}
+                className="cursor-pointer border-l-4 bg-white hover:shadow-md transition-shadow"
+                style={{
+                  borderLeftColor:
+                    task.priority === "urgent" ? "#ef4444"
+                      : task.priority === "high" ? "#f97316"
+                      : task.priority === "medium" ? "#3b82f6"
+                      : "#6b7280",
+                }}
+                onClick={() => isProjectManager ? onEditTask(task) : onViewTask(task)}
+              >
+                <CardContent className="p-3 space-y-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <h5 className="font-medium text-sm leading-tight line-clamp-2 flex-1">{task.title}</h5>
+                    {isProjectManager && (
+                      <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0"
+                        onClick={(e: any) => { e.stopPropagation(); onEditTask(task); }}>
+                        <Pencil className="h-3 w-3" />
+                      </Button>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <Badge variant="outline" className={`text-xs capitalize ${
+                      task.priority === "high" ? "border-orange-500 text-orange-600"
+                        : task.priority === "urgent" ? "border-red-500 text-red-600" : ""
+                    }`}>
+                      {task.priority}
+                    </Badge>
+                    <Badge variant="secondary" className="text-xs capitalize">
+                      {task.status === "in_progress" ? "In Progress" : task.status}
+                    </Badge>
+                    {task.due_date && (
+                      <Badge variant="outline" className="text-xs gap-1">
+                        <Calendar className="h-3 w-3" />
+                        {new Date(task.due_date).toLocaleDateString()}
+                      </Badge>
+                    )}
+                    {taskFileCounts[task.id] > 0 && (
+                      <Badge variant="outline" className="text-xs gap-1">
+                        <Paperclip className="h-3 w-3" />
+                        {taskFileCounts[task.id]}
+                      </Badge>
+                    )}
+                  </div>
+                  {task.assignee && (
+                    <div className="flex items-center gap-2 pt-1">
+                      <div className="h-5 w-5 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-medium text-primary">
+                        {task.assignee.full_name
+                          ? task.assignee.full_name.split(" ").map((n: string) => n[0]).join("").toUpperCase()
+                          : task.assignee.email?.[0]?.toUpperCase() || "?"}
+                      </div>
+                      <span className="text-xs text-muted-foreground truncate">
+                        {task.assignee.full_name || task.assignee.email}
+                      </span>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 // ─── Main Component ──────────────────────────────────────────────────────────
 
 function ProjectDashboardContent() {
@@ -228,6 +331,7 @@ function ProjectDashboardContent() {
   const [activeDragPriority, setActiveDragPriority] = useState<string | null>(null);
   const [activeDragTaskId, setActiveDragTaskId] = useState<string | null>(null);
   const [deleteConfirmTaskId, setDeleteConfirmTaskId] = useState<string | null>(null);
+  const [viewingTask, setViewingTask] = useState<any>(null);
 
   // dnd-kit sensor
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
@@ -386,10 +490,6 @@ const roleIcons: { [key: string]: any } = {
   };
 
   const openEditTaskDialog = (task: any) => {
-    if (!isProjectManager) {
-      toast.error("Only project managers can edit tasks");
-      return;
-    }
     setEditingTask(task);
     setTaskDialogOpen(true);
   };
@@ -983,94 +1083,15 @@ const roleIcons: { [key: string]: any } = {
           </div>
 
           {/* Backlog Section */}
-          {showBacklog && (() => {
-            const backlogTasks = visibleTasks.filter((t) => !t.sprint_id);
-            return (
-              <Card className="bg-amber-50/50 dark:bg-amber-950/10 border-amber-200">
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Archive className="h-4 w-4 text-amber-600" />
-                      <h4 className="font-semibold text-amber-900">Backlog</h4>
-                      <span className="text-xs text-amber-600">Tasks not assigned to any sprint</span>
-                    </div>
-                    <Badge variant="secondary" className="font-bold">{backlogTasks.length}</Badge>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  {backlogTasks.length === 0 ? (
-                    <p className="text-sm text-muted-foreground text-center py-4">
-                      No backlog tasks. All tasks are assigned to sprints.
-                    </p>
-                  ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                      {backlogTasks.map((task) => (
-                        <Card
-                          key={task.id}
-                          className="cursor-pointer border-l-4 bg-white hover:shadow-md transition-shadow"
-                          style={{
-                            borderLeftColor:
-                              task.priority === "urgent" ? "#ef4444"
-                                : task.priority === "high" ? "#f97316"
-                                : task.priority === "medium" ? "#3b82f6"
-                                : "#6b7280",
-                          }}
-                          onClick={() => isProjectManager && openEditTaskDialog(task)}
-                        >
-                          <CardContent className="p-3 space-y-2">
-                            <div className="flex items-start justify-between gap-2">
-                              <h5 className="font-medium text-sm leading-tight line-clamp-2 flex-1">{task.title}</h5>
-                              {isProjectManager && (
-                                <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0"
-                                  onClick={(e) => { e.stopPropagation(); openEditTaskDialog(task); }}>
-                                  <Pencil className="h-3 w-3" />
-                                </Button>
-                              )}
-                            </div>
-                            <div className="flex flex-wrap items-center gap-1.5">
-                              <Badge variant="outline" className={`text-xs capitalize ${
-                                task.priority === "high" ? "border-orange-500 text-orange-600"
-                                  : task.priority === "urgent" ? "border-red-500 text-red-600" : ""
-                              }`}>
-                                {task.priority}
-                              </Badge>
-                              <Badge variant="secondary" className="text-xs capitalize">
-                                {task.status === "in_progress" ? "In Progress" : task.status}
-                              </Badge>
-                              {task.due_date && (
-                                <Badge variant="outline" className="text-xs gap-1">
-                                  <Calendar className="h-3 w-3" />
-                                  {new Date(task.due_date).toLocaleDateString()}
-                                </Badge>
-                              )}
-                              {taskFileCounts[task.id] > 0 && (
-                                <Badge variant="outline" className="text-xs gap-1">
-                                  <Paperclip className="h-3 w-3" />
-                                  {taskFileCounts[task.id]}
-                                </Badge>
-                              )}
-                            </div>
-                            {task.assignee && (
-                              <div className="flex items-center gap-2 pt-1">
-                                <div className="h-5 w-5 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-medium text-primary">
-                                  {task.assignee.full_name
-                                    ? task.assignee.full_name.split(" ").map((n: string) => n[0]).join("").toUpperCase()
-                                    : task.assignee.email?.[0]?.toUpperCase() || "?"}
-                                </div>
-                                <span className="text-xs text-muted-foreground truncate">
-                                  {task.assignee.full_name || task.assignee.email}
-                                </span>
-                              </div>
-                            )}
-                          </CardContent>
-                        </Card>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            );
-          })()}
+          {showBacklog && (
+            <BacklogSection
+              tasks={visibleTasks.filter((t: any) => !t.sprint_id)}
+              taskFileCounts={taskFileCounts}
+              isProjectManager={isProjectManager}
+              onEditTask={openEditTaskDialog}
+              onViewTask={(task: any) => setViewingTask(task)}
+            />
+          )}
 
           {/* Kanban Board with Drag-and-Drop */}
           {visibleTasks.length > 0 && (
@@ -1193,7 +1214,7 @@ const roleIcons: { [key: string]: any } = {
                                   <DraggableTaskCard key={task.id} taskId={task.id} canDrag={canMoveTask}>
                                     <Card
                                       id={`task-card-${task.id}`}
-                                      className={`border-l-4 bg-background transition-shadow ${
+                                      className={`border-l-4 bg-background transition-shadow cursor-pointer ${
                                         isHighlighted
                                           ? "ring-2 ring-brand-blue animate-task-highlight"
                                           : "hover:shadow-md"
@@ -1205,16 +1226,19 @@ const roleIcons: { [key: string]: any } = {
                                             : task.priority === "medium" ? "#3b82f6"
                                             : "#6b7280",
                                       }}
+                                      onClick={() => isProjectManager ? openEditTaskDialog(task) : setViewingTask(task)}
                                     >
                                       <CardContent className="p-3 space-y-2">
                                         <div className="flex items-start justify-between gap-2">
                                           <h5 className="font-medium text-sm leading-tight line-clamp-2 flex-1">
                                             {task.title}
                                           </h5>
-                                          <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0"
-                                            onClick={(e) => { e.stopPropagation(); openEditTaskDialog(task); }}>
-                                            <Pencil className="h-3 w-3" />
-                                          </Button>
+                                          {isProjectManager && (
+                                            <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0"
+                                              onClick={(e) => { e.stopPropagation(); openEditTaskDialog(task); }}>
+                                              <Pencil className="h-3 w-3" />
+                                            </Button>
+                                          )}
                                         </div>
                                         {task.description && (
                                           <p className="text-xs text-muted-foreground line-clamp-2">{task.description}</p>
@@ -1490,6 +1514,57 @@ const roleIcons: { [key: string]: any } = {
             onTaskUpdated={refreshTasks}
             onTaskDeleted={refreshTasks}
           />
+
+          {/* View-only Task Detail Dialog (for non-managers) */}
+          <Dialog open={!!viewingTask} onOpenChange={(open) => !open && setViewingTask(null)}>
+            <DialogContent className="sm:max-w-[500px]">
+              <DialogHeader>
+                <DialogTitle>{viewingTask?.title}</DialogTitle>
+              </DialogHeader>
+              {viewingTask && (
+                <div className="space-y-4">
+                  {viewingTask.description && (
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground mb-1">Description</p>
+                      <p className="text-sm whitespace-pre-wrap">{viewingTask.description}</p>
+                    </div>
+                  )}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground mb-1">Status</p>
+                      <Badge variant="outline" className="capitalize">{viewingTask.status?.replace("_", " ")}</Badge>
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground mb-1">Priority</p>
+                      <Badge variant="outline" className={`capitalize ${
+                        viewingTask.priority === "urgent" ? "border-red-500 text-red-600"
+                          : viewingTask.priority === "high" ? "border-orange-500 text-orange-600"
+                          : viewingTask.priority === "medium" ? "border-blue-500 text-blue-600"
+                          : ""
+                      }`}>{viewingTask.priority}</Badge>
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground mb-1">Assignee</p>
+                      <p className="text-sm">{viewingTask.assignee?.full_name || viewingTask.assignee?.email || "Unassigned"}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground mb-1">Due Date</p>
+                      <p className="text-sm">{viewingTask.due_date ? new Date(viewingTask.due_date).toLocaleDateString() : "Not set"}</p>
+                    </div>
+                    {viewingTask.sprints && (
+                      <div>
+                        <p className="text-xs font-medium text-muted-foreground mb-1">Sprint</p>
+                        <p className="text-sm">{viewingTask.sprints.name}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setViewingTask(null)}>Close</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </TabsContent>
 
         {/* Sprints Tab */}

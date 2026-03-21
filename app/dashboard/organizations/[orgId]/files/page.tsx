@@ -326,6 +326,13 @@ export default function OrgFilesPage() {
         onRenameFolder={openRenameFolder}
         onDeleteFolder={openDeleteFolder}
         onChangeColor={openColorDialog}
+        onShareFolder={(folderId) => {
+          const folderFiles = fileManager.files.filter((f: any) => f.folder_id === folderId);
+          if (folderFiles.length > 0) {
+            setShareFileTarget(folderFiles[0]);
+            setShareOpen(true);
+          }
+        }}
       />
 
       {/* Main area */}

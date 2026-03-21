@@ -418,7 +418,7 @@ function FileContextDropdown({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>{trigger}</DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-48">
+      <DropdownMenuContent align="end" side="bottom" sideOffset={5} className="w-48 z-[200]">
         <DropdownMenuItem onClick={() => onDownload(file.id)}>
           <Download className="h-4 w-4 mr-2" /> Download
         </DropdownMenuItem>
@@ -477,7 +477,7 @@ function GridView(props: {
         return (
           <Card
             key={file.id}
-            className={`group relative flex flex-col overflow-hidden cursor-pointer hover:bg-muted/50 transition-all ${
+            className={`group relative flex flex-col cursor-pointer hover:bg-muted/50 transition-all ${
               isSelected ? "ring-2 ring-primary shadow-md" : ""
             }`}
             onClick={(e) => {
@@ -494,37 +494,9 @@ function GridView(props: {
               <Star className="absolute top-2 left-2 h-3.5 w-3.5 text-yellow-500 fill-yellow-500 z-10" />
             )}
 
-            {/* Hover overlay with quick actions */}
+            {/* Hover overlay */}
             <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors z-[1] pointer-events-none" />
-            <div className="absolute top-1.5 right-1.5 z-10 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    className="p-1.5 rounded-md bg-white/90 hover:bg-white shadow-sm transition-colors"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      props.onDownload(file.id);
-                    }}
-                  >
-                    <Download className="h-3.5 w-3.5" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom">Download</TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    className="p-1.5 rounded-md bg-white/90 hover:bg-white shadow-sm transition-colors"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      props.onShare(file);
-                    }}
-                  >
-                    <Share2 className="h-3.5 w-3.5" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom">Share</TooltipContent>
-              </Tooltip>
+            <div className="absolute top-1.5 right-1.5 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
               <FileContextDropdown
                 file={file}
                 isStarred={isStarred}

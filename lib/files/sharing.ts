@@ -60,13 +60,10 @@ export async function shareFile(
         expires_at: options.expiresAt || null,
       })
       .eq("id", existing[0].id)
-      .select(
-        "*, shared_by_user:users!shared_by(id, full_name, email, avatar_url), shared_with_user:users!shared_with_user_id(id, full_name, email, avatar_url)"
-      )
-      .single();
+      .select("*");
 
     if (error) throw error;
-    return data as FileShare;
+    return (data?.[0] || null) as FileShare;
   }
 
   const { data, error } = await (supabase as any)
@@ -79,13 +76,10 @@ export async function shareFile(
       permission: options.permission || "view",
       expires_at: options.expiresAt || null,
     })
-    .select(
-      "*, shared_by_user:users!shared_by(id, full_name, email, avatar_url), shared_with_user:users!shared_with_user_id(id, full_name, email, avatar_url)"
-    )
-    .single();
+    .select("*");
 
   if (error) throw error;
-  return data as FileShare;
+  return (data?.[0] || null) as FileShare;
 }
 
 /**
@@ -94,14 +88,37 @@ export async function shareFile(
 export async function getFileShares(fileId: string): Promise<FileShare[]> {
   const { data, error } = await (supabase as any)
     .from("file_shares")
-    .select(
-      "*, shared_by_user:users!shared_by(id, full_name, email, avatar_url), shared_with_user:users!shared_with_user_id(id, full_name, email, avatar_url)"
-    )
+    .select("*")
     .eq("file_id", fileId)
     .order("created_at", { ascending: false });
 
   if (error) throw error;
-  return data as FileShare[];
+  if (!data || data.length === 0) return [] as FileShare[];
+
+  // Fetch user details for member shares
+  const userIds = [...new Set(
+    (data as any[])
+      .filter((s: any) => s.shared_with_user_id)
+      .map((s: any) => s.shared_with_user_id)
+  )];
+
+  let usersMap: Record<string, any> = {};
+  if (userIds.length > 0) {
+    const { data: users } = await (supabase as any)
+      .from("users")
+      .select("id, full_name, email, avatar_url")
+      .in("id", userIds);
+    if (users) {
+      for (const u of users) {
+        usersMap[u.id] = u;
+      }
+    }
+  }
+
+  return (data as any[]).map((share: any) => ({
+    ...share,
+    shared_with_user: share.shared_with_user_id ? usersMap[share.shared_with_user_id] || null : null,
+  })) as FileShare[];
 }
 
 /**
@@ -115,11 +132,10 @@ export async function updateSharePermission(
     .from("file_shares")
     .update({ permission })
     .eq("id", shareId)
-    .select()
-    .single();
+    .select("*");
 
   if (error) throw error;
-  return data as FileShare;
+  return (data?.[0] || null) as FileShare;
 }
 
 /**

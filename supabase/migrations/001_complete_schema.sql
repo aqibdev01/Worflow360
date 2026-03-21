@@ -777,6 +777,22 @@ AS $$
     );
 $$;
 
+-- Helper: get organization_id from a file (bypasses RLS to avoid circular refs)
+CREATE OR REPLACE FUNCTION public.file_org_id(p_file_id uuid)
+RETURNS uuid
+LANGUAGE sql SECURITY DEFINER STABLE
+AS $$
+    SELECT organization_id FROM public.files WHERE id = p_file_id;
+$$;
+
+-- Helper: get project_id from a file (bypasses RLS to avoid circular refs)
+CREATE OR REPLACE FUNCTION public.file_project_id(p_file_id uuid)
+RETURNS uuid
+LANGUAGE sql SECURITY DEFINER STABLE
+AS $$
+    SELECT project_id FROM public.files WHERE id = p_file_id;
+$$;
+
 -- =====================================================
 -- RLS POLICIES: USERS
 -- =====================================================
@@ -1154,7 +1170,8 @@ CREATE POLICY "Users can view channels in their org"
     ON public.channels FOR SELECT
     TO authenticated
     USING (
-        (type IN ('public', 'announcement') AND public.user_is_org_member(organization_id))
+        created_by = auth.uid()
+        OR (type IN ('public', 'announcement') AND public.user_is_org_member(organization_id))
         OR public.user_is_channel_member(id)
     );
 
@@ -1467,46 +1484,38 @@ CREATE POLICY "Upload task-attached files" ON public.files FOR INSERT
 -- RLS POLICIES: FILE VERSIONS
 -- =====================================================
 CREATE POLICY "View file versions" ON public.file_versions FOR SELECT
-    USING (EXISTS (
-        SELECT 1 FROM public.files WHERE files.id = file_versions.file_id
-        AND ((files.project_id IS NULL AND public.user_is_org_member(files.organization_id))
-            OR (files.project_id IS NOT NULL AND public.user_is_project_member(files.project_id)))
-    ));
+    USING (
+        public.user_is_org_member(public.file_org_id(file_id))
+        OR public.user_is_project_member(public.file_project_id(file_id))
+    );
 CREATE POLICY "Create file versions" ON public.file_versions FOR INSERT
-    WITH CHECK (EXISTS (
-        SELECT 1 FROM public.files WHERE files.id = file_versions.file_id
-        AND ((files.project_id IS NULL AND (files.uploaded_by = auth.uid() OR public.user_is_org_admin_or_manager(files.organization_id)))
-            OR (files.project_id IS NOT NULL AND (files.uploaded_by = auth.uid() OR public.user_is_project_contributor(files.project_id))))
-    ));
+    WITH CHECK (
+        public.user_is_org_member(public.file_org_id(file_id))
+    );
 CREATE POLICY "Delete file versions" ON public.file_versions FOR DELETE
-    USING (EXISTS (
-        SELECT 1 FROM public.files WHERE files.id = file_versions.file_id
-        AND ((files.project_id IS NULL AND (files.uploaded_by = auth.uid() OR public.user_is_org_admin_or_manager(files.organization_id)))
-            OR (files.project_id IS NOT NULL AND (files.uploaded_by = auth.uid() OR public.user_is_project_contributor(files.project_id))))
-    ));
+    USING (
+        public.user_is_org_member(public.file_org_id(file_id))
+    );
 
 -- =====================================================
 -- RLS POLICIES: FILE SHARES
 -- =====================================================
 CREATE POLICY "View org-wide shares" ON public.file_shares FOR SELECT
-    USING (share_type = 'org' AND EXISTS (
-        SELECT 1 FROM public.files WHERE files.id = file_shares.file_id AND public.user_is_org_member(files.organization_id)
-    ));
+    USING (share_type = 'org' AND public.user_is_org_member(public.file_org_id(file_id)));
 CREATE POLICY "View project shares" ON public.file_shares FOR SELECT
-    USING (share_type = 'project' AND EXISTS (
-        SELECT 1 FROM public.files WHERE files.id = file_shares.file_id AND files.project_id IS NOT NULL AND public.user_is_project_member(files.project_id)
-    ));
+    USING (share_type = 'project' AND public.user_is_project_member(public.file_project_id(file_id)));
 CREATE POLICY "View member shares" ON public.file_shares FOR SELECT
     USING (share_type = 'member' AND (shared_with_user_id = auth.uid() OR shared_by = auth.uid()));
 CREATE POLICY "Create file shares" ON public.file_shares FOR INSERT
-    WITH CHECK (EXISTS (
-        SELECT 1 FROM public.files WHERE files.id = file_shares.file_id
-        AND (files.uploaded_by = auth.uid() OR public.user_is_org_admin_or_manager(files.organization_id))
-    ));
+    WITH CHECK (
+        shared_by = auth.uid()
+        OR public.user_is_org_admin_or_manager(public.file_org_id(file_id))
+    );
 CREATE POLICY "Delete file shares" ON public.file_shares FOR DELETE
-    USING (shared_by = auth.uid() OR EXISTS (
-        SELECT 1 FROM public.files WHERE files.id = file_shares.file_id AND public.user_is_org_admin_or_manager(files.organization_id)
-    ));
+    USING (
+        shared_by = auth.uid()
+        OR public.user_is_org_member(public.file_org_id(file_id))
+    );
 
 -- =====================================================
 -- RLS POLICIES: FILE STARS

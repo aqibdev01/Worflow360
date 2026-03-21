@@ -69,33 +69,31 @@ function getNavigation(pathname: string) {
   const orgMatch = pathname.match(/\/dashboard\/organizations\/([^/]+)/);
   const orgId = orgMatch ? orgMatch[1] : null;
 
-  return [
-    ...baseNavigation,
-    {
-      name: "Messages",
-      href: orgId
-        ? `/dashboard/organizations/${orgId}/communication`
-        : "/dashboard/organizations",
-      icon: MessageSquare,
-      comingSoon: false,
-    },
-    {
-      name: "Files",
-      href: orgId
-        ? `/dashboard/organizations/${orgId}/files`
-        : "/dashboard/organizations",
-      icon: Files,
-      comingSoon: false,
-    },
-    {
-      name: "Mail",
-      href: orgId
-        ? `/dashboard/organizations/${orgId}/mail`
-        : "/dashboard/organizations",
-      icon: Mail,
-      comingSoon: false,
-    },
-  ];
+  // Only show Messages, Files, Mail when inside an organization
+  const orgNavItems = orgId
+    ? [
+        {
+          name: "Messages",
+          href: `/dashboard/organizations/${orgId}/communication`,
+          icon: MessageSquare,
+          comingSoon: false,
+        },
+        {
+          name: "Files",
+          href: `/dashboard/organizations/${orgId}/files`,
+          icon: Files,
+          comingSoon: false,
+        },
+        {
+          name: "Mail",
+          href: `/dashboard/organizations/${orgId}/mail`,
+          icon: Mail,
+          comingSoon: false,
+        },
+      ]
+    : [];
+
+  return [...baseNavigation, ...orgNavItems];
 }
 
 export default function DashboardLayout({
@@ -174,8 +172,12 @@ export default function DashboardLayout({
           {/* Navigation */}
           <nav className="flex-1 space-y-1 px-3 py-6">
             {getNavigation(pathname).map((item) => {
-              const isActive = pathname === item.href ||
-                (item.href !== "/dashboard" && item.name !== "Dashboard" && pathname.startsWith(item.href));
+              const isActive =
+                item.href === "/dashboard"
+                  ? pathname === "/dashboard"
+                  : item.href === "/dashboard/organizations"
+                    ? pathname === "/dashboard/organizations" || (pathname.startsWith("/dashboard/organizations/") && !pathname.includes("/communication") && !pathname.includes("/files") && !pathname.includes("/mail"))
+                    : pathname.startsWith(item.href);
               const Icon = item.icon;
 
               // For coming soon items, render a div instead of a link
