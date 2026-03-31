@@ -44,6 +44,10 @@ import {
   Trash2,
   Files,
   Paperclip,
+  Sparkles,
+  Wand2,
+  ChevronRight,
+  Bot,
 } from "lucide-react";
 import {
   getProjectDetails,
@@ -77,6 +81,24 @@ import { ProjectDangerZone } from "@/components/projects/ProjectDangerZone";
 import { ProjectFilesTab } from "@/components/files/ProjectFilesTab";
 import { getTaskFileCounts } from "@/lib/files/files";
 import { notifyStatusChanged } from "@/lib/notifications/triggers";
+import { DecomposeButton } from "@/components/ai/DecomposeButton";
+import { DecompositionPanel } from "@/components/ai/DecompositionPanel";
+import { SubtaskHierarchyView } from "@/components/ai/SubtaskHierarchyView";
+import { AssigneeSuggestionPanel } from "@/components/ai/AssigneeSuggestionPanel";
+import { WorkloadDashboard } from "@/components/ai/WorkloadDashboard";
+import { BulkAssignDialog } from "@/components/ai/BulkAssignDialog";
+import { SprintRiskWidget } from "@/components/ai/SprintRiskWidget";
+import { AIOptimizerTab } from "@/components/ai/AIOptimizerTab";
+import { RiskScoreGauge } from "@/components/ai/RiskScoreGauge";
+import { BottleneckList } from "@/components/ai/BottleneckList";
+import { RecommendationList } from "@/components/ai/RecommendationList";
+import { VelocityTrendChart } from "@/components/ai/VelocityTrendChart";
+import { WorkloadHeatmap } from "@/components/ai/WorkloadHeatmap";
+import { ProjectRiskHistory } from "@/components/ai/ProjectRiskHistory";
+import { analyzeSprint, getLatestReport } from "@/lib/ai/optimizer";
+import type { SprintAnalysisResult } from "@/lib/ai/optimizer";
+import { getDecompositionHistory } from "@/lib/ai/decomposition";
+import type { DecomposeResult } from "@/lib/ai/decomposition";
 import { toast } from "sonner";
 import { useBreadcrumbs } from "@/components/breadcrumbs";
 
@@ -332,6 +354,10 @@ function ProjectDashboardContent() {
   const [activeDragTaskId, setActiveDragTaskId] = useState<string | null>(null);
   const [deleteConfirmTaskId, setDeleteConfirmTaskId] = useState<string | null>(null);
   const [viewingTask, setViewingTask] = useState<any>(null);
+
+  // AI decomposition state
+  const [decompResult, setDecompResult] = useState<DecomposeResult | null>(null);
+  const [decompHistory, setDecompHistory] = useState<any[]>([]);
 
   // dnd-kit sensor
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
@@ -638,6 +664,20 @@ const roleIcons: { [key: string]: any } = {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId, user?.id, authLoading]);
 
+  // Load decomposition history when viewing a task
+  useEffect(() => {
+    if (!viewingTask) {
+      setDecompHistory([]);
+      setDecompResult(null);
+      return;
+    }
+    // Only load history for parent tasks (not subtasks)
+    if (viewingTask.parent_task_id) return;
+    getDecompositionHistory(viewingTask.id)
+      .then(setDecompHistory)
+      .catch(() => setDecompHistory([]));
+  }, [viewingTask?.id]);
+
   if (loading) {
     return (
       <div className="space-y-6 animate-pulse">
@@ -914,6 +954,14 @@ const roleIcons: { [key: string]: any } = {
                 >
                   <Files className="h-6 w-6" />
                   <span className="text-sm font-medium">Files</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  className="h-auto py-4 flex-col gap-2 hover:bg-purple-50 hover:text-purple-700 hover:border-purple-300 transition-colors"
+                  onClick={() => setActiveTab("ai-optimizer")}
+                >
+                  <Bot className="h-6 w-6" />
+                  <span className="text-sm font-medium">AI Optimizer</span>
                 </Button>
               </div>
             </CardContent>
@@ -1230,9 +1278,14 @@ const roleIcons: { [key: string]: any } = {
                                     >
                                       <CardContent className="p-3 space-y-2">
                                         <div className="flex items-start justify-between gap-2">
-                                          <h5 className="font-medium text-sm leading-tight line-clamp-2 flex-1">
-                                            {task.title}
-                                          </h5>
+                                          <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                                            {task.is_ai_generated && (
+                                              <Sparkles className="h-3 w-3 text-purple-400 shrink-0" title="AI generated" />
+                                            )}
+                                            <h5 className="font-medium text-sm leading-tight line-clamp-2 flex-1">
+                                              {task.title}
+                                            </h5>
+                                          </div>
                                           {isProjectManager && (
                                             <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0"
                                               onClick={(e) => { e.stopPropagation(); openEditTaskDialog(task); }}>
@@ -1263,18 +1316,55 @@ const roleIcons: { [key: string]: any } = {
                                             </Badge>
                                           )}
                                         </div>
-                                        {task.assignee && (
+                                        {task.assignee ? (
                                           <div className="flex items-center gap-2 pt-1">
-                                            <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium text-primary">
-                                              {task.assignee.full_name
-                                                ? task.assignee.full_name.split(" ").map((n: string) => n[0]).join("").toUpperCase()
-                                                : task.assignee.email?.[0]?.toUpperCase() || "?"}
+                                            <div className="relative">
+                                              <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium text-primary">
+                                                {task.assignee.full_name
+                                                  ? task.assignee.full_name.split(" ").map((n: string) => n[0]).join("").toUpperCase()
+                                                  : task.assignee.email?.[0]?.toUpperCase() || "?"}
+                                              </div>
+                                              {task.ai_suggested_assignee_id && task.ai_suggested_assignee_id === task.assignee_id && (
+                                                <Sparkles className="absolute -top-1 -right-1 h-3 w-3 text-purple-500" />
+                                              )}
                                             </div>
                                             <span className="text-xs text-muted-foreground truncate">
                                               {task.assignee.full_name || task.assignee.email}
                                             </span>
                                           </div>
+                                        ) : (
+                                          <div
+                                            className="flex items-center gap-2 pt-1 cursor-pointer group/avatar"
+                                            onClick={(e) => { e.stopPropagation(); setViewingTask(task); }}
+                                          >
+                                            <div className="h-6 w-6 rounded-full border-2 border-dashed border-muted-foreground/30 flex items-center justify-center group-hover/avatar:border-purple-400 transition-colors">
+                                              <Plus className="h-3 w-3 text-muted-foreground/40 group-hover/avatar:text-purple-500 transition-colors" />
+                                            </div>
+                                            <span className="text-xs text-muted-foreground/50 group-hover/avatar:text-purple-500 transition-colors">
+                                              Unassigned
+                                            </span>
+                                          </div>
                                         )}
+
+                                        {/* Subtask progress indicator — only for parent tasks */}
+                                        {(() => {
+                                          const childTasks = visibleTasks.filter((t: any) => t.parent_task_id === task.id);
+                                          if (!task.parent_task_id && childTasks.length > 0) {
+                                            const doneCount = childTasks.filter((t: any) => t.status === "done").length;
+                                            const pct = Math.round((doneCount / childTasks.length) * 100);
+                                            return (
+                                              <div className="flex items-center gap-2 pt-1">
+                                                <div className="h-1.5 flex-1 bg-muted rounded-full overflow-hidden">
+                                                  <div className="h-full bg-green-500 rounded-full transition-all" style={{ width: `${pct}%` }} />
+                                                </div>
+                                                <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                                                  {doneCount}/{childTasks.length} subtasks
+                                                </span>
+                                              </div>
+                                            );
+                                          }
+                                          return null;
+                                        })()}
 
                                         {!activeDragTaskId && canMoveTask && (prevStatus || nextStatus) && (
                                           <div className="flex items-center justify-between pt-2 border-t mt-2">
@@ -1515,11 +1605,16 @@ const roleIcons: { [key: string]: any } = {
             onTaskDeleted={refreshTasks}
           />
 
-          {/* View-only Task Detail Dialog (for non-managers) */}
-          <Dialog open={!!viewingTask} onOpenChange={(open) => !open && setViewingTask(null)}>
-            <DialogContent className="sm:max-w-[500px]">
+          {/* View-only Task Detail Dialog (for non-managers) — enhanced with AI decomposition */}
+          <Dialog open={!!viewingTask} onOpenChange={(open) => { if (!open) { setViewingTask(null); setDecompResult(null); setDecompHistory([]); } }}>
+            <DialogContent className="sm:max-w-[600px] max-h-[85vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle>{viewingTask?.title}</DialogTitle>
+                <div className="flex items-center gap-2">
+                  {viewingTask?.is_ai_generated && (
+                    <Sparkles className="h-4 w-4 text-purple-500 shrink-0" />
+                  )}
+                  <DialogTitle>{viewingTask?.title}</DialogTitle>
+                </div>
               </DialogHeader>
               {viewingTask && (
                 <div className="space-y-4">
@@ -1545,7 +1640,16 @@ const roleIcons: { [key: string]: any } = {
                     </div>
                     <div>
                       <p className="text-xs font-medium text-muted-foreground mb-1">Assignee</p>
-                      <p className="text-sm">{viewingTask.assignee?.full_name || viewingTask.assignee?.email || "Unassigned"}</p>
+                      {viewingTask.assignee ? (
+                        <div className="flex items-center gap-1.5">
+                          <p className="text-sm">{viewingTask.assignee.full_name || viewingTask.assignee.email}</p>
+                          {viewingTask.ai_suggested_assignee_id === viewingTask.assignee_id && (
+                            <Sparkles className="h-3 w-3 text-purple-500" title="AI suggested" />
+                          )}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">Unassigned</p>
+                      )}
                     </div>
                     <div>
                       <p className="text-xs font-medium text-muted-foreground mb-1">Due Date</p>
@@ -1557,11 +1661,107 @@ const roleIcons: { [key: string]: any } = {
                         <p className="text-sm">{viewingTask.sprints.name}</p>
                       </div>
                     )}
+                    {viewingTask.story_points && (
+                      <div>
+                        <p className="text-xs font-medium text-muted-foreground mb-1">Story Points</p>
+                        <Badge variant="secondary">{viewingTask.story_points} pts</Badge>
+                      </div>
+                    )}
                   </div>
+
+                  {/* AI Assignee suggestion — shown when task has no assignee */}
+                  {!viewingTask.assignee_id && (
+                    <AssigneeSuggestionPanel
+                      taskId={viewingTask.id}
+                      hasAssignee={!!viewingTask.assignee_id}
+                      userRole={userRole?.role || "viewer"}
+                      onAssigned={(userId, fullName) => {
+                        // Optimistic update
+                        setViewingTask((prev: any) => prev ? {
+                          ...prev,
+                          assignee_id: userId,
+                          assignee: { id: userId, full_name: fullName, email: "", avatar_url: null },
+                          ai_suggested_assignee_id: userId,
+                        } : null);
+                        // Update in DB
+                        supabase
+                          .from("tasks")
+                          .update({ assignee_id: userId, ai_suggested_assignee_id: userId })
+                          .eq("id", viewingTask.id)
+                          .then(() => refreshTasks());
+                      }}
+                      onDismiss={() => {}}
+                    />
+                  )}
+
+                  {/* Subtask hierarchy — shown when task has accepted subtasks */}
+                  {!viewingTask.parent_task_id && (
+                    <SubtaskHierarchyView
+                      parentTaskId={viewingTask.id}
+                      parentTitle={viewingTask.title}
+                      onSubtaskClick={(subtaskId) => {
+                        const subtask = tasks.find((t: any) => t.id === subtaskId);
+                        if (subtask) setViewingTask(subtask);
+                      }}
+                    />
+                  )}
+
+                  {/* AI Decompose button — no subtasks yet */}
+                  {!viewingTask.parent_task_id && !decompResult && (
+                    <DecomposeButton
+                      taskId={viewingTask.id}
+                      hasSubtasks={tasks.some((t: any) => t.parent_task_id === viewingTask.id)}
+                      userRole={userRole?.role || "viewer"}
+                      decompositionStatus={viewingTask.decomposition_status}
+                      onDecompose={(result) => setDecompResult(result)}
+                    />
+                  )}
+
+                  {/* Decomposition panel — shown after AI analysis */}
+                  {decompResult && (
+                    <DecompositionPanel
+                      result={decompResult}
+                      onClose={() => setDecompResult(null)}
+                      onAccepted={() => {
+                        setDecompResult(null);
+                        setViewingTask(null);
+                        refreshTasks();
+                      }}
+                      onRejected={() => {
+                        setDecompResult(null);
+                      }}
+                    />
+                  )}
+
+                  {/* Decomposition history accordion */}
+                  {!decompResult && decompHistory.length > 0 && (
+                    <details className="group">
+                      <summary className="flex items-center gap-2 cursor-pointer text-sm text-muted-foreground hover:text-foreground transition-colors">
+                        <ChevronRight className="h-3.5 w-3.5 group-open:rotate-90 transition-transform" />
+                        Past AI Analyses ({decompHistory.length})
+                      </summary>
+                      <div className="mt-2 space-y-2 pl-5">
+                        {decompHistory.map((entry: any) => (
+                          <div key={entry.id} className="text-xs p-2 rounded-md bg-muted/50 space-y-1">
+                            <div className="flex items-center justify-between">
+                              <Badge variant="outline" className="text-[10px] capitalize">{entry.status}</Badge>
+                              <span className="text-muted-foreground">
+                                {new Date(entry.created_at).toLocaleDateString()}
+                              </span>
+                            </div>
+                            <div className="text-muted-foreground">
+                              {Array.isArray(entry.suggested_subtasks) ? entry.suggested_subtasks.length : 0} subtasks suggested
+                              {entry.confidence_score != null && ` \u00B7 ${Math.round(entry.confidence_score * 100)}% confidence`}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </details>
+                  )}
                 </div>
               )}
               <DialogFooter>
-                <Button variant="outline" onClick={() => setViewingTask(null)}>Close</Button>
+                <Button variant="outline" onClick={() => { setViewingTask(null); setDecompResult(null); setDecompHistory([]); }}>Close</Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -1995,11 +2195,20 @@ const roleIcons: { [key: string]: any } = {
           </div>
 
           {activeTab === "analytics" && (
-            <ProjectAnalytics
-              projectId={projectId}
-              currentUserId={currentUserId}
-              isProjectManager={isProjectManager}
-            />
+            <>
+              {/* AI Sprint Health Widget — embedded in analytics */}
+              <SprintRiskWidget
+                projectId={projectId}
+                sprints={sprints}
+                onViewFullReport={() => setActiveTab("ai-optimizer")}
+                className="mb-4"
+              />
+              <ProjectAnalytics
+                projectId={projectId}
+                currentUserId={currentUserId}
+                isProjectManager={isProjectManager}
+              />
+            </>
           )}
         </TabsContent>
 
@@ -2033,6 +2242,20 @@ const roleIcons: { [key: string]: any } = {
               projectId={projectId}
             />
           )}
+        </TabsContent>
+
+        {/* AI Optimizer Tab */}
+        <TabsContent value="ai-optimizer" className="space-y-4">
+          {activeTab === "ai-optimizer" && (() => {
+            const activeSprint = sprints.find((s: any) => s.status === "active") || sprints[0];
+            return (
+              <AIOptimizerTab
+                projectId={projectId}
+                sprints={sprints}
+                activeSprint={activeSprint}
+              />
+            );
+          })()}
         </TabsContent>
       </Tabs>
 
