@@ -88,14 +88,14 @@ function ThreadReply({
 
   return (
     <div className="flex items-start gap-2.5 px-4 py-1.5 hover:bg-muted/30 transition-colors">
-      <div className="h-7 w-7 rounded-full bg-gradient-to-br from-brand-blue to-brand-cyan flex items-center justify-center flex-shrink-0 mt-0.5">
+      <div className="h-7 w-7 rounded-full bg-gradient-to-br from-indigo-500 to-cyan-400 flex items-center justify-center flex-shrink-0 mt-0.5">
         <span className="text-[10px] font-medium text-white">
           {getUserInitials(message.users)}
         </span>
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-baseline gap-2">
-          <span className="text-xs font-semibold text-navy-900">
+          <span className="text-xs font-semibold text-foreground">
             {getDisplayName(message.users)}
           </span>
           <span className="text-[10px] text-muted-foreground">
@@ -151,7 +151,7 @@ export function CommunicationThreadPanel({
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b">
         <div>
-          <h3 className="text-sm font-semibold text-navy-900 flex items-center gap-1.5">
+          <h3 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
             <MessageSquare className="h-4 w-4" />
             Thread
           </h3>
@@ -173,14 +173,14 @@ export function CommunicationThreadPanel({
       {/* Parent message */}
       <div className="border-b px-4 py-3 bg-muted/10">
         <div className="flex items-start gap-2.5">
-          <div className="h-8 w-8 rounded-full bg-gradient-to-br from-brand-blue to-brand-cyan flex items-center justify-center flex-shrink-0">
+          <div className="h-8 w-8 rounded-full bg-gradient-to-br from-indigo-500 to-cyan-400 flex items-center justify-center flex-shrink-0">
             <span className="text-xs font-medium text-white">
               {getUserInitials(parentMessage.users)}
             </span>
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-baseline gap-2">
-              <span className="text-sm font-semibold text-navy-900">
+              <span className="text-sm font-semibold text-foreground">
                 {getDisplayName(parentMessage.users)}
               </span>
               <span className="text-xs text-muted-foreground">

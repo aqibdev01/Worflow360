@@ -210,13 +210,13 @@ export default function ForgotPasswordPage() {
   if (step === "success") {
     return (
       <div className="min-h-screen bg-gradient-to-br from-navy-900 via-navy-800 to-navy-900">
-        <nav className="fixed top-0 left-0 right-0 z-50 bg-navy-900/80 backdrop-blur-md border-b border-white/10">
+        <nav className="fixed top-0 left-0 right-0 z-50 bg-slate-900/80 backdrop-blur-md border-b border-white/10">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between items-center h-16">
               <Link href="/" className="flex items-center space-x-3">
                 <Logo className="h-9 w-9" />
                 <span className="text-xl font-bold text-white">
-                  Workflow<span className="text-brand-blue">360</span>
+                  Workflow<span className="text-indigo-600">360</span>
                 </span>
               </Link>
             </div>
@@ -229,16 +229,16 @@ export default function ForgotPasswordPage() {
               <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
                 <CheckCircle2 className="h-8 w-8 text-green-600" />
               </div>
-              <h1 className="text-2xl font-bold text-navy-900">Password Updated!</h1>
+              <h1 className="text-2xl font-bold text-foreground">Password Updated!</h1>
               <p className="text-gray-600">
                 Your password has been changed successfully.
               </p>
               <p className="text-sm text-gray-500">
                 Redirecting to login...
               </p>
-              <Loader2 className="h-5 w-5 animate-spin text-brand-blue mx-auto" />
+              <Loader2 className="h-5 w-5 animate-spin text-indigo-600 mx-auto" />
               <Link href="/auth/login">
-                <Button className="mt-4 bg-brand-blue hover:bg-brand-blue/90 text-white">
+                <Button className="mt-4 bg-indigo-600 hover:bg-indigo-600/90 text-white">
                   Go to Login Now
                 </Button>
               </Link>
@@ -251,13 +251,13 @@ export default function ForgotPasswordPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-navy-900 via-navy-800 to-navy-900">
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-navy-900/80 backdrop-blur-md border-b border-white/10">
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-slate-900/80 backdrop-blur-md border-b border-white/10">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <Link href="/" className="flex items-center space-x-3">
               <Logo className="h-9 w-9" />
               <span className="text-xl font-bold text-white">
-                Workflow<span className="text-brand-blue">360</span>
+                Workflow<span className="text-indigo-600">360</span>
               </span>
             </Link>
             <Link href="/auth/login">
@@ -279,7 +279,7 @@ export default function ForgotPasswordPage() {
                 <div
                   className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
                     currentStepIndex === i
-                      ? "bg-brand-blue text-white"
+                      ? "bg-indigo-600 text-white"
                       : currentStepIndex > i
                       ? "bg-green-500 text-white"
                       : "bg-gray-200 text-gray-500"
@@ -308,11 +308,11 @@ export default function ForgotPasswordPage() {
           {step === "email" && (
             <>
               <div className="text-center space-y-2 mb-6">
-                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-brand-blue/10 border border-brand-blue/20">
-                  <KeyRound className="h-4 w-4 text-brand-blue" />
-                  <span className="text-sm text-brand-blue font-medium">Reset Password</span>
+                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-indigo-600/10 border border-indigo-500/20">
+                  <KeyRound className="h-4 w-4 text-indigo-600" />
+                  <span className="text-sm text-indigo-600 font-medium">Reset Password</span>
                 </div>
-                <h1 className="text-2xl font-bold text-navy-900 mt-4">Find Your Account</h1>
+                <h1 className="text-2xl font-bold text-foreground mt-4">Find Your Account</h1>
                 <p className="text-gray-600 text-sm">
                   Enter the email address associated with your account
                 </p>
@@ -327,7 +327,7 @@ export default function ForgotPasswordPage() {
                 )}
 
                 <div className="space-y-2">
-                  <Label htmlFor="email" className="text-navy-900">Email Address</Label>
+                  <Label htmlFor="email" className="text-foreground">Email Address</Label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
                     <Input
@@ -345,7 +345,7 @@ export default function ForgotPasswordPage() {
                 <Button
                   type="submit"
                   disabled={loading}
-                  className="w-full bg-brand-blue hover:bg-brand-blue/90 text-white"
+                  className="w-full bg-indigo-600 hover:bg-indigo-600/90 text-white"
                 >
                   {loading ? (
                     <>
@@ -361,7 +361,7 @@ export default function ForgotPasswordPage() {
               <div className="mt-6 text-center">
                 <p className="text-sm text-gray-500">
                   Remember your password?{" "}
-                  <Link href="/auth/login" className="text-brand-blue hover:underline font-medium">
+                  <Link href="/auth/login" className="text-indigo-600 hover:underline font-medium">
                     Sign in
                   </Link>
                 </p>
@@ -373,17 +373,17 @@ export default function ForgotPasswordPage() {
           {step === "question" && (
             <>
               <div className="text-center space-y-2 mb-6">
-                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-brand-blue/10 border border-brand-blue/20">
+                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-indigo-600/10 border border-indigo-500/20">
                   {isFallback ? (
-                    <User className="h-4 w-4 text-brand-blue" />
+                    <User className="h-4 w-4 text-indigo-600" />
                   ) : (
-                    <ShieldQuestion className="h-4 w-4 text-brand-blue" />
+                    <ShieldQuestion className="h-4 w-4 text-indigo-600" />
                   )}
-                  <span className="text-sm text-brand-blue font-medium">
+                  <span className="text-sm text-indigo-600 font-medium">
                     {isFallback ? "Identity Verification" : "Security Question"}
                   </span>
                 </div>
-                <h1 className="text-2xl font-bold text-navy-900 mt-4">Verify Your Identity</h1>
+                <h1 className="text-2xl font-bold text-foreground mt-4">Verify Your Identity</h1>
                 <p className="text-gray-600 text-sm">
                   {isFallback
                     ? "Enter the full name you used when signing up"
@@ -401,7 +401,7 @@ export default function ForgotPasswordPage() {
 
                 {isFallback ? (
                   <div className="space-y-2">
-                    <Label htmlFor="fullName" className="text-navy-900">Full Name</Label>
+                    <Label htmlFor="fullName" className="text-foreground">Full Name</Label>
                     <div className="relative">
                       <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
                       <Input
@@ -422,11 +422,11 @@ export default function ForgotPasswordPage() {
                 ) : (
                   <>
                     <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
-                      <p className="text-sm font-medium text-navy-900">{securityQuestion}</p>
+                      <p className="text-sm font-medium text-foreground">{securityQuestion}</p>
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="securityAnswer" className="text-navy-900">Your Answer</Label>
+                      <Label htmlFor="securityAnswer" className="text-foreground">Your Answer</Label>
                       <div className="relative">
                         <ShieldQuestion className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
                         <Input
@@ -450,7 +450,7 @@ export default function ForgotPasswordPage() {
                 <Button
                   type="submit"
                   disabled={loading || (isFallback ? !fullName.trim() : !securityAnswer.trim())}
-                  className="w-full bg-brand-blue hover:bg-brand-blue/90 text-white"
+                  className="w-full bg-indigo-600 hover:bg-indigo-600/90 text-white"
                 >
                   Continue
                 </Button>
@@ -475,11 +475,11 @@ export default function ForgotPasswordPage() {
           {step === "password" && (
             <>
               <div className="text-center space-y-2 mb-6">
-                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-brand-blue/10 border border-brand-blue/20">
-                  <Lock className="h-4 w-4 text-brand-blue" />
-                  <span className="text-sm text-brand-blue font-medium">New Password</span>
+                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-indigo-600/10 border border-indigo-500/20">
+                  <Lock className="h-4 w-4 text-indigo-600" />
+                  <span className="text-sm text-indigo-600 font-medium">New Password</span>
                 </div>
-                <h1 className="text-2xl font-bold text-navy-900 mt-4">Create New Password</h1>
+                <h1 className="text-2xl font-bold text-foreground mt-4">Create New Password</h1>
                 <p className="text-gray-600 text-sm">
                   Enter a strong password for your account
                 </p>
@@ -494,7 +494,7 @@ export default function ForgotPasswordPage() {
                 )}
 
                 <div className="space-y-2">
-                  <Label htmlFor="password" className="text-navy-900">New Password</Label>
+                  <Label htmlFor="password" className="text-foreground">New Password</Label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
                     <Input
@@ -541,7 +541,7 @@ export default function ForgotPasswordPage() {
                 )}
 
                 <div className="space-y-2">
-                  <Label htmlFor="confirmPassword" className="text-navy-900">Confirm Password</Label>
+                  <Label htmlFor="confirmPassword" className="text-foreground">Confirm Password</Label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
                     <Input
@@ -575,13 +575,13 @@ export default function ForgotPasswordPage() {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="newSecurityQuestion" className="text-navy-900">Security Question</Label>
+                      <Label htmlFor="newSecurityQuestion" className="text-foreground">Security Question</Label>
                       <select
                         id="newSecurityQuestion"
                         value={newSecurityQuestion}
                         onChange={(e) => setNewSecurityQuestion(e.target.value)}
                         disabled={loading}
-                        className="flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-brand-blue focus:outline-none focus:ring-2 focus:ring-brand-blue/20"
+                        className="flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                       >
                         <option value="">Select a security question...</option>
                         {SECURITY_QUESTIONS.map((q) => (
@@ -592,7 +592,7 @@ export default function ForgotPasswordPage() {
 
                     {newSecurityQuestion && (
                       <div className="space-y-2">
-                        <Label htmlFor="newSecurityAnswer" className="text-navy-900">Security Answer</Label>
+                        <Label htmlFor="newSecurityAnswer" className="text-foreground">Security Answer</Label>
                         <Input
                           id="newSecurityAnswer"
                           type="text"
@@ -609,7 +609,7 @@ export default function ForgotPasswordPage() {
                 <Button
                   type="submit"
                   disabled={loading || !isValidPassword || !passwordsMatch || (isFallback && (!newSecurityQuestion || !newSecurityAnswer.trim()))}
-                  className="w-full bg-brand-blue hover:bg-brand-blue/90 text-white"
+                  className="w-full bg-indigo-600 hover:bg-indigo-600/90 text-white"
                 >
                   {loading ? (
                     <>

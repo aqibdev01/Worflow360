@@ -87,7 +87,7 @@ export function CreateInviteCodeDialog({
       <DialogContent className="sm:max-w-[440px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <LinkIcon className="h-5 w-5 text-brand-blue" />
+            <LinkIcon className="h-5 w-5 text-indigo-600" />
             Create Invite Link
           </DialogTitle>
         </DialogHeader>
@@ -99,12 +99,12 @@ export function CreateInviteCodeDialog({
               <p className="text-xs text-emerald-600 font-medium mb-2">
                 Invite code created successfully!
               </p>
-              <p className="text-2xl font-mono font-bold text-navy-900 tracking-wider">
+              <p className="text-2xl font-mono font-bold text-foreground tracking-wider">
                 {createdCode}
               </p>
             </div>
             <Button
-              className="w-full bg-brand-blue hover:bg-brand-blue/90 gap-2"
+              className="w-full bg-indigo-600 hover:bg-indigo-600/90 gap-2"
               onClick={handleCopyLink}
             >
               {copied ? (
@@ -183,7 +183,7 @@ export function CreateInviteCodeDialog({
               Cancel
             </Button>
             <Button
-              className="bg-brand-blue hover:bg-brand-blue/90 gap-2"
+              className="bg-indigo-600 hover:bg-indigo-600/90 gap-2"
               onClick={handleCreate}
               disabled={creating}
             >

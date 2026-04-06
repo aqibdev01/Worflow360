@@ -137,13 +137,13 @@ export function NewDMDialog({
                     disabled={!!startingDM}
                     className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-muted/50 transition-colors text-left disabled:opacity-50"
                   >
-                    <div className="h-9 w-9 rounded-full bg-gradient-to-br from-brand-blue to-brand-cyan flex items-center justify-center flex-shrink-0">
+                    <div className="h-9 w-9 rounded-full bg-gradient-to-br from-indigo-500 to-cyan-400 flex items-center justify-center flex-shrink-0">
                       <span className="text-xs font-medium text-white">
                         {initials}
                       </span>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-navy-900 truncate">
+                      <p className="text-sm font-medium text-foreground truncate">
                         {name}
                       </p>
                       <p className="text-xs text-muted-foreground truncate">
@@ -151,7 +151,7 @@ export function NewDMDialog({
                       </p>
                     </div>
                     {isStarting ? (
-                      <Loader2 className="h-4 w-4 animate-spin text-brand-blue" />
+                      <Loader2 className="h-4 w-4 animate-spin text-indigo-600" />
                     ) : (
                       <MessageCircle className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100" />
                     )}

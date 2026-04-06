@@ -58,7 +58,7 @@ const STATUS_CONFIG: Record<
   { label: string; color: string; bg: string; icon: React.ElementType }
 > = {
   todo: { label: "To Do", color: "text-gray-600", bg: "bg-gray-100", icon: CircleDot },
-  in_progress: { label: "In Progress", color: "text-brand-blue", bg: "bg-brand-blue/10", icon: Clock },
+  in_progress: { label: "In Progress", color: "text-indigo-600", bg: "bg-indigo-600/10", icon: Clock },
   review: { label: "Review", color: "text-amber-600", bg: "bg-amber-50", icon: AlertTriangle },
   done: { label: "Done", color: "text-emerald-600", bg: "bg-emerald-50", icon: CheckCircle2 },
   blocked: { label: "Blocked", color: "text-red-600", bg: "bg-red-50", icon: XCircle },
@@ -158,7 +158,7 @@ export function TaskRefPicker({
       <DialogContent className="sm:max-w-[520px] max-h-[600px] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <ClipboardList className="h-5 w-5 text-brand-blue" />
+            <ClipboardList className="h-5 w-5 text-indigo-600" />
             Attach Task Reference
           </DialogTitle>
         </DialogHeader>
@@ -181,7 +181,7 @@ export function TaskRefPicker({
             onClick={() => setTab("active")}
             className={`px-3 py-1.5 text-sm font-medium border-b-2 transition-colors ${
               tab === "active"
-                ? "border-brand-blue text-brand-blue"
+                ? "border-indigo-500 text-indigo-600"
                 : "border-transparent text-muted-foreground hover:text-foreground"
             }`}
           >
@@ -191,7 +191,7 @@ export function TaskRefPicker({
             onClick={() => setTab("done")}
             className={`px-3 py-1.5 text-sm font-medium border-b-2 transition-colors ${
               tab === "done"
-                ? "border-brand-blue text-brand-blue"
+                ? "border-indigo-500 text-indigo-600"
                 : "border-transparent text-muted-foreground hover:text-foreground"
             }`}
           >
@@ -224,11 +224,11 @@ export function TaskRefPicker({
                   <button
                     key={task.id}
                     onClick={() => handleSelect(task)}
-                    className={`w-full text-left px-3 py-2.5 rounded-lg border border-transparent hover:border-brand-blue/30 hover:bg-brand-blue/5 transition-all group border-l-2 ${priorityBorder}`}
+                    className={`w-full text-left px-3 py-2.5 rounded-lg border border-transparent hover:border-indigo-500/30 hover:bg-indigo-600/5 transition-all group border-l-2 ${priorityBorder}`}
                   >
                     <div className="flex items-start gap-2">
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-navy-900 group-hover:text-brand-blue transition-colors truncate">
+                        <p className="text-sm font-medium text-foreground group-hover:text-indigo-600 transition-colors truncate">
                           {task.title}
                         </p>
                         <div className="flex items-center gap-2 mt-1">

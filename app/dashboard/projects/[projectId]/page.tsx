@@ -154,7 +154,7 @@ function BoardDropZone({ children, active }: { children: React.ReactNode; active
     <div
       ref={setNodeRef}
       className={`transition-all rounded-xl ${
-        active && isOver ? "ring-3 ring-brand-blue/40 ring-offset-4 bg-brand-blue/[0.02]" : ""
+        active && isOver ? "ring-3 ring-indigo-500/40 ring-offset-4 bg-indigo-500/[0.02]" : ""
       }`}
     >
       {children}
@@ -175,7 +175,7 @@ function ColumnDropZone({ status, active, children }: {
     <div
       ref={setNodeRef}
       className={`transition-all rounded-xl ${
-        active && isOver ? "ring-2 ring-brand-blue ring-offset-2 scale-[1.01] bg-brand-blue/5" : ""
+        active && isOver ? "ring-2 ring-indigo-500 ring-offset-2 scale-[1.01] bg-indigo-500/5" : ""
       }`}
     >
       {children}
@@ -732,7 +732,7 @@ const roleIcons: { [key: string]: any } = {
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-8 w-8 p-0 text-muted-foreground hover:text-brand-blue"
+                      className="h-8 w-8 p-0 text-muted-foreground hover:text-indigo-500"
                       onClick={() => setEditProjectOpen(true)}
                       title="Edit project"
                     >
@@ -1189,14 +1189,14 @@ const roleIcons: { [key: string]: any } = {
             >
               {/* Priority Card Tray */}
               <div className={`bg-white border-2 border-dashed rounded-xl p-4 shadow-sm transition-all ${
-                activeDragPriority ? "border-brand-blue/40 bg-brand-blue/[0.02]" : "border-gray-200"
+                activeDragPriority ? "border-indigo-500/40 bg-indigo-500/[0.02]" : "border-gray-200"
               }`}>
                 <div className="flex items-center gap-3 mb-3">
-                  <div className="h-8 w-8 rounded-lg bg-brand-blue/10 flex items-center justify-center">
-                    <Layers className="h-4 w-4 text-brand-blue" />
+                  <div className="h-8 w-8 rounded-lg bg-indigo-500/10 flex items-center justify-center">
+                    <Layers className="h-4 w-4 text-indigo-500" />
                   </div>
                   <div>
-                    <span className="text-sm font-semibold text-navy-900">Quick Add</span>
+                    <span className="text-sm font-semibold text-foreground">Quick Add</span>
                     <p className="text-xs text-muted-foreground">Pick a priority card and drop it on the board to create a task</p>
                   </div>
                 </div>
@@ -1214,7 +1214,7 @@ const roleIcons: { [key: string]: any } = {
 
               <BoardDropZone active={!!activeDragPriority}>
                 {visibleTasks.length === 0 ? (
-                  <Card className={`transition-all ${activeDragPriority ? "ring-2 ring-brand-blue/30 ring-dashed" : ""}`}>
+                  <Card className={`transition-all ${activeDragPriority ? "ring-2 ring-indigo-500/30 ring-dashed" : ""}`}>
                     <CardContent className="flex flex-col items-center justify-center py-12">
                       <LayoutGrid className="h-12 w-12 text-muted-foreground mb-4" />
                       <h3 className="text-lg font-semibold mb-2">No Tasks Yet</h3>
@@ -1264,7 +1264,7 @@ const roleIcons: { [key: string]: any } = {
                                       id={`task-card-${task.id}`}
                                       className={`border-l-4 bg-background transition-shadow cursor-pointer ${
                                         isHighlighted
-                                          ? "ring-2 ring-brand-blue animate-task-highlight"
+                                          ? "ring-2 ring-indigo-500 animate-task-highlight"
                                           : "hover:shadow-md"
                                       }`}
                                       style={{
@@ -1440,7 +1440,7 @@ const roleIcons: { [key: string]: any } = {
                       <Trash2 className="h-5 w-5 text-red-600" />
                     </div>
                     <div>
-                      <h3 className="font-semibold text-navy-900">Delete Task?</h3>
+                      <h3 className="font-semibold text-foreground">Delete Task?</h3>
                       <p className="text-sm text-muted-foreground">This action cannot be undone.</p>
                     </div>
                   </div>
@@ -1505,7 +1505,7 @@ const roleIcons: { [key: string]: any } = {
                             key={task.id}
                             id={`task-card-${task.id}`}
                             className={`cursor-pointer border-l-4 bg-background transition-shadow ${
-                              isHighlighted ? "ring-2 ring-brand-blue animate-task-highlight" : "hover:shadow-md"
+                              isHighlighted ? "ring-2 ring-indigo-500 animate-task-highlight" : "hover:shadow-md"
                             }`}
                             style={{
                               borderLeftColor:
@@ -2100,7 +2100,7 @@ const roleIcons: { [key: string]: any } = {
                     </div>
                     <Button
                       size="sm"
-                      className="bg-brand-blue hover:bg-brand-blue/90 gap-1.5"
+                      className="bg-indigo-500 hover:bg-indigo-500/90 gap-1.5"
                       onClick={() => setEditProjectOpen(true)}
                     >
                       <Pencil className="h-3.5 w-3.5" />
@@ -2112,7 +2112,7 @@ const roleIcons: { [key: string]: any } = {
                   <div className="grid gap-4 md:grid-cols-2">
                     <div className="space-y-1">
                       <p className="text-xs font-medium text-muted-foreground">Name</p>
-                      <p className="text-sm font-medium text-navy-900">{project.name}</p>
+                      <p className="text-sm font-medium text-foreground">{project.name}</p>
                     </div>
                     <div className="space-y-1">
                       <p className="text-xs font-medium text-muted-foreground">Status</p>

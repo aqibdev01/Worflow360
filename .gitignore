@@ -37,3 +37,5 @@ next-env.d.ts
 
 # Claude's
 /.claude
+
+/stitch-exports

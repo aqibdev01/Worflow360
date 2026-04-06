@@ -92,7 +92,7 @@ function NotificationItem({
       {/* Content */}
       <div className="flex-1 min-w-0">
         <div className="flex items-start justify-between gap-2">
-          <p className={`text-sm leading-snug ${!notification.is_read ? "font-semibold text-navy-900" : "text-foreground"}`}>
+          <p className={`text-sm leading-snug ${!notification.is_read ? "font-semibold text-foreground" : "text-foreground"}`}>
             {notification.title}
           </p>
           {!notification.is_read && (
@@ -163,7 +163,7 @@ export function NotificationBell({ orgId }: NotificationBellProps) {
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button
-          className="relative flex h-10 w-10 items-center justify-center rounded-xl text-muted-foreground hover:text-navy-900 hover:bg-muted/50 transition-colors"
+          className="relative flex h-10 w-10 items-center justify-center rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
           aria-label="Notifications"
         >
           <Bell className="h-5 w-5" />
@@ -182,11 +182,11 @@ export function NotificationBell({ orgId }: NotificationBellProps) {
       >
         {/* Header */}
         <div className="flex items-center justify-between border-b px-4 py-3">
-          <h3 className="text-sm font-semibold text-navy-900">Notifications</h3>
+          <h3 className="text-sm font-semibold text-foreground">Notifications</h3>
           {unreadCount > 0 && (
             <button
               onClick={() => markAllRead()}
-              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-brand-blue transition-colors"
+              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-indigo-600 transition-colors"
             >
               <CheckCheck className="h-3.5 w-3.5" />
               Mark all read
@@ -200,7 +200,7 @@ export function NotificationBell({ orgId }: NotificationBellProps) {
             onClick={() => setTab("all")}
             className={`flex-1 py-2 text-xs font-medium text-center transition-colors ${
               tab === "all"
-                ? "text-brand-blue border-b-2 border-brand-blue"
+                ? "text-indigo-600 border-b-2 border-indigo-500"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
@@ -210,7 +210,7 @@ export function NotificationBell({ orgId }: NotificationBellProps) {
             onClick={() => setTab("unread")}
             className={`flex-1 py-2 text-xs font-medium text-center transition-colors ${
               tab === "unread"
-                ? "text-brand-blue border-b-2 border-brand-blue"
+                ? "text-indigo-600 border-b-2 border-indigo-500"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
@@ -252,7 +252,7 @@ export function NotificationBell({ orgId }: NotificationBellProps) {
                 setOpen(false);
                 router.push(`/dashboard/organizations/${orgId}/notifications`);
               }}
-              className="w-full py-2.5 text-xs font-medium text-brand-blue hover:bg-muted/50 transition-colors"
+              className="w-full py-2.5 text-xs font-medium text-indigo-600 hover:bg-muted/50 transition-colors"
             >
               View all notifications
             </button>

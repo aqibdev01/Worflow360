@@ -137,8 +137,8 @@ const EVENT_TYPE_CONFIG: Record<string, { icon: any; color: string; bg: string; 
 };
 
 const SPRINT_COLORS = [
-  "bg-brand-blue/8 border-brand-blue/20",
-  "bg-brand-purple/8 border-brand-purple/20",
+  "bg-indigo-600/8 border-indigo-500/20",
+  "bg-violet-600/8 border-violet-500/20",
   "bg-emerald-500/8 border-emerald-500/20",
   "bg-amber-500/8 border-amber-500/20",
 ];
@@ -291,7 +291,7 @@ function DayDetailDialog({
       <DialogContent className="max-w-md max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <CalendarDays className="h-5 w-5 text-brand-blue" />
+            <CalendarDays className="h-5 w-5 text-indigo-600" />
             {format(date, "EEEE, MMMM d, yyyy")}
           </DialogTitle>
         </DialogHeader>
@@ -305,8 +305,8 @@ function DayDetailDialog({
               </h4>
               <div className="space-y-1">
                 {sprints.map((s) => (
-                  <div key={s.id} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-brand-blue/5 border border-brand-blue/15">
-                    <div className="h-2 w-2 rounded-full bg-brand-blue" />
+                  <div key={s.id} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-indigo-600/5 border border-indigo-500/15">
+                    <div className="h-2 w-2 rounded-full bg-indigo-600" />
                     <span className="text-sm font-medium">{s.name}</span>
                     <Badge variant="outline" className="text-[10px] ml-auto capitalize">{s.status}</Badge>
                   </div>
@@ -600,7 +600,7 @@ export function ProjectCalendar({
 
       {/* Month title */}
       <div className="text-center">
-        <h2 className="text-xl font-semibold text-navy-900">
+        <h2 className="text-xl font-semibold text-foreground">
           {format(currentDate, "MMMM yyyy")}
         </h2>
       </div>
@@ -663,7 +663,7 @@ export function ProjectCalendar({
       {/* Sprint Range Legend */}
       {sprints.length > 0 && (
         <div className="flex items-center gap-3 flex-wrap text-xs">
-          <span className="font-medium text-navy-900">Sprints:</span>
+          <span className="font-medium text-foreground">Sprints:</span>
           {sprints.map((s, idx) => (
             <div key={s.id} className="flex items-center gap-1.5">
               <div className={`h-3 w-8 rounded border ${SPRINT_COLORS[idx % SPRINT_COLORS.length]}`} />
@@ -693,7 +693,7 @@ export function ProjectCalendar({
         {loading ? (
           <div className="flex items-center justify-center h-80">
             <div className="text-center space-y-2">
-              <Loader2 className="h-7 w-7 animate-spin text-brand-blue mx-auto" />
+              <Loader2 className="h-7 w-7 animate-spin text-indigo-600 mx-auto" />
               <p className="text-sm text-muted-foreground">Loading calendar...</p>
             </div>
           </div>
@@ -728,9 +728,9 @@ export function ProjectCalendar({
                     <span
                       className={`h-6 w-6 flex items-center justify-center text-xs rounded-full font-medium ${
                         isTodayDate
-                          ? "bg-brand-blue text-white font-bold"
+                          ? "bg-indigo-600 text-white font-bold"
                           : isCurrentMonth
-                          ? "text-navy-900"
+                          ? "text-foreground"
                           : "text-muted-foreground/40"
                       }`}
                     >
@@ -760,7 +760,7 @@ export function ProjectCalendar({
                     })}
                     {hiddenCount > 0 && (
                       <button
-                        className="w-full text-left px-1.5 text-[10px] text-brand-blue font-medium hover:text-brand-blue-600"
+                        className="w-full text-left px-1.5 text-[10px] text-indigo-600 font-medium hover:text-indigo-700"
                         onClick={(e) => { e.stopPropagation(); handleDayClick(day); }}
                       >
                         +{hiddenCount} more

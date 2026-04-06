@@ -154,7 +154,7 @@ function renderInline(text: string, keyOffset: number): React.ReactNode[] {
       parts.push(
         <span
           key={key}
-          className="bg-brand-blue/10 text-brand-blue px-1 rounded font-medium"
+          className="bg-indigo-600/10 text-indigo-600 px-1 rounded font-medium"
         >
           @{name}
         </span>
@@ -292,7 +292,7 @@ function MessageRow({
           </Tooltip>
         </TooltipProvider>
       ) : (
-        <div className="h-8 w-8 rounded-full bg-gradient-to-br from-brand-blue to-brand-cyan flex items-center justify-center flex-shrink-0 mt-0.5">
+        <div className="h-8 w-8 rounded-full bg-gradient-to-br from-indigo-500 to-cyan-400 flex items-center justify-center flex-shrink-0 mt-0.5">
           <span className="text-xs font-medium text-white">
             {getUserInitials(message.users)}
           </span>
@@ -303,7 +303,7 @@ function MessageRow({
       <div className="flex-1 min-w-0">
         {!compact && (
           <div className="flex items-baseline gap-2">
-            <span className="text-sm font-semibold text-navy-900">
+            <span className="text-sm font-semibold text-foreground">
               {getDisplayName(message.users)}
             </span>
             <span className="text-xs text-muted-foreground">
@@ -381,14 +381,14 @@ function MessageRow({
         {message.reply_count > 0 && (
           <button
             onClick={() => onOpenThread(message.id)}
-            className="flex items-center gap-2 mt-1.5 py-1 text-xs text-brand-blue hover:bg-brand-blue/5 rounded px-1.5 -ml-1.5 transition-colors group"
+            className="flex items-center gap-2 mt-1.5 py-1 text-xs text-indigo-600 hover:bg-indigo-600/5 rounded px-1.5 -ml-1.5 transition-colors group"
           >
             <MessageSquare className="h-3 w-3" />
             <span className="font-medium">
               {message.reply_count}{" "}
               {message.reply_count === 1 ? "reply" : "replies"}
             </span>
-            <span className="text-muted-foreground group-hover:text-brand-blue/70">
+            <span className="text-muted-foreground group-hover:text-indigo-600/70">
               View thread
             </span>
           </button>
@@ -583,7 +583,7 @@ export function CommunicationMessageList({
           <div className="h-16 w-16 bg-muted rounded-full flex items-center justify-center mb-4">
             <MessageSquare className="h-8 w-8 text-muted-foreground" />
           </div>
-          <p className="text-sm font-medium text-navy-900">No messages yet</p>
+          <p className="text-sm font-medium text-foreground">No messages yet</p>
           <p className="text-xs text-muted-foreground mt-1">
             Be the first to send a message!
           </p>
@@ -598,7 +598,7 @@ export function CommunicationMessageList({
               ) : (
                 <button
                   onClick={onLoadMore}
-                  className="text-xs text-brand-blue hover:underline"
+                  className="text-xs text-indigo-600 hover:underline"
                 >
                   Load older messages
                 </button>

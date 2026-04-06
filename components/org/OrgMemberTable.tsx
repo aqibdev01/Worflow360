@@ -56,12 +56,12 @@ const ROLE_CONFIG: Record<
 > = {
   admin: {
     label: "Admin",
-    color: "bg-brand-purple/10 text-brand-purple border-brand-purple/20",
+    color: "bg-violet-600/10 text-violet-600 border-violet-500/20",
     icon: ShieldCheck,
   },
   manager: {
     label: "Manager",
-    color: "bg-brand-blue/10 text-brand-blue border-brand-blue/20",
+    color: "bg-indigo-600/10 text-indigo-600 border-indigo-500/20",
     icon: Shield,
   },
   member: {
@@ -118,8 +118,8 @@ export function OrgMemberTable({
     <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center gap-2">
-        <Users className="h-5 w-5 text-brand-purple" />
-        <h3 className="text-base font-semibold text-navy-900">
+        <Users className="h-5 w-5 text-violet-600" />
+        <h3 className="text-base font-semibold text-foreground">
           Team Members
         </h3>
         <span className="text-sm text-muted-foreground">
@@ -142,7 +142,7 @@ export function OrgMemberTable({
       <div className="border rounded-xl overflow-hidden">
         <table className="w-full text-sm">
           <thead>
-            <tr className="bg-[#F8F9FC] border-b">
+            <tr className="bg-slate-50 dark:bg-slate-900 border-b">
               <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">
                 Member
               </th>
@@ -185,13 +185,13 @@ export function OrgMemberTable({
                   {/* Member info */}
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
-                      <div className="h-8 w-8 rounded-full bg-gradient-to-br from-brand-blue to-brand-cyan flex items-center justify-center flex-shrink-0">
+                      <div className="h-8 w-8 rounded-full bg-gradient-to-br from-indigo-500 to-cyan-400 flex items-center justify-center flex-shrink-0">
                         <span className="text-[10px] font-medium text-white">
                           {initials}
                         </span>
                       </div>
                       <div>
-                        <p className="font-medium text-navy-900">
+                        <p className="font-medium text-foreground">
                           {displayName}
                           {isSelf && (
                             <span className="text-xs text-muted-foreground ml-1.5">
@@ -264,7 +264,7 @@ export function OrgMemberTable({
             </DialogTitle>
             <DialogDescription>
               Are you sure you want to remove{" "}
-              <span className="font-semibold text-navy-900">
+              <span className="font-semibold text-foreground">
                 {removeMember?.users?.full_name ||
                   removeMember?.users?.email?.split("@")[0]}
               </span>{" "}

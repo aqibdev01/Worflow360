@@ -87,8 +87,8 @@ const roleIcons: Record<string, any> = {
 };
 
 const ROLE_COLORS: Record<string, string> = {
-  owner: "bg-brand-purple/10 text-brand-purple border-brand-purple/20",
-  lead: "bg-brand-blue/10 text-brand-blue border-brand-blue/20",
+  owner: "bg-violet-600/10 text-violet-600 border-violet-500/20",
+  lead: "bg-indigo-600/10 text-indigo-600 border-indigo-500/20",
   contributor: "bg-emerald-50 text-emerald-600 border-emerald-200",
   viewer: "bg-muted text-muted-foreground",
 };
@@ -239,8 +239,8 @@ export function ProjectMemberManager({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Users className="h-5 w-5 text-brand-purple" />
-          <h3 className="text-base font-semibold text-navy-900">
+          <Users className="h-5 w-5 text-violet-600" />
+          <h3 className="text-base font-semibold text-foreground">
             Project Members
           </h3>
           <span className="text-sm text-muted-foreground">({members.length})</span>
@@ -248,7 +248,7 @@ export function ProjectMemberManager({
         {canManage && (
           <Button
             size="sm"
-            className="bg-brand-blue hover:bg-brand-blue/90 gap-1.5"
+            className="bg-indigo-600 hover:bg-indigo-600/90 gap-1.5"
             onClick={() => setAddDialogOpen(true)}
           >
             <UserPlus className="h-3.5 w-3.5" />
@@ -272,7 +272,7 @@ export function ProjectMemberManager({
       <div className="border rounded-xl overflow-hidden">
         <table className="w-full text-sm">
           <thead>
-            <tr className="bg-[#F8F9FC] border-b">
+            <tr className="bg-slate-50 dark:bg-slate-900 border-b">
               <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Member</th>
               <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Role</th>
               <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Custom Role</th>
@@ -309,11 +309,11 @@ export function ProjectMemberManager({
                   {/* Member */}
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
-                      <div className="h-8 w-8 rounded-full bg-gradient-to-br from-brand-blue to-brand-cyan flex items-center justify-center flex-shrink-0">
+                      <div className="h-8 w-8 rounded-full bg-gradient-to-br from-indigo-500 to-cyan-400 flex items-center justify-center flex-shrink-0">
                         <span className="text-[10px] font-medium text-white">{initials}</span>
                       </div>
                       <div>
-                        <p className="font-medium text-navy-900">
+                        <p className="font-medium text-foreground">
                           {displayName}
                           {isSelf && (
                             <span className="text-xs text-muted-foreground ml-1.5">(you)</span>
@@ -422,7 +422,7 @@ export function ProjectMemberManager({
             </DialogTitle>
             <DialogDescription>
               Are you sure you want to remove{" "}
-              <span className="font-semibold text-navy-900">
+              <span className="font-semibold text-foreground">
                 {removeMember?.users?.full_name || removeMember?.users?.email?.split("@")[0]}
               </span>{" "}
               from this project? They will lose access to all project tasks and channels.
@@ -445,7 +445,7 @@ export function ProjectMemberManager({
         <DialogContent className="sm:max-w-[480px] max-h-[600px] flex flex-col">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <UserPlus className="h-5 w-5 text-brand-blue" />
+              <UserPlus className="h-5 w-5 text-indigo-600" />
               Add Project Member
             </DialogTitle>
           </DialogHeader>
@@ -484,11 +484,11 @@ export function ProjectMemberManager({
                       onClick={() => setSelectedUserId(om.users?.id)}
                       className={`w-full text-left px-3 py-2.5 flex items-center gap-3 transition-colors border-b last:border-b-0 ${
                         isSelected
-                          ? "bg-brand-blue/10 border-l-2 border-l-brand-blue"
+                          ? "bg-indigo-600/10 border-l-2 border-l-indigo-500"
                           : "hover:bg-muted/50"
                       }`}
                     >
-                      <div className="h-7 w-7 rounded-full bg-gradient-to-br from-brand-blue to-brand-cyan flex items-center justify-center flex-shrink-0">
+                      <div className="h-7 w-7 rounded-full bg-gradient-to-br from-indigo-500 to-cyan-400 flex items-center justify-center flex-shrink-0">
                         <span className="text-[10px] font-medium text-white">
                           {(om.users?.full_name || om.users?.email)?.[0]?.toUpperCase()}
                         </span>
@@ -544,7 +544,7 @@ export function ProjectMemberManager({
               Cancel
             </Button>
             <Button
-              className="bg-brand-blue hover:bg-brand-blue/90 gap-1.5"
+              className="bg-indigo-600 hover:bg-indigo-600/90 gap-1.5"
               onClick={handleAddMember}
               disabled={adding || !selectedUserId}
             >

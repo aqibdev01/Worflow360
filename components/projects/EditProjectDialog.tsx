@@ -110,7 +110,7 @@ export function EditProjectDialog({
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Pencil className="h-5 w-5 text-brand-blue" />
+            <Pencil className="h-5 w-5 text-indigo-600" />
             Edit Project
           </DialogTitle>
         </DialogHeader>
@@ -191,7 +191,7 @@ export function EditProjectDialog({
             Cancel
           </Button>
           <Button
-            className="bg-brand-blue hover:bg-brand-blue/90 gap-2"
+            className="bg-indigo-600 hover:bg-indigo-600/90 gap-2"
             onClick={handleSave}
             disabled={saving}
           >

@@ -46,7 +46,7 @@ export default function CommunicationLayout({
   if (authLoading || !user) {
     return (
       <div className="flex h-[calc(100vh-5rem)] -mx-4 lg:-mx-6 -mb-4 lg:-mb-6 bg-white rounded-t-xl border shadow-sm overflow-hidden items-center justify-center">
-        <div className="h-6 w-6 border-2 border-brand-blue/30 border-t-brand-blue rounded-full animate-spin" />
+        <div className="h-6 w-6 border-2 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" />
       </div>
     );
   }

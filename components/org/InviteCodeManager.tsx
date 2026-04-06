@@ -86,12 +86,12 @@ export function InviteCodeManager({ orgId, isAdmin }: InviteCodeManagerProps) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <LinkIcon className="h-5 w-5 text-brand-blue" />
-          <h3 className="text-base font-semibold text-navy-900">Invite Links</h3>
+          <LinkIcon className="h-5 w-5 text-indigo-600" />
+          <h3 className="text-base font-semibold text-foreground">Invite Links</h3>
         </div>
         <Button
           size="sm"
-          className="bg-brand-blue hover:bg-brand-blue/90 gap-1.5"
+          className="bg-indigo-600 hover:bg-indigo-600/90 gap-1.5"
           onClick={() => setCreateOpen(true)}
         >
           <Plus className="h-3.5 w-3.5" />
@@ -105,7 +105,7 @@ export function InviteCodeManager({ orgId, isAdmin }: InviteCodeManagerProps) {
           <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
         </div>
       ) : codes.length === 0 ? (
-        <div className="text-center py-8 bg-[#F8F9FC] rounded-xl border border-dashed">
+        <div className="text-center py-8 bg-slate-50 dark:bg-slate-900 rounded-xl border border-dashed">
           <LinkIcon className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
           <p className="text-sm text-muted-foreground">
             No invite codes yet. Create one to invite team members.
@@ -115,7 +115,7 @@ export function InviteCodeManager({ orgId, isAdmin }: InviteCodeManagerProps) {
         <div className="border rounded-xl overflow-hidden">
           <table className="w-full text-sm">
             <thead>
-              <tr className="bg-[#F8F9FC] border-b">
+              <tr className="bg-slate-50 dark:bg-slate-900 border-b">
                 <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">
                   Code
                 </th>
@@ -148,7 +148,7 @@ export function InviteCodeManager({ orgId, isAdmin }: InviteCodeManagerProps) {
                   >
                     {/* Code */}
                     <td className="px-4 py-3">
-                      <span className="font-mono font-semibold text-navy-900 tracking-wider">
+                      <span className="font-mono font-semibold text-foreground tracking-wider">
                         {code.code}
                       </span>
                       <p className="text-[10px] text-muted-foreground mt-0.5">
@@ -161,7 +161,7 @@ export function InviteCodeManager({ orgId, isAdmin }: InviteCodeManagerProps) {
                       <Badge
                         className={`capitalize ${
                           code.default_role === "manager"
-                            ? "bg-brand-blue/10 text-brand-blue border-brand-blue/20"
+                            ? "bg-indigo-600/10 text-indigo-600 border-indigo-500/20"
                             : "bg-muted text-muted-foreground"
                         }`}
                       >
@@ -171,7 +171,7 @@ export function InviteCodeManager({ orgId, isAdmin }: InviteCodeManagerProps) {
 
                     {/* Uses */}
                     <td className="px-4 py-3 text-muted-foreground">
-                      <span className="font-medium text-navy-900">
+                      <span className="font-medium text-foreground">
                         {code.use_count}
                       </span>
                       {" / "}

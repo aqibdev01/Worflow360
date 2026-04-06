@@ -1,137 +1,220 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    /* Main backgrounds */
-    --background: 0 0% 100%;
-    --foreground: 235 63% 15%;
+    /* ── Light Theme: "The Intelligent Canvas" ── */
 
-    /* Card colors */
-    --card: 0 0% 100%;
-    --card-foreground: 235 63% 15%;
+    /* Main backgrounds — MD3 Surface hierarchy */
+    --background: 228 100% 99%;       /* #f8f9ff — surface */
+    --foreground: 214 63% 12%;        /* #0b1c30 — on-surface */
 
-    /* Popover */
+    /* Card — surface-container-lowest (white, "pop" layer) */
+    --card: 0 0% 100%;                /* #ffffff */
+    --card-foreground: 214 63% 12%;   /* #0b1c30 */
+
+    /* Popover — glass panel */
     --popover: 0 0% 100%;
-    --popover-foreground: 235 63% 15%;
+    --popover-foreground: 214 63% 12%;
 
-    /* Primary - Bright Blue #00A6FF */
-    --primary: 200 100% 50%;
+    /* Primary — Indigo #4F46E5 */
+    --primary: 243 76% 59%;
     --primary-foreground: 0 0% 100%;
 
-    /* Secondary */
-    --secondary: 228 14% 93%;
-    --secondary-foreground: 235 63% 15%;
+    /* Secondary — Violet #7C3AED */
+    --secondary: 263 83% 58%;
+    --secondary-foreground: 0 0% 100%;
 
-    /* Muted */
-    --muted: 228 14% 93%;
-    --muted-foreground: 0 0% 48%;
+    /* Muted — surface-container-low */
+    --muted: 220 100% 97%;            /* #eff4ff */
+    --muted-foreground: 250 8% 46%;   /* #777587 — outline */
 
-    /* Accent - Purple */
-    --accent: 258 100% 67%;
-    --accent-foreground: 0 0% 100%;
+    /* Accent — surface-container */
+    --accent: 220 100% 95%;           /* #e5eeff */
+    --accent-foreground: 214 63% 12%;
 
-    /* Destructive - Red #E74C3C */
-    --destructive: 6 78% 57%;
+    /* Destructive — Error red */
+    --destructive: 0 73% 41%;         /* #ba1a1a */
     --destructive-foreground: 0 0% 100%;
 
-    /* Borders */
-    --border: 228 14% 93%;
-    --input: 228 14% 93%;
-    --ring: 200 100% 50%;
-    --radius: 0.625rem;
+    /* Borders — Ghost borders per design system */
+    --border: 252 14% 81%;            /* #c7c4d8 at full — use with opacity */
+    --input: 252 14% 81%;
+    --ring: 243 76% 59%;              /* primary indigo */
+    --radius: 0.75rem;
 
-    /* Sidebar - Dark Navy #0B0F3F */
-    --sidebar: 235 70% 15%;
-    --sidebar-foreground: 0 0% 100%;
-    --sidebar-accent: 200 100% 50%;
+    /* Sidebar — slate-50 tonal background */
+    --sidebar: 210 40% 97%;           /* #f8fafc slate-50 */
+    --sidebar-foreground: 214 63% 12%;
+    --sidebar-accent: 243 76% 59%;    /* indigo */
 
-    /* Success - Green #2ECC71 */
-    --success: 145 63% 49%;
+    /* Success — Emerald */
+    --success: 160 84% 39%;           /* #10B981 */
     --success-foreground: 0 0% 100%;
 
-    /* Warning - Yellow #F1C40F */
-    --warning: 48 96% 50%;
-    --warning-foreground: 235 63% 15%;
+    /* Warning — Amber */
+    --warning: 38 92% 50%;            /* #F59E0B */
+    --warning-foreground: 214 63% 12%;
 
     /* Chart colors */
-    --chart-cyan-light: 195 100% 66%;
-    --chart-cyan-dark: 210 100% 50%;
-    --chart-purple-light: 258 100% 67%;
-    --chart-purple-dark: 264 96% 34%;
+    --chart-1: 243 76% 59%;           /* indigo */
+    --chart-2: 263 83% 58%;           /* violet */
+    --chart-3: 160 84% 39%;           /* emerald */
+    --chart-4: 38 92% 50%;            /* amber */
+    --chart-5: 195 100% 66%;          /* cyan */
   }
 
   .dark {
-    /* Dark mode - Dark Navy as base */
-    --background: 235 70% 15%;
-    --foreground: 0 0% 98%;
+    /* ── Dark Theme ── */
 
-    --card: 235 60% 18%;
-    --card-foreground: 0 0% 98%;
+    /* Main backgrounds */
+    --background: 222 47% 11%;        /* #0F172A — slate-900 */
+    --foreground: 210 40% 98%;        /* #F8FAFC */
 
-    --popover: 235 60% 18%;
-    --popover-foreground: 0 0% 98%;
+    /* Card */
+    --card: 217 33% 17%;              /* #1E293B — slate-800 */
+    --card-foreground: 210 40% 98%;
 
-    /* Primary - Bright Blue */
-    --primary: 200 100% 50%;
+    /* Popover */
+    --popover: 217 33% 17%;
+    --popover-foreground: 210 40% 98%;
+
+    /* Primary — Indigo (lighter for dark) */
+    --primary: 239 84% 67%;           /* #6366F1 */
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 235 50% 22%;
-    --secondary-foreground: 0 0% 98%;
+    /* Secondary — Violet (lighter for dark) */
+    --secondary: 258 90% 66%;         /* #8B5CF6 */
+    --secondary-foreground: 0 0% 100%;
 
-    --muted: 235 50% 22%;
-    --muted-foreground: 228 14% 70%;
+    /* Muted */
+    --muted: 217 33% 17%;             /* slate-800 */
+    --muted-foreground: 215 20% 65%;  /* slate-400 */
 
-    --accent: 258 100% 67%;
-    --accent-foreground: 0 0% 100%;
+    /* Accent */
+    --accent: 217 33% 22%;            /* slate-700ish */
+    --accent-foreground: 210 40% 98%;
 
-    --destructive: 6 78% 57%;
+    /* Destructive */
+    --destructive: 0 73% 41%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 235 50% 25%;
-    --input: 235 50% 25%;
-    --ring: 200 100% 50%;
+    /* Borders */
+    --border: 217 33% 25%;            /* slate-700 */
+    --input: 217 33% 25%;
+    --ring: 239 84% 67%;
 
-    --sidebar: 235 75% 12%;
-    --sidebar-foreground: 0 0% 100%;
-    --sidebar-accent: 200 100% 50%;
+    /* Sidebar */
+    --sidebar: 222 47% 8%;            /* darker than bg */
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-accent: 239 84% 67%;
 
-    --success: 145 63% 49%;
+    /* Success/Warning (same) */
+    --success: 160 84% 39%;
     --success-foreground: 0 0% 100%;
-
-    --warning: 48 96% 50%;
-    --warning-foreground: 235 63% 15%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 214 63% 12%;
   }
 }
 
 @layer base {
   * {
-    @apply border-border;
+    @apply border-border/15;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans antialiased;
   }
 }
 
+/* ── Custom scrollbar matching design system ── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #dce9ff;
+  border-radius: 10px;
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: #334155;
+}
+
+/* ── Glassmorphism utility ── */
 @layer utilities {
+  .glass-panel {
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  .dark .glass-panel {
+    background: rgba(255, 255, 255, 0.03);
+  }
+
+  .glass-panel-strong {
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
+
+  .dark .glass-panel-strong {
+    background: rgba(15, 23, 42, 0.9);
+  }
+
+  /* ── No scrollbar utility ── */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  /* ── Text balance ── */
   .text-balance {
     text-wrap: balance;
   }
 
+  /* ── Tonal shift transition (for surface hierarchy) ── */
+  .tonal-shift {
+    transition: background-color 0.3s ease;
+  }
+
+  /* ── Ghost border (per design system: outline-variant at 15% opacity) ── */
+  .ghost-border {
+    border: 1px solid rgba(199, 196, 216, 0.15);
+  }
+
+  .dark .ghost-border {
+    border: 1px solid rgba(51, 65, 85, 0.4);
+  }
+
+  /* ── Gradient text ── */
+  .gradient-text {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-violet-600;
+  }
+
+  .dark .gradient-text {
+    @apply from-indigo-400 to-violet-400;
+  }
+
+  /* ── AI accent chip style ── */
+  .ai-chip {
+    @apply bg-violet-600 text-white rounded-full px-3 py-1 text-xs font-bold;
+  }
+
+  /* ── Animations ── */
   @keyframes blob {
-    0% {
-      transform: translate(0px, 0px) scale(1);
-    }
-    33% {
-      transform: translate(30px, -50px) scale(1.1);
-    }
-    66% {
-      transform: translate(-20px, 20px) scale(0.9);
-    }
-    100% {
-      transform: translate(0px, 0px) scale(1);
-    }
+    0% { transform: translate(0px, 0px) scale(1); }
+    33% { transform: translate(30px, -50px) scale(1.1); }
+    66% { transform: translate(-20px, 20px) scale(0.9); }
+    100% { transform: translate(0px, 0px) scale(1); }
   }
 
   .animate-blob {
@@ -147,14 +230,8 @@
   }
 
   @keyframes fade-in-up {
-    0% {
-      opacity: 0;
-      transform: translateY(30px);
-    }
-    100% {
-      opacity: 1;
-      transform: translateY(0);
-    }
+    0% { opacity: 0; transform: translateY(30px); }
+    100% { opacity: 1; transform: translateY(0); }
   }
 
   .animate-fade-in-up {
@@ -162,29 +239,29 @@
   }
 
   @keyframes task-highlight {
-    0%   {
+    0% {
       transform: scale(1);
       box-shadow: none;
       background-color: transparent;
       outline: 2px solid transparent;
     }
-    12%  {
+    12% {
       transform: scale(1.035);
-      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.7), 0 8px 30px rgba(59, 130, 246, 0.25);
-      background-color: rgba(59, 130, 246, 0.09);
-      outline: 2px solid rgba(59, 130, 246, 0.5);
+      box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.7), 0 8px 30px rgba(79, 70, 229, 0.25);
+      background-color: rgba(79, 70, 229, 0.09);
+      outline: 2px solid rgba(79, 70, 229, 0.5);
     }
-    35%  {
+    35% {
       transform: scale(1.025);
-      box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.55), 0 6px 20px rgba(251, 191, 36, 0.18);
-      background-color: rgba(251, 191, 36, 0.07);
-      outline: 2px solid rgba(251, 191, 36, 0.45);
+      box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.55), 0 6px 20px rgba(245, 158, 11, 0.18);
+      background-color: rgba(245, 158, 11, 0.07);
+      outline: 2px solid rgba(245, 158, 11, 0.45);
     }
-    65%  {
+    65% {
       transform: scale(1.015);
-      box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.3);
-      background-color: rgba(251, 191, 36, 0.04);
-      outline: 2px solid rgba(251, 191, 36, 0.25);
+      box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.3);
+      background-color: rgba(245, 158, 11, 0.04);
+      outline: 2px solid rgba(245, 158, 11, 0.25);
     }
     100% {
       transform: scale(1);

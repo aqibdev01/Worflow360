@@ -187,11 +187,11 @@ export function FileMessageCard({ metadata }: FileMessageCardProps) {
         download={metadata.name}
         className="group inline-flex items-center gap-3 px-3 py-2.5 bg-muted/30 hover:bg-muted/50 rounded-lg border transition-colors max-w-[350px]"
       >
-        <div className="h-9 w-9 rounded-lg bg-brand-blue/10 flex items-center justify-center flex-shrink-0">
-          <FileIcon className="h-4.5 w-4.5 text-brand-blue" />
+        <div className="h-9 w-9 rounded-lg bg-indigo-600/10 flex items-center justify-center flex-shrink-0">
+          <FileIcon className="h-4.5 w-4.5 text-indigo-600" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-navy-900 truncate group-hover:text-brand-blue transition-colors">
+          <p className="text-sm font-medium text-foreground truncate group-hover:text-indigo-600 transition-colors">
             {metadata.name}
           </p>
           {metadata.size && (

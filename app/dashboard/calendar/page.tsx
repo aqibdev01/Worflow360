@@ -149,8 +149,8 @@ const EVENT_TYPE_CONFIG: Record<string, { icon: any; color: string; bg: string; 
 };
 
 const SPRINT_COLORS = [
-  "bg-brand-blue/8 border-brand-blue/20",
-  "bg-brand-purple/8 border-brand-purple/20",
+  "bg-indigo-600/8 border-indigo-500/20",
+  "bg-violet-600/8 border-violet-500/20",
   "bg-emerald-500/8 border-emerald-500/20",
   "bg-amber-500/8 border-amber-500/20",
   "bg-pink-500/8 border-pink-500/20",
@@ -311,7 +311,7 @@ function DayDetailDialog({
       <DialogContent className="max-w-md max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <CalendarDays className="h-5 w-5 text-brand-blue" />
+            <CalendarDays className="h-5 w-5 text-indigo-600" />
             {format(date, "EEEE, MMMM d, yyyy")}
           </DialogTitle>
         </DialogHeader>
@@ -325,8 +325,8 @@ function DayDetailDialog({
               </h4>
               <div className="space-y-1">
                 {sprints.map((s) => (
-                  <div key={s.id} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-brand-blue/5 border border-brand-blue/15">
-                    <div className="h-2 w-2 rounded-full bg-brand-blue" />
+                  <div key={s.id} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-indigo-600/5 border border-indigo-500/15">
+                    <div className="h-2 w-2 rounded-full bg-indigo-600" />
                     <span className="text-sm font-medium">{s.name}</span>
                     <Badge variant="outline" className="text-[10px] ml-auto capitalize">{s.status}</Badge>
                   </div>
@@ -613,7 +613,7 @@ export default function CalendarPage() {
   if (authLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="h-8 w-8 animate-spin text-brand-blue" />
+        <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
       </div>
     );
   }
@@ -623,11 +623,11 @@ export default function CalendarPage() {
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-3">
-          <div className="h-10 w-10 bg-brand-blue/10 rounded-xl flex items-center justify-center">
-            <CalendarDays className="h-5 w-5 text-brand-blue" />
+          <div className="h-10 w-10 bg-indigo-600/10 rounded-xl flex items-center justify-center">
+            <CalendarDays className="h-5 w-5 text-indigo-600" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-navy-900">Calendar</h1>
+            <h1 className="text-2xl font-bold text-foreground">Calendar</h1>
             <p className="text-sm text-muted-foreground">
               {isManager ? "Tasks, events & team view" : "Your tasks & events"}
             </p>
@@ -751,7 +751,7 @@ export default function CalendarPage() {
 
       {/* Month title */}
       <div className="text-center">
-        <h2 className="text-xl font-semibold text-navy-900">
+        <h2 className="text-xl font-semibold text-foreground">
           {format(currentDate, "MMMM yyyy")}
         </h2>
       </div>
@@ -819,7 +819,7 @@ export default function CalendarPage() {
       {/* Sprint Range Legend */}
       {sprints.length > 0 && (
         <div className="flex items-center gap-3 flex-wrap text-xs bg-white border rounded-xl px-4 py-2.5 shadow-sm">
-          <span className="font-medium text-navy-900">Sprints:</span>
+          <span className="font-medium text-foreground">Sprints:</span>
           {sprints.map((s, idx) => (
             <div key={s.id} className="flex items-center gap-1.5">
               <div
@@ -852,7 +852,7 @@ export default function CalendarPage() {
         {loading ? (
           <div className="flex items-center justify-center h-96">
             <div className="text-center space-y-2">
-              <Loader2 className="h-8 w-8 animate-spin text-brand-blue mx-auto" />
+              <Loader2 className="h-8 w-8 animate-spin text-indigo-600 mx-auto" />
               <p className="text-sm text-muted-foreground">Loading calendar...</p>
             </div>
           </div>
@@ -888,9 +888,9 @@ export default function CalendarPage() {
                     <span
                       className={`h-7 w-7 flex items-center justify-center text-sm rounded-full font-medium ${
                         isTodayDate
-                          ? "bg-brand-blue text-white font-bold"
+                          ? "bg-indigo-600 text-white font-bold"
                           : isCurrentMonth
-                          ? "text-navy-900"
+                          ? "text-foreground"
                           : "text-muted-foreground/50"
                       }`}
                     >
@@ -922,7 +922,7 @@ export default function CalendarPage() {
 
                     {hiddenCount > 0 && (
                       <button
-                        className="w-full text-left px-1.5 py-0.5 text-[11px] text-brand-blue hover:text-brand-blue-600 transition-colors font-medium"
+                        className="w-full text-left px-1.5 py-0.5 text-[11px] text-indigo-600 hover:text-indigo-700 transition-colors font-medium"
                         onClick={(e) => {
                           e.stopPropagation();
                           handleDayClick(day);

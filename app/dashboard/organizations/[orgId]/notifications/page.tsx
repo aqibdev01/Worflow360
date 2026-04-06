@@ -256,14 +256,14 @@ export default function NotificationsPage() {
       {/* Page header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-navy-900">Notifications</h1>
+          <h1 className="text-2xl font-bold text-foreground">Notifications</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Stay up to date with your projects and team
           </p>
         </div>
         <button
           onClick={handleMarkAllRead}
-          className="flex items-center gap-2 rounded-lg border px-3 py-2 text-sm text-muted-foreground hover:text-navy-900 hover:bg-muted/50 transition-colors"
+          className="flex items-center gap-2 rounded-lg border px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
         >
           <CheckCheck className="h-4 w-4" />
           Mark all read
@@ -288,7 +288,7 @@ export default function NotificationsPage() {
             onClick={() => setFilter(key)}
             className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
               filter === key
-                ? "bg-brand-blue text-white"
+                ? "bg-indigo-600 text-white"
                 : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground"
             }`}
           >
@@ -305,7 +305,7 @@ export default function NotificationsPage() {
           </span>
           <button
             onClick={handleBulkMarkRead}
-            className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm text-muted-foreground hover:text-navy-900 hover:bg-muted transition-colors"
+            className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
           >
             <Check className="h-3.5 w-3.5" />
             Mark read
@@ -349,7 +349,7 @@ export default function NotificationsPage() {
                 key={n.id}
                 className={`group flex items-start gap-4 px-5 py-4 cursor-pointer transition-colors hover:bg-muted/30 ${
                   !n.is_read ? "bg-blue-50/30" : ""
-                } ${isSelected ? "bg-brand-blue/5" : ""}`}
+                } ${isSelected ? "bg-indigo-600/5" : ""}`}
                 onClick={() => handleClick(n)}
               >
                 {/* Checkbox */}
@@ -363,7 +363,7 @@ export default function NotificationsPage() {
                   <div
                     className={`h-5 w-5 rounded border-2 flex items-center justify-center transition-colors ${
                       isSelected
-                        ? "bg-brand-blue border-brand-blue"
+                        ? "bg-indigo-600 border-indigo-500"
                         : "border-muted-foreground/30 hover:border-muted-foreground/60"
                     }`}
                   >
@@ -380,7 +380,7 @@ export default function NotificationsPage() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <p className={`text-sm ${!n.is_read ? "font-semibold text-navy-900" : "text-foreground"}`}>
+                      <p className={`text-sm ${!n.is_read ? "font-semibold text-foreground" : "text-foreground"}`}>
                         {n.title}
                       </p>
                       {n.body && (

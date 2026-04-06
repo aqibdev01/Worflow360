@@ -168,11 +168,11 @@ export function CreateChannelDialog({
             {slugPreview && (
               <p className="text-xs text-muted-foreground">
                 Preview:{" "}
-                <span className="font-mono text-brand-blue">
+                <span className="font-mono text-indigo-600">
                   {slugPreview}
                 </span>
                 {displayName && (
-                  <span className="ml-2 text-navy-900">
+                  <span className="ml-2 text-foreground">
                     — {displayName}
                   </span>
                 )}
@@ -207,13 +207,13 @@ export function CreateChannelDialog({
                     onClick={() => setChannelType(opt.value)}
                     className={`flex flex-col items-center gap-1.5 p-3 rounded-lg border-2 transition-all text-center ${
                       isSelected
-                        ? "border-brand-blue bg-brand-blue/5 text-brand-blue"
+                        ? "border-indigo-500 bg-indigo-600/5 text-indigo-600"
                         : "border-border hover:border-muted-foreground/30 text-muted-foreground"
                     }`}
                   >
                     <Icon
                       className={`h-4 w-4 ${
-                        isSelected ? "text-brand-blue" : ""
+                        isSelected ? "text-indigo-600" : ""
                       }`}
                     />
                     <span className="text-xs font-semibold">{opt.label}</span>
@@ -268,7 +268,7 @@ export function CreateChannelDialog({
           <Button
             onClick={handleCreate}
             disabled={loading || !name.trim()}
-            className="bg-brand-blue hover:bg-brand-blue/90"
+            className="bg-indigo-600 hover:bg-indigo-600/90"
           >
             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Create Channel

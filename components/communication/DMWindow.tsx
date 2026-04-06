@@ -87,7 +87,7 @@ function renderMarkdownLite(text: string): React.ReactNode[] {
       );
     } else if (match[5]) {
       parts.push(
-        <span key={idx++} className="text-brand-blue font-medium">
+        <span key={idx++} className="text-indigo-600 font-medium">
           @{match[5]}
         </span>
       );
@@ -173,7 +173,7 @@ function DMMessageRow({
       <div className="px-4 py-1">
         <div className="flex items-start gap-2.5">
           {showHeader ? (
-            <div className="h-8 w-8 rounded-full bg-gradient-to-br from-brand-blue to-brand-cyan flex items-center justify-center flex-shrink-0 mt-0.5">
+            <div className="h-8 w-8 rounded-full bg-gradient-to-br from-indigo-500 to-cyan-400 flex items-center justify-center flex-shrink-0 mt-0.5">
               <span className="text-xs font-medium text-white">
                 {getUserInitials(message.users)}
               </span>
@@ -184,7 +184,7 @@ function DMMessageRow({
           <div className="flex-1 min-w-0">
             {showHeader && (
               <div className="flex items-baseline gap-2 mb-0.5">
-                <span className="text-sm font-semibold text-navy-900">
+                <span className="text-sm font-semibold text-foreground">
                   {displayName}
                 </span>
                 <span className="text-[10px] text-muted-foreground">
@@ -205,7 +205,7 @@ function DMMessageRow({
       <div className="px-4 py-1">
         <div className="flex items-start gap-2.5">
           {showHeader ? (
-            <div className="h-8 w-8 rounded-full bg-gradient-to-br from-brand-blue to-brand-cyan flex items-center justify-center flex-shrink-0 mt-0.5">
+            <div className="h-8 w-8 rounded-full bg-gradient-to-br from-indigo-500 to-cyan-400 flex items-center justify-center flex-shrink-0 mt-0.5">
               <span className="text-xs font-medium text-white">
                 {getUserInitials(message.users)}
               </span>
@@ -216,7 +216,7 @@ function DMMessageRow({
           <div className="flex-1 min-w-0">
             {showHeader && (
               <div className="flex items-baseline gap-2 mb-0.5">
-                <span className="text-sm font-semibold text-navy-900">
+                <span className="text-sm font-semibold text-foreground">
                   {displayName}
                 </span>
                 <span className="text-[10px] text-muted-foreground">
@@ -235,7 +235,7 @@ function DMMessageRow({
   return (
     <div className="group relative flex items-start gap-2.5 px-4 py-1 hover:bg-muted/30 transition-colors">
       {showHeader ? (
-        <div className="h-8 w-8 rounded-full bg-gradient-to-br from-brand-blue to-brand-cyan flex items-center justify-center flex-shrink-0 mt-0.5">
+        <div className="h-8 w-8 rounded-full bg-gradient-to-br from-indigo-500 to-cyan-400 flex items-center justify-center flex-shrink-0 mt-0.5">
           <span className="text-xs font-medium text-white">
             {getUserInitials(message.users)}
           </span>
@@ -250,7 +250,7 @@ function DMMessageRow({
       <div className="flex-1 min-w-0">
         {showHeader && (
           <div className="flex items-baseline gap-2">
-            <span className="text-sm font-semibold text-navy-900">
+            <span className="text-sm font-semibold text-foreground">
               {displayName}
             </span>
             <span className="text-[10px] text-muted-foreground">
@@ -451,7 +451,7 @@ export function DMWindow({ threadId, currentUserId, orgId }: DMWindowProps) {
       {/* Header */}
       <div className="flex items-center gap-3 px-4 py-3 border-b bg-white">
         <div className="relative">
-          <div className="h-9 w-9 rounded-full bg-gradient-to-br from-brand-blue to-brand-cyan flex items-center justify-center flex-shrink-0">
+          <div className="h-9 w-9 rounded-full bg-gradient-to-br from-indigo-500 to-cyan-400 flex items-center justify-center flex-shrink-0">
             <span className="text-xs font-medium text-white">{otherInitials}</span>
           </div>
           {otherIsOnline && (
@@ -459,7 +459,7 @@ export function DMWindow({ threadId, currentUserId, orgId }: DMWindowProps) {
           )}
         </div>
         <div>
-          <h3 className="text-sm font-semibold text-navy-900">{otherName}</h3>
+          <h3 className="text-sm font-semibold text-foreground">{otherName}</h3>
           <p className="text-[11px] text-muted-foreground">
             {otherIsOnline ? "Online" : "Offline"}
           </p>
@@ -479,14 +479,14 @@ export function DMWindow({ threadId, currentUserId, orgId }: DMWindowProps) {
         ) : messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center px-4">
             <div className="relative mb-4">
-              <div className="h-16 w-16 rounded-full bg-gradient-to-br from-brand-blue to-brand-cyan flex items-center justify-center">
+              <div className="h-16 w-16 rounded-full bg-gradient-to-br from-indigo-500 to-cyan-400 flex items-center justify-center">
                 <span className="text-xl font-medium text-white">{otherInitials}</span>
               </div>
               {otherIsOnline && (
                 <div className="absolute bottom-0.5 right-0.5 h-4 w-4 rounded-full bg-emerald-500 border-2 border-white" />
               )}
             </div>
-            <p className="text-sm font-medium text-navy-900">
+            <p className="text-sm font-medium text-foreground">
               Start your conversation with {otherName}
             </p>
             <p className="text-xs text-muted-foreground mt-1">
@@ -546,7 +546,7 @@ export function DMWindow({ threadId, currentUserId, orgId }: DMWindowProps) {
         <div className="absolute bottom-24 left-1/2 -translate-x-1/2 z-20">
           <button
             onClick={scrollToBottom}
-            className="flex items-center gap-1.5 px-4 py-1.5 bg-brand-blue text-white text-xs font-medium rounded-full shadow-lg hover:bg-brand-blue/90 transition-colors"
+            className="flex items-center gap-1.5 px-4 py-1.5 bg-indigo-600 text-white text-xs font-medium rounded-full shadow-lg hover:bg-indigo-600/90 transition-colors"
           >
             <ChevronDown className="h-3.5 w-3.5" />
             New messages
