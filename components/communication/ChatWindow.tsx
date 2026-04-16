@@ -216,7 +216,7 @@ export function ChatWindow({ channelId, currentUserId, orgId }: ChatWindowProps)
         <div className="flex items-center justify-between px-4 py-3 border-b bg-white">
           <div className="flex items-center gap-2 min-w-0">
             {channelIcon()}
-            <h3 className="text-sm font-semibold text-navy-900 truncate">
+            <h3 className="text-sm font-semibold text-foreground truncate">
               {channel?.display_name || channel?.name || "Loading..."}
             </h3>
             {channel?.description && (
@@ -269,7 +269,7 @@ export function ChatWindow({ channelId, currentUserId, orgId }: ChatWindowProps)
           <div className="absolute bottom-24 left-1/2 -translate-x-1/2 z-20">
             <button
               onClick={scrollToBottom}
-              className="flex items-center gap-1.5 px-4 py-1.5 bg-brand-blue text-white text-xs font-medium rounded-full shadow-lg hover:bg-brand-blue/90 transition-colors"
+              className="flex items-center gap-1.5 px-4 py-1.5 bg-indigo-600 text-white text-xs font-medium rounded-full shadow-lg hover:bg-indigo-600/90 transition-colors"
             >
               <ChevronDown className="h-3.5 w-3.5" />
               New messages
@@ -319,7 +319,7 @@ export function ChatWindow({ channelId, currentUserId, orgId }: ChatWindowProps)
       {showMembers && (
         <div className="w-[280px] border-l bg-white flex flex-col h-full">
           <div className="flex items-center justify-between px-4 py-3 border-b">
-            <h3 className="text-sm font-semibold text-navy-900">Members</h3>
+            <h3 className="text-sm font-semibold text-foreground">Members</h3>
             <div className="flex items-center gap-2">
               <span className="text-xs text-muted-foreground">
                 {channelMembers.length}
@@ -417,17 +417,17 @@ export function ChatWindow({ channelId, currentUserId, orgId }: ChatWindowProps)
                   key={member.id}
                   className="group flex items-center gap-2.5 px-4 py-1.5 hover:bg-muted/30"
                 >
-                  <div className="h-7 w-7 rounded-full bg-gradient-to-br from-brand-blue to-brand-cyan flex items-center justify-center flex-shrink-0">
+                  <div className="h-7 w-7 rounded-full bg-gradient-to-br from-indigo-500 to-cyan-400 flex items-center justify-center flex-shrink-0">
                     <span className="text-[10px] font-medium text-white">
                       {initials}
                     </span>
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm text-navy-900 truncate">
+                    <p className="text-sm text-foreground truncate">
                       {name}{isSelf && <span className="text-muted-foreground text-xs ml-1">(you)</span>}
                     </p>
                     {member.role === "admin" && (
-                      <p className="text-[10px] text-brand-purple font-medium">
+                      <p className="text-[10px] text-violet-600 font-medium">
                         Admin
                       </p>
                     )}

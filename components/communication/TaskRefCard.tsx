@@ -41,8 +41,8 @@ const STATUS_CONFIG: Record<
   },
   in_progress: {
     label: "In Progress",
-    color: "text-brand-blue",
-    bg: "bg-brand-blue/10",
+    color: "text-indigo-600",
+    bg: "bg-indigo-600/10",
     icon: Clock,
   },
   review: {
@@ -75,17 +75,17 @@ export function TaskRefCard({ metadata }: TaskRefCardProps) {
     <div className="mt-1.5 max-w-[400px]">
       <Link
         href={metadata.url}
-        className="group block rounded-lg border border-border/80 bg-white hover:border-brand-blue/40 hover:shadow-sm transition-all overflow-hidden"
+        className="group block rounded-lg border border-border/80 bg-white hover:border-indigo-500/40 hover:shadow-sm transition-all overflow-hidden"
       >
         {/* Top accent bar */}
-        <div className="h-0.5 bg-gradient-to-r from-brand-blue to-brand-cyan" />
+        <div className="h-0.5 bg-gradient-to-r from-indigo-500 to-cyan-400" />
 
         <div className="p-3">
           {/* Header row */}
           <div className="flex items-start gap-2">
-            <ClipboardList className="h-4 w-4 text-brand-blue mt-0.5 flex-shrink-0" />
+            <ClipboardList className="h-4 w-4 text-indigo-600 mt-0.5 flex-shrink-0" />
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-navy-900 group-hover:text-brand-blue transition-colors leading-snug">
+              <p className="text-sm font-medium text-foreground group-hover:text-indigo-600 transition-colors leading-snug">
                 {metadata.taskTitle}
               </p>
               <p className="text-[11px] text-muted-foreground mt-0.5">

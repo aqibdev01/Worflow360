@@ -402,7 +402,7 @@ export function ComposeMailForm({
     <>
       {/* Header */}
       <div className="flex items-center justify-between px-6 py-3 border-b bg-white shrink-0">
-        <h2 className="text-lg font-semibold text-navy-900">New Message</h2>
+        <h2 className="text-lg font-semibold text-foreground">New Message</h2>
         <div className="flex items-center gap-2">
           <Button
             variant="ghost"
@@ -426,7 +426,7 @@ export function ComposeMailForm({
           <Button
             onClick={handleSend}
             disabled={sending}
-            className="gap-2 bg-brand-blue hover:bg-brand-blue/90"
+            className="gap-2 bg-indigo-600 hover:bg-indigo-600/90"
           >
             {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             Send
@@ -447,7 +447,7 @@ export function ComposeMailForm({
                   onClick={() => setMailType(t)}
                   className={`px-3 py-1 rounded-md text-xs font-medium capitalize transition-colors ${
                     mailType === t
-                      ? "bg-brand-blue text-white"
+                      ? "bg-indigo-600 text-white"
                       : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
@@ -478,7 +478,7 @@ export function ComposeMailForm({
             {!showCc && mailType === "direct" && (
               <button
                 onClick={() => setShowCc(true)}
-                className="mt-2 text-xs text-muted-foreground hover:text-brand-blue transition-colors"
+                className="mt-2 text-xs text-muted-foreground hover:text-indigo-600 transition-colors"
               >
                 + CC
               </button>
@@ -575,7 +575,7 @@ export function ComposeMailForm({
             onInput={() => {
               setBody(bodyRef.current?.innerHTML || "");
             }}
-            className="min-h-[300px] rounded-md border px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue/20 focus:border-brand-blue prose prose-sm max-w-none"
+            className="min-h-[300px] rounded-md border px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 prose prose-sm max-w-none"
             data-placeholder="Write your message..."
             style={{
               // Placeholder via CSS

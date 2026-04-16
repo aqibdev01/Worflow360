@@ -2,9 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
   Building2,
   Plus,
@@ -18,6 +15,8 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { getUserOrganizations } from "@/lib/database";
 import { useBreadcrumbs } from "@/components/breadcrumbs";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
 
 export default function OrganizationsPage() {
   const router = useRouter();
@@ -28,7 +27,6 @@ export default function OrganizationsPage() {
   useBreadcrumbs([{ label: "Organizations" }]);
 
   useEffect(() => {
-    // Wait for auth to resolve before deciding what to load
     if (authLoading) return;
 
     const loadOrganizations = async () => {
@@ -36,7 +34,6 @@ export default function OrganizationsPage() {
         setLoading(false);
         return;
       }
-
       try {
         const userOrgs = await getUserOrganizations(user.id);
         setOrganizations(userOrgs || []);
@@ -52,80 +49,87 @@ export default function OrganizationsPage() {
 
   if (loading) {
     return (
-      <div className="space-y-6 animate-pulse">
+      <div className="space-y-8">
         <div className="flex items-center justify-between">
           <div className="space-y-2">
-            <div className="h-7 bg-muted rounded-lg w-44" />
-            <div className="h-4 bg-muted rounded w-64" />
+            <Skeleton className="h-8 w-48" />
+            <Skeleton className="h-4 w-72" />
           </div>
-          <div className="h-9 bg-muted rounded-lg w-40" />
+          <Skeleton className="h-10 w-44" />
         </div>
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {[...Array(3)].map((_, i) => <div key={i} className="h-52 bg-muted rounded-xl" />)}
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-56 rounded-xl" />
+          ))}
         </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-navy-900">Organizations</h1>
-          <p className="text-muted-foreground mt-1">
-            Manage your organizations and collaborate with teams
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">
+            Organizations
+          </h1>
+          <p className="text-slate-500 dark:text-slate-400 mt-1 font-medium">
+            Manage your workspaces and collaborate with teams
           </p>
         </div>
         <div className="flex gap-3">
-          <Button
-            variant="outline"
+          <button
             onClick={() => router.push("/dashboard/organizations/join")}
-            className="border-brand-purple/30 text-brand-purple hover:bg-brand-purple/5 hover:border-brand-purple"
+            className="px-5 py-2.5 rounded-lg font-bold text-sm text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-950/30 hover:bg-violet-100 dark:hover:bg-violet-950/50 transition-colors flex items-center gap-2"
           >
-            <UserPlus className="mr-2 h-4 w-4" />
+            <UserPlus className="h-4 w-4" />
             Join Organization
-          </Button>
-          <Button
+          </button>
+          <button
             onClick={() => router.push("/dashboard/organizations/new")}
-            className="bg-brand-blue hover:bg-brand-blue-600 text-white shadow-lg shadow-brand-blue/25"
+            className="px-5 py-2.5 rounded-lg font-bold text-sm bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/30 active:scale-[0.98] transition-all flex items-center gap-2"
           >
-            <Plus className="mr-2 h-4 w-4" />
+            <Plus className="h-4 w-4" />
             Create Organization
-          </Button>
+          </button>
         </div>
       </div>
 
       {/* Organizations Grid */}
       {organizations.length === 0 ? (
-        <Card className="bg-white border border-[#E7E9EF] shadow-sm">
-          <CardContent className="flex flex-col items-center justify-center py-16">
-            <div className="h-20 w-20 bg-brand-blue/10 rounded-2xl flex items-center justify-center mb-6">
-              <Building2 className="h-10 w-10 text-brand-blue" />
+        <div className="bg-white dark:bg-slate-900 rounded-xl p-16 text-center shadow-sm">
+          <div className="max-w-md mx-auto space-y-6">
+            <div className="w-20 h-20 bg-indigo-50 dark:bg-indigo-950/30 rounded-2xl flex items-center justify-center mx-auto">
+              <Building2 className="h-10 w-10 text-indigo-500" />
             </div>
-            <h3 className="text-xl font-semibold text-navy-900 mb-2">No organizations yet</h3>
-            <p className="text-muted-foreground text-center mb-8 max-w-md">
-              Get started by creating a new organization or joining an existing one with an invite code.
-            </p>
-            <div className="flex gap-3">
-              <Button
-                variant="outline"
+            <div>
+              <h3 className="text-xl font-bold text-foreground mb-2">
+                No organizations yet
+              </h3>
+              <p className="text-slate-500 dark:text-slate-400 text-sm leading-relaxed">
+                Get started by creating a new organization or joining an existing
+                one with an invite code.
+              </p>
+            </div>
+            <div className="flex justify-center gap-3">
+              <button
                 onClick={() => router.push("/dashboard/organizations/join")}
-                className="border-brand-purple/30 text-brand-purple hover:bg-brand-purple/5"
+                className="px-5 py-2.5 rounded-lg font-bold text-sm text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-950/30 hover:bg-violet-100 dark:hover:bg-violet-950/50 transition-colors flex items-center gap-2"
               >
-                <UserPlus className="mr-2 h-4 w-4" />
-                Join Organization
-              </Button>
-              <Button
+                <UserPlus className="h-4 w-4" />
+                Join
+              </button>
+              <button
                 onClick={() => router.push("/dashboard/organizations/new")}
-                className="bg-brand-blue hover:bg-brand-blue-600 text-white"
+                className="px-5 py-2.5 rounded-lg font-bold text-sm bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-lg shadow-indigo-500/20 flex items-center gap-2"
               >
-                <Plus className="mr-2 h-4 w-4" />
-                Create Organization
-              </Button>
+                <Plus className="h-4 w-4" />
+                Create
+              </button>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       ) : (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {organizations.map((org) => {
@@ -133,74 +137,82 @@ export default function OrganizationsPage() {
             const memberRole = org.organization_members?.[0]?.role;
 
             return (
-              <Card
+              <div
                 key={org.id}
-                className="bg-white border border-[#E7E9EF] shadow-sm hover:shadow-lg hover:border-brand-blue/30 transition-all cursor-pointer group"
-                onClick={() => router.push(`/dashboard/organizations/${org.id}`)}
+                className="bg-white dark:bg-slate-900 rounded-xl p-6 shadow-sm hover:shadow-ambient transition-all cursor-pointer group"
+                onClick={() =>
+                  router.push(`/dashboard/organizations/${org.id}`)
+                }
               >
-                <CardHeader className="pb-3">
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="h-12 w-12 bg-gradient-to-br from-brand-blue to-brand-cyan rounded-xl flex items-center justify-center shadow-md shadow-brand-blue/20 group-hover:scale-105 transition-transform">
-                      <Building2 className="h-6 w-6 text-white" />
-                    </div>
-                    {isOwner ? (
-                      <Badge className="bg-warning/10 text-warning border-warning/20 gap-1">
-                        <Crown className="h-3 w-3" />
-                        Owner
-                      </Badge>
-                    ) : memberRole ? (
-                      <Badge variant="secondary" className="gap-1 bg-brand-purple/10 text-brand-purple border-brand-purple/20">
-                        <Shield className="h-3 w-3" />
-                        {memberRole}
-                      </Badge>
-                    ) : null}
+                {/* Header row */}
+                <div className="flex items-start justify-between mb-4">
+                  <div className="h-12 w-12 bg-gradient-to-br from-indigo-500 to-violet-500 rounded-xl flex items-center justify-center shadow-md shadow-indigo-500/20 group-hover:scale-105 transition-transform">
+                    <Building2 className="h-6 w-6 text-white" />
                   </div>
-                  <CardTitle className="text-lg text-navy-900 group-hover:text-brand-blue transition-colors">
-                    {org.name}
-                  </CardTitle>
-                  <CardDescription className="line-clamp-2">
-                    {org.description || "No description provided"}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {/* Stats */}
-                    <div className="flex items-center gap-6 text-sm">
-                      <div className="flex items-center gap-2">
-                        <div className="h-8 w-8 bg-brand-blue/10 rounded-lg flex items-center justify-center">
-                          <Users className="h-4 w-4 text-brand-blue" />
-                        </div>
-                        <div>
-                          <p className="font-medium text-navy-900">{org.member_count || 1}</p>
-                          <p className="text-xs text-muted-foreground">Members</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="h-8 w-8 bg-brand-purple/10 rounded-lg flex items-center justify-center">
-                          <FolderKanban className="h-4 w-4 text-brand-purple" />
-                        </div>
-                        <div>
-                          <p className="font-medium text-navy-900">{org.project_count || 0}</p>
-                          <p className="text-xs text-muted-foreground">Projects</p>
-                        </div>
-                      </div>
-                    </div>
+                  {isOwner ? (
+                    <Badge className="bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 border-0 gap-1 text-[10px] font-bold uppercase tracking-wider">
+                      <Crown className="h-3 w-3" />
+                      Owner
+                    </Badge>
+                  ) : memberRole ? (
+                    <Badge className="bg-violet-50 dark:bg-violet-950/30 text-violet-600 dark:text-violet-400 border-0 gap-1 text-[10px] font-bold uppercase tracking-wider">
+                      <Shield className="h-3 w-3" />
+                      {memberRole}
+                    </Badge>
+                  ) : null}
+                </div>
 
-                    {/* Invite Code */}
-                    <div className="pt-3 border-t border-[#E7E9EF]">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-xs text-muted-foreground mb-1">Invite Code</p>
-                          <code className="text-xs font-mono bg-[#F8F9FC] px-2 py-1 rounded text-navy-900">
-                            {org.invite_code}
-                          </code>
-                        </div>
-                        <ArrowRight className="h-5 w-5 text-muted-foreground group-hover:text-brand-blue group-hover:translate-x-1 transition-all" />
-                      </div>
+                {/* Title */}
+                <h3 className="text-lg font-bold text-foreground group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors mb-1 tracking-tight">
+                  {org.name}
+                </h3>
+                <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-2 mb-5">
+                  {org.description || "No description provided"}
+                </p>
+
+                {/* Stats */}
+                <div className="flex items-center gap-6 mb-5">
+                  <div className="flex items-center gap-2">
+                    <div className="h-8 w-8 bg-indigo-50 dark:bg-indigo-950/30 rounded-lg flex items-center justify-center">
+                      <Users className="h-4 w-4 text-indigo-500" />
+                    </div>
+                    <div>
+                      <p className="font-bold text-foreground text-sm">
+                        {org.member_count || 1}
+                      </p>
+                      <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">
+                        Members
+                      </p>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
+                  <div className="flex items-center gap-2">
+                    <div className="h-8 w-8 bg-violet-50 dark:bg-violet-950/30 rounded-lg flex items-center justify-center">
+                      <FolderKanban className="h-4 w-4 text-violet-500" />
+                    </div>
+                    <div>
+                      <p className="font-bold text-foreground text-sm">
+                        {org.project_count || 0}
+                      </p>
+                      <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">
+                        Projects
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Invite code footer */}
+                <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                      Invite Code
+                    </p>
+                    <code className="text-xs font-mono bg-slate-50 dark:bg-slate-800 px-2 py-1 rounded-lg text-foreground">
+                      {org.invite_code}
+                    </code>
+                  </div>
+                  <ArrowRight className="h-5 w-5 text-slate-300 dark:text-slate-600 group-hover:text-indigo-500 group-hover:translate-x-1 transition-all" />
+                </div>
+              </div>
             );
           })}
         </div>

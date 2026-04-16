@@ -72,7 +72,7 @@ export function MessageReactions({
                 onClick={() => handleToggle(emoji)}
                 className={`flex items-center gap-1 px-1.5 py-0.5 rounded-full text-xs border transition-colors ${
                   data.hasOwn
-                    ? "bg-brand-blue/10 border-brand-blue/30 text-brand-blue"
+                    ? "bg-indigo-600/10 border-indigo-500/30 text-indigo-600"
                     : "bg-muted/50 border-border hover:bg-muted"
                 }`}
               >

@@ -95,7 +95,7 @@ export function ProjectDangerZone({
         {/* Archive */}
         <div className="flex items-center justify-between p-4">
           <div>
-            <p className="text-sm font-medium text-navy-900">
+            <p className="text-sm font-medium text-foreground">
               {isArchived ? "Restore Project" : "Archive Project"}
             </p>
             <p className="text-xs text-muted-foreground mt-0.5">
@@ -109,7 +109,7 @@ export function ProjectDangerZone({
             size="sm"
             className={`gap-1.5 ${
               isArchived
-                ? "border-brand-blue text-brand-blue hover:bg-brand-blue/5"
+                ? "border-indigo-500 text-indigo-600 hover:bg-indigo-600/5"
                 : "border-amber-500 text-amber-600 hover:bg-amber-50"
             }`}
             onClick={handleArchive}
@@ -127,7 +127,7 @@ export function ProjectDangerZone({
         {/* Delete */}
         <div className="flex items-center justify-between p-4">
             <div>
-              <p className="text-sm font-medium text-navy-900">Delete Project</p>
+              <p className="text-sm font-medium text-foreground">Delete Project</p>
               <p className="text-xs text-muted-foreground mt-0.5">
                 Permanently delete this project and all its data. This action cannot be undone.
               </p>
@@ -154,7 +154,7 @@ export function ProjectDangerZone({
             </DialogTitle>
             <DialogDescription>
               This will permanently delete{" "}
-              <span className="font-semibold text-navy-900">{project.name}</span>{" "}
+              <span className="font-semibold text-foreground">{project.name}</span>{" "}
               and all associated tasks, sprints, and data. This action{" "}
               <span className="font-semibold text-red-600">cannot be undone</span>.
             </DialogDescription>
@@ -162,7 +162,7 @@ export function ProjectDangerZone({
 
           <div className="space-y-2 py-2">
             <p className="text-sm text-muted-foreground">
-              Type <span className="font-mono font-semibold text-navy-900">{project.name}</span> to confirm:
+              Type <span className="font-mono font-semibold text-foreground">{project.name}</span> to confirm:
             </p>
             <Input
               value={confirmName}

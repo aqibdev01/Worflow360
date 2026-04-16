@@ -240,7 +240,7 @@ export default function MailDetailPage() {
         <div className="max-w-3xl mx-auto px-6 py-6 space-y-6">
           {/* Subject */}
           <div className="flex items-start gap-3">
-            <h1 className="text-xl font-bold text-navy-900 flex-1">{mail.subject}</h1>
+            <h1 className="text-xl font-bold text-foreground flex-1">{mail.subject}</h1>
             {mail.type !== "direct" && (
               <Badge variant="outline" className="shrink-0 capitalize">
                 {mail.type}
@@ -258,7 +258,7 @@ export default function MailDetailPage() {
             />
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
-                <span className="font-semibold text-sm text-navy-900">
+                <span className="font-semibold text-sm text-foreground">
                   {mail.sender?.full_name || mail.sender?.email || "Unknown"}
                 </span>
                 <span className="text-xs text-muted-foreground">

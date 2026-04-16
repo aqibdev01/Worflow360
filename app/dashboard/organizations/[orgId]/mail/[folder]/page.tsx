@@ -313,7 +313,7 @@ export default function MailFolderPage() {
       <div className="flex items-center justify-between px-6 py-4 border-b bg-white shrink-0">
         <div className="flex items-center gap-3">
           <FolderIcon className="h-5 w-5 text-muted-foreground" />
-          <h2 className="text-lg font-semibold text-navy-900">{config.label}</h2>
+          <h2 className="text-lg font-semibold text-foreground">{config.label}</h2>
           <span className="text-sm text-muted-foreground">({rows.length})</span>
         </div>
         {folder === "inbox" && (
@@ -385,7 +385,7 @@ export default function MailFolderPage() {
                 onClick={() => handleRowClick(row)}
                 className={`group flex items-center gap-3 px-6 py-3.5 cursor-pointer transition-colors hover:bg-muted/30 ${
                   !row.isRead ? "bg-blue-50/30 border-l-[3px] border-l-blue-500" : "border-l-[3px] border-l-transparent"
-                } ${selected.has(row.id) ? "bg-brand-blue/5" : ""}`}
+                } ${selected.has(row.id) ? "bg-indigo-600/5" : ""}`}
               >
                 {/* Checkbox */}
                 <div onClick={(e) => { e.stopPropagation(); toggleSelect(row.id); }}>
@@ -420,10 +420,10 @@ export default function MailFolderPage() {
 
                 {/* Content */}
                 <div className="flex-1 min-w-0 flex items-center gap-3">
-                  <span className={`w-36 shrink-0 truncate text-sm ${!row.isRead ? "font-semibold text-navy-900" : "text-foreground"}`}>
+                  <span className={`w-36 shrink-0 truncate text-sm ${!row.isRead ? "font-semibold text-foreground" : "text-foreground"}`}>
                     {row.senderName}
                   </span>
-                  <span className={`shrink-0 text-sm truncate max-w-[250px] ${!row.isRead ? "font-semibold text-navy-900" : "text-foreground"}`}>
+                  <span className={`shrink-0 text-sm truncate max-w-[250px] ${!row.isRead ? "font-semibold text-foreground" : "text-foreground"}`}>
                     {row.subject}
                   </span>
                   <span className="text-sm text-muted-foreground truncate">

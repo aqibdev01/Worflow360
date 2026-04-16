@@ -64,7 +64,7 @@ export function MailSidebar({ orgId, currentUserId }: MailSidebarProps) {
       <div className="p-3">
         <Button
           onClick={() => router.push(`${basePath}/compose`)}
-          className="w-full gap-2 bg-brand-blue hover:bg-brand-blue/90"
+          className="w-full gap-2 bg-indigo-600 hover:bg-indigo-600/90"
         >
           <PenSquare className="h-4 w-4" />
           Compose
@@ -83,7 +83,7 @@ export function MailSidebar({ orgId, currentUserId }: MailSidebarProps) {
               onClick={() => router.push(`${basePath}/${key}`)}
               className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
                 isActive
-                  ? "bg-brand-blue/10 text-brand-blue font-medium"
+                  ? "bg-indigo-600/10 text-indigo-600 font-medium"
                   : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
               }`}
             >
@@ -112,7 +112,7 @@ export function MailSidebar({ orgId, currentUserId }: MailSidebarProps) {
           onClick={() => router.push(`${basePath}/announcements`)}
           className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
             activeFolder === "announcements"
-              ? "bg-brand-blue/10 text-brand-blue font-medium"
+              ? "bg-indigo-600/10 text-indigo-600 font-medium"
               : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
           }`}
         >

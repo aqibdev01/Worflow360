@@ -57,7 +57,7 @@ export function BreadcrumbNav() {
     >
       <Link
         href="/dashboard"
-        className="flex items-center gap-1 shrink-0 hover:text-navy-900 transition-colors"
+        className="flex items-center gap-1 shrink-0 hover:text-foreground transition-colors"
       >
         <Home className="h-3.5 w-3.5" />
       </Link>
@@ -70,7 +70,7 @@ export function BreadcrumbNav() {
             {isLast || !crumb.href ? (
               <span
                 className={`truncate max-w-[180px] ${
-                  isLast ? "font-medium text-navy-900" : "text-muted-foreground"
+                  isLast ? "font-medium text-foreground" : "text-muted-foreground"
                 }`}
                 title={crumb.label}
               >
@@ -79,7 +79,7 @@ export function BreadcrumbNav() {
             ) : (
               <Link
                 href={crumb.href}
-                className="truncate max-w-[180px] hover:text-navy-900 transition-colors"
+                className="truncate max-w-[180px] hover:text-foreground transition-colors"
                 title={crumb.label}
               >
                 {crumb.label}

@@ -5,17 +5,13 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { signUp } from "@/lib/auth";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Logo } from "@/components/Logo";
-import { ArrowLeft, Loader2, AlertCircle, CheckCircle2, User, Mail, Lock, Check, X, ShieldQuestion } from "lucide-react";
+import { Loader2, AlertCircle, User, Mail, Lock, Check, X, ShieldQuestion, ArrowRight, Eye, EyeOff } from "lucide-react";
 
-// Email validation regex
 const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 
-// Password strength requirements
 interface PasswordStrength {
   hasMinLength: boolean;
   hasUppercase: boolean;
@@ -39,10 +35,10 @@ function getPasswordStrengthScore(strength: PasswordStrength): number {
 }
 
 function getPasswordStrengthLabel(score: number): { label: string; color: string } {
-  if (score <= 2) return { label: "Weak", color: "text-destructive" };
-  if (score <= 3) return { label: "Fair", color: "text-warning" };
-  if (score <= 4) return { label: "Good", color: "text-brand-blue" };
-  return { label: "Strong", color: "text-success" };
+  if (score <= 2) return { label: "Weak", color: "text-rose-500" };
+  if (score <= 3) return { label: "Fair", color: "text-amber-500" };
+  if (score <= 4) return { label: "Good", color: "text-indigo-500" };
+  return { label: "Strong", color: "text-emerald-500" };
 }
 
 const SECURITY_QUESTIONS = [
@@ -57,11 +53,11 @@ function PasswordRequirement({ met, text }: { met: boolean; text: string }) {
   return (
     <div className="flex items-center gap-2">
       {met ? (
-        <Check className="h-3.5 w-3.5 text-success" />
+        <Check className="h-3.5 w-3.5 text-emerald-500" />
       ) : (
-        <X className="h-3.5 w-3.5 text-muted-foreground" />
+        <X className="h-3.5 w-3.5 text-slate-400" />
       )}
-      <span className={`text-xs ${met ? "text-success" : "text-muted-foreground"}`}>
+      <span className={`text-xs ${met ? "text-emerald-600 dark:text-emerald-400" : "text-slate-400"}`}>
         {text}
       </span>
     </div>
@@ -75,27 +71,22 @@ export default function SignupPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [securityQuestion, setSecurityQuestion] = useState("");
   const [securityAnswer, setSecurityAnswer] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [supabaseConfigured, setSupabaseConfigured] = useState(true);
   const [showPasswordRequirements, setShowPasswordRequirements] = useState(false);
 
-  // Real-time validation
   const emailValid = useMemo(() => EMAIL_REGEX.test(email), [email]);
   const passwordStrength = useMemo(() => checkPasswordStrength(password), [password]);
   const passwordScore = useMemo(() => getPasswordStrengthScore(passwordStrength), [passwordStrength]);
   const passwordsMatch = useMemo(() => password === confirmPassword && confirmPassword.length > 0, [password, confirmPassword]);
 
   useEffect(() => {
-    const configured = isSupabaseConfigured();
-    setSupabaseConfigured(configured);
-    if (!configured) {
-      setError(
-        "⚠️ Supabase is not configured. Please check the browser console for setup instructions."
-      );
+    if (!isSupabaseConfigured()) {
+      setError("Supabase is not configured. Please check setup instructions.");
     }
   }, []);
 
@@ -103,64 +94,27 @@ export default function SignupPage() {
     e.preventDefault();
     setError("");
 
-    // Validate name is provided
-    if (!fullName.trim()) {
-      setError("Please enter your full name");
-      return;
-    }
-
-    // Validate name has at least 2 characters
-    if (fullName.trim().length < 2) {
-      setError("Name must be at least 2 characters long");
-      return;
-    }
-
-    // Validate email format
-    if (!emailValid) {
-      setError("Please enter a valid email address");
-      return;
-    }
-
-    // Validate password strength (at least 3 requirements met)
+    if (!fullName.trim()) { setError("Please enter your full name"); return; }
+    if (fullName.trim().length < 2) { setError("Name must be at least 2 characters"); return; }
+    if (!emailValid) { setError("Please enter a valid email address"); return; }
     if (passwordScore < 3) {
-      setError("Password is too weak. Please meet at least 3 of the requirements below.");
+      setError("Password is too weak. Please meet at least 3 requirements.");
       setShowPasswordRequirements(true);
       return;
     }
-
-    // Validate passwords match
-    if (password !== confirmPassword) {
-      setError("Passwords do not match");
-      return;
-    }
-
-    // Validate security question
-    if (!securityQuestion) {
-      setError("Please select a security question");
-      return;
-    }
-
-    // Validate security answer
+    if (password !== confirmPassword) { setError("Passwords do not match"); return; }
+    if (!securityQuestion) { setError("Please select a security question"); return; }
     if (!securityAnswer.trim() || securityAnswer.trim().length < 2) {
-      setError("Please enter an answer to your security question (at least 2 characters)");
+      setError("Please enter an answer to your security question");
       return;
     }
 
     setLoading(true);
-    setError("");
 
     try {
-      console.log("📝 Starting signup process...");
-
-      // Listen for SIGNED_IN event — this fires reliably even when
-      // supabase API calls hang on the free tier.
       const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-        console.log("📝 Auth event during signup:", event);
         if (event === "SIGNED_IN" && session) {
-          console.log("✅ SIGNED_IN detected, redirecting...");
           subscription.unsubscribe();
-
-          // Save security question/answer to user profile
           (supabase as any)
             .from("users")
             .update({
@@ -168,35 +122,24 @@ export default function SignupPage() {
               security_answer: securityAnswer.trim().toLowerCase(),
             })
             .eq("id", session.user.id)
-            .then(() => {
-              console.log("✅ Security question saved");
-            })
-            .catch((err: any) => {
-              console.error("Failed to save security question:", err);
-            });
+            .then(() => {})
+            .catch((err: any) => console.error("Failed to save security question:", err));
 
           setSuccess(true);
-          setTimeout(() => {
-            window.location.href = "/dashboard";
-          }, 1500);
+          setTimeout(() => { window.location.href = "/dashboard"; }, 1500);
         }
       });
 
-      // Timeout: if no SIGNED_IN event after 60s, show error
       const timeout = setTimeout(() => {
         subscription.unsubscribe();
         setLoading(false);
-        setError("Account may have been created but we couldn't sign you in automatically. Please try logging in.");
+        setError("Account may have been created. Please try logging in.");
       }, 60000);
 
-      // Fire off signup — don't await it, it hangs on free tier
       signUp({ email, password, fullName }).then((res) => {
-        console.log("📝 signUp() finally resolved:", res);
         clearTimeout(timeout);
         if (res.data && !success) {
           subscription.unsubscribe();
-
-          // Save security question/answer to user profile
           (supabase as any)
             .from("users")
             .update({
@@ -204,185 +147,172 @@ export default function SignupPage() {
               security_answer: securityAnswer.trim().toLowerCase(),
             })
             .eq("id", res.data.id)
-            .then(() => {
-              console.log("✅ Security question saved (from signUp resolve)");
-            })
-            .catch((err: any) => {
-              console.error("Failed to save security question:", err);
-            });
+            .then(() => {})
+            .catch((err: any) => console.error("Failed to save security question:", err));
 
           setSuccess(true);
-          setTimeout(() => {
-            window.location.href = "/dashboard";
-          }, 1500);
+          setTimeout(() => { window.location.href = "/dashboard"; }, 1500);
         } else if (res.error) {
           subscription.unsubscribe();
           clearTimeout(timeout);
           setError(res.error.message);
           setLoading(false);
         }
-      }).catch((err) => {
-        console.error("📝 signUp() rejected:", err);
-      });
+      }).catch(() => {});
     } catch (err: any) {
-      console.error("❌ Unexpected error:", err);
       setError(err?.message || "An unexpected error occurred");
       setLoading(false);
     }
   };
 
+  // Success state
   if (success) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-navy-900 via-navy-800 to-navy-900">
-        <nav className="fixed top-0 left-0 right-0 z-50 bg-navy-900/80 backdrop-blur-md border-b border-white/10">
-          <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-center h-16">
-              <Link href="/" className="flex items-center space-x-3">
-                <Logo className="h-9 w-9" />
-                <span className="text-xl font-bold text-white">
-                  Workflow<span className="text-brand-blue">360</span>
-                </span>
-              </Link>
-            </div>
+      <main className="flex min-h-screen items-center justify-center bg-white dark:bg-slate-900 p-8">
+        <div className="text-center space-y-6 max-w-md">
+          <div className="mx-auto w-20 h-20 bg-emerald-50 dark:bg-emerald-950/30 rounded-full flex items-center justify-center">
+            <Check className="h-10 w-10 text-emerald-500" />
           </div>
-        </nav>
-
-        <div className="flex items-center justify-center min-h-screen pt-16">
-          <Card className="w-full max-w-md bg-white border-0 shadow-2xl p-8">
-            <div className="text-center space-y-4">
-              <div className="mx-auto w-16 h-16 bg-success/10 rounded-full flex items-center justify-center border border-success/20">
-                <Mail className="h-8 w-8 text-success" />
-              </div>
-              <div>
-                <h3 className="text-2xl font-bold text-navy-900">Account Created!</h3>
-                <p className="text-muted-foreground mt-2">
-                  Welcome to Workflow360. Redirecting you now...
-                </p>
-              </div>
-            </div>
-          </Card>
+          <h2 className="text-3xl font-bold tracking-tight text-foreground">
+            Account Created!
+          </h2>
+          <p className="text-slate-500 dark:text-slate-400">
+            Welcome to Workflow360. Redirecting you now...
+          </p>
+          <div className="flex justify-center">
+            <Loader2 className="h-5 w-5 animate-spin text-indigo-500" />
+          </div>
         </div>
-      </div>
+      </main>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-navy-900 via-navy-800 to-navy-900">
-      {/* Header */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-navy-900/80 backdrop-blur-md border-b border-white/10">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <Link href="/" className="flex items-center space-x-3">
-              <Logo className="h-9 w-9" />
-              <span className="text-xl font-bold text-white">
-                Workflow<span className="text-brand-blue">360</span>
-              </span>
-            </Link>
-            <div className="flex items-center space-x-4">
-              <Link href="/">
-                <Button variant="ghost" size="sm" className="text-white/70 hover:text-brand-blue hover:bg-white/5">
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  Back
-                </Button>
-              </Link>
-              <Link href="/auth/login">
-                <Button variant="outline" size="sm" className="border-white/20 text-white hover:bg-white/10">
-                  Sign In
-                </Button>
-              </Link>
-            </div>
+    <main className="flex min-h-screen">
+      {/* LEFT PANEL: Brand & Features */}
+      <section className="hidden lg:flex lg:w-1/2 relative flex-col justify-between p-12 overflow-hidden bg-gradient-to-br from-violet-600 to-indigo-600">
+        <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-white/10 rounded-full blur-3xl" />
+        <div className="absolute bottom-[-5%] right-[-5%] w-80 h-80 bg-indigo-400/20 rounded-full blur-2xl" />
+        <div className="absolute bottom-[30%] left-[10%] w-32 h-32 bg-white/5 backdrop-blur-xl -rotate-12 rounded-2xl border border-white/10" />
+
+        <div className="relative z-10 flex items-center gap-3">
+          <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center shadow-lg">
+            <Logo className="h-6 w-6" />
+          </div>
+          <span className="text-2xl font-bold tracking-tight text-white">
+            Workflow360
+          </span>
+        </div>
+
+        <div className="relative z-10 max-w-lg mb-12 space-y-8">
+          <h2 className="text-3xl font-bold text-white leading-tight tracking-tight">
+            Start building better workflows with AI-powered intelligence.
+          </h2>
+          <div className="space-y-4">
+            {[
+              "AI Task Decomposition — Break complex tasks into subtasks",
+              "Smart Assignee — Match the right person to every task",
+              "Bottleneck Prediction — Catch risks before they happen",
+            ].map((feature) => (
+              <div key={feature} className="flex items-start gap-3">
+                <div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center shrink-0 mt-0.5">
+                  <Check className="h-3 w-3 text-white" />
+                </div>
+                <p className="text-white/90 text-sm font-medium">{feature}</p>
+              </div>
+            ))}
           </div>
         </div>
-      </nav>
+      </section>
 
-      {/* Signup Form */}
-      <div className="flex items-center justify-center min-h-screen pt-16 pb-12 px-4 sm:px-6 lg:px-8">
-        <Card className="w-full max-w-md bg-white border-0 shadow-2xl p-8 space-y-6">
-          <div className="text-center space-y-2">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-brand-purple/10 border border-brand-purple/20 mb-4">
-              <div className="w-2 h-2 rounded-full bg-brand-purple animate-pulse" />
-              <span className="text-sm text-brand-purple font-medium">Start Your Free Trial</span>
+      {/* RIGHT PANEL: Signup Form */}
+      <section className="w-full lg:w-1/2 flex items-center justify-center p-6 md:p-12 lg:p-16 bg-white dark:bg-slate-900 overflow-y-auto">
+        <div className="w-full max-w-md space-y-8">
+          {/* Mobile brand */}
+          <div className="lg:hidden flex items-center gap-3 mb-4">
+            <div className="w-8 h-8 bg-violet-600 rounded-lg flex items-center justify-center">
+              <Logo className="h-5 w-5" />
             </div>
+            <span className="text-xl font-bold tracking-tight text-foreground">
+              Workflow360
+            </span>
+          </div>
 
-            <h1 className="text-3xl font-bold text-navy-900">
+          <div className="text-left space-y-2">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-violet-100 dark:bg-violet-900/30 mb-2">
+              <div className="w-1.5 h-1.5 rounded-full bg-violet-500 animate-pulse" />
+              <span className="text-xs font-bold text-violet-600 dark:text-violet-400">
+                Start Free
+              </span>
+            </div>
+            <h1 className="text-4xl font-extrabold tracking-tight text-foreground">
               Create Account
             </h1>
-            <p className="text-muted-foreground">
+            <p className="text-slate-500 dark:text-slate-400 font-medium">
               Get started with Workflow360 today
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-5">
             {error && (
-              <div className="p-4 rounded-lg bg-destructive/10 border border-destructive/20 flex items-start gap-3">
-                <AlertCircle className="h-5 w-5 text-destructive mt-0.5 flex-shrink-0" />
-                <div className="text-sm text-destructive">{error}</div>
+              <div className="p-4 rounded-xl bg-rose-50 dark:bg-rose-950/20 flex items-start gap-3">
+                <AlertCircle className="h-5 w-5 text-rose-500 mt-0.5 shrink-0" />
+                <p className="text-sm text-rose-600 dark:text-rose-400">{error}</p>
               </div>
             )}
 
+            {/* Full Name */}
             <div className="space-y-2">
-              <Label htmlFor="fullName" className="text-navy-900">Full Name <span className="text-destructive">*</span></Label>
-              <div className="relative">
-                <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                <Input
-                  id="fullName"
-                  name="fullName"
-                  type="text"
-                  autoComplete="name"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  placeholder="John Doe"
-                  disabled={loading}
-                  className="pl-10 border-border focus:border-brand-blue focus:ring-brand-blue/20"
-                />
-              </div>
+              <label className="text-[0.6875rem] font-bold uppercase tracking-wider text-slate-400">
+                Full Name <span className="text-rose-500">*</span>
+              </label>
+              <input
+                type="text"
+                autoComplete="name"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                placeholder="John Doe"
+                disabled={loading}
+                className="w-full px-4 py-3.5 bg-slate-50 dark:bg-slate-800 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 transition-all placeholder:text-slate-400 text-foreground"
+              />
             </div>
 
+            {/* Email */}
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-navy-900">Email address</Label>
+              <label className="text-[0.6875rem] font-bold uppercase tracking-wider text-slate-400">
+                Email Address
+              </label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                <Input
-                  id="email"
-                  name="email"
+                <input
                   type="email"
                   autoComplete="email"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="name@example.com"
+                  placeholder="name@company.com"
                   disabled={loading}
-                  className={`pl-10 pr-10 border-border focus:border-brand-blue focus:ring-brand-blue/20 ${
-                    email.length > 0
-                      ? emailValid
-                        ? "border-success focus:border-success"
-                        : "border-destructive focus:border-destructive"
-                      : ""
-                  }`}
+                  className="w-full px-4 py-3.5 bg-slate-50 dark:bg-slate-800 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 transition-all placeholder:text-slate-400 text-foreground"
                 />
                 {email.length > 0 && (
-                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2">
                     {emailValid ? (
-                      <Check className="h-5 w-5 text-success" />
+                      <Check className="h-4 w-4 text-emerald-500" />
                     ) : (
-                      <X className="h-5 w-5 text-destructive" />
+                      <X className="h-4 w-4 text-rose-500" />
                     )}
                   </div>
                 )}
               </div>
-              {email.length > 0 && !emailValid && (
-                <p className="text-xs text-destructive">Please enter a valid email address</p>
-              )}
             </div>
 
+            {/* Password */}
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-navy-900">Password</Label>
+              <label className="text-[0.6875rem] font-bold uppercase tracking-wider text-slate-400">
+                Password
+              </label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                <Input
-                  id="password"
-                  name="password"
-                  type="password"
+                <input
+                  type={showPassword ? "text" : "password"}
                   autoComplete="new-password"
                   required
                   value={password}
@@ -390,29 +320,31 @@ export default function SignupPage() {
                   onFocus={() => setShowPasswordRequirements(true)}
                   placeholder="Create a strong password"
                   disabled={loading}
-                  className="pl-10 border-border focus:border-brand-blue focus:ring-brand-blue/20"
+                  className="w-full px-4 py-3.5 bg-slate-50 dark:bg-slate-800 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 transition-all placeholder:text-slate-400 text-foreground"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-foreground transition-colors"
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
               </div>
 
-              {/* Password Strength Indicator */}
               {password.length > 0 && (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-muted-foreground">Password strength:</span>
+                    <span className="text-xs text-slate-400">Strength:</span>
                     <span className={`text-xs font-medium ${getPasswordStrengthLabel(passwordScore).color}`}>
                       {getPasswordStrengthLabel(passwordScore).label}
                     </span>
                   </div>
-                  <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+                  <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
                     <div
-                      className={`h-full transition-all duration-300 ${
-                        passwordScore <= 2
-                          ? "bg-destructive"
-                          : passwordScore <= 3
-                          ? "bg-warning"
-                          : passwordScore <= 4
-                          ? "bg-brand-blue"
-                          : "bg-success"
+                      className={`h-full transition-all duration-300 rounded-full ${
+                        passwordScore <= 2 ? "bg-rose-500" :
+                        passwordScore <= 3 ? "bg-amber-500" :
+                        passwordScore <= 4 ? "bg-indigo-500" : "bg-emerald-500"
                       }`}
                       style={{ width: `${(passwordScore / 5) * 100}%` }}
                     />
@@ -420,26 +352,25 @@ export default function SignupPage() {
                 </div>
               )}
 
-              {/* Password Requirements */}
               {(showPasswordRequirements || password.length > 0) && (
-                <div className="p-3 rounded-lg bg-muted/50 border border-border space-y-1.5">
-                  <p className="text-xs font-medium text-navy-900 mb-2">Password must have:</p>
+                <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 space-y-1.5">
+                  <p className="text-xs font-bold text-foreground mb-2">Password must have:</p>
                   <PasswordRequirement met={passwordStrength.hasMinLength} text="At least 8 characters" />
                   <PasswordRequirement met={passwordStrength.hasUppercase} text="One uppercase letter" />
                   <PasswordRequirement met={passwordStrength.hasLowercase} text="One lowercase letter" />
                   <PasswordRequirement met={passwordStrength.hasNumber} text="One number" />
-                  <PasswordRequirement met={passwordStrength.hasSpecialChar} text="One special character (!@#$%...)" />
+                  <PasswordRequirement met={passwordStrength.hasSpecialChar} text="One special character" />
                 </div>
               )}
             </div>
 
+            {/* Confirm Password */}
             <div className="space-y-2">
-              <Label htmlFor="confirmPassword" className="text-navy-900">Confirm Password</Label>
+              <label className="text-[0.6875rem] font-bold uppercase tracking-wider text-slate-400">
+                Confirm Password
+              </label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                <Input
-                  id="confirmPassword"
-                  name="confirmPassword"
+                <input
                   type="password"
                   autoComplete="new-password"
                   required
@@ -447,115 +378,106 @@ export default function SignupPage() {
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="Re-enter your password"
                   disabled={loading}
-                  className={`pl-10 border-border focus:border-brand-blue focus:ring-brand-blue/20 ${
-                    confirmPassword.length > 0
-                      ? passwordsMatch
-                        ? "border-success focus:border-success"
-                        : "border-destructive focus:border-destructive"
-                      : ""
-                  }`}
+                  className="w-full px-4 py-3.5 bg-slate-50 dark:bg-slate-800 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 transition-all placeholder:text-slate-400 text-foreground"
                 />
                 {confirmPassword.length > 0 && (
-                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2">
                     {passwordsMatch ? (
-                      <Check className="h-5 w-5 text-success" />
+                      <Check className="h-4 w-4 text-emerald-500" />
                     ) : (
-                      <X className="h-5 w-5 text-destructive" />
+                      <X className="h-4 w-4 text-rose-500" />
                     )}
                   </div>
                 )}
               </div>
-              {confirmPassword.length > 0 && !passwordsMatch && (
-                <p className="text-xs text-destructive">Passwords do not match</p>
-              )}
             </div>
 
+            {/* Security Question */}
             <div className="space-y-2">
-              <Label htmlFor="securityQuestion" className="text-navy-900">Security Question <span className="text-destructive">*</span></Label>
-              <div className="relative">
-                <ShieldQuestion className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                <select
-                  id="securityQuestion"
-                  value={securityQuestion}
-                  onChange={(e) => setSecurityQuestion(e.target.value)}
-                  disabled={loading}
-                  className="flex h-10 w-full rounded-md border border-border bg-background pl-10 pr-3 py-2 text-sm ring-offset-background focus:border-brand-blue focus:outline-none focus:ring-2 focus:ring-brand-blue/20 disabled:cursor-not-allowed disabled:opacity-50 appearance-none"
-                >
-                  <option value="">Select a security question...</option>
-                  {SECURITY_QUESTIONS.map((q) => (
-                    <option key={q} value={q}>{q}</option>
-                  ))}
-                </select>
-              </div>
+              <label className="text-[0.6875rem] font-bold uppercase tracking-wider text-slate-400">
+                Security Question <span className="text-rose-500">*</span>
+              </label>
+              <select
+                value={securityQuestion}
+                onChange={(e) => setSecurityQuestion(e.target.value)}
+                disabled={loading}
+                className="w-full px-4 py-3.5 bg-slate-50 dark:bg-slate-800 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 transition-all text-foreground appearance-none"
+              >
+                <option value="">Select a security question...</option>
+                {SECURITY_QUESTIONS.map((q) => (
+                  <option key={q} value={q}>{q}</option>
+                ))}
+              </select>
             </div>
 
             {securityQuestion && (
               <div className="space-y-2">
-                <Label htmlFor="securityAnswer" className="text-navy-900">Security Answer <span className="text-destructive">*</span></Label>
-                <div className="relative">
-                  <ShieldQuestion className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                  <Input
-                    id="securityAnswer"
-                    name="securityAnswer"
-                    type="text"
-                    value={securityAnswer}
-                    onChange={(e) => setSecurityAnswer(e.target.value)}
-                    placeholder="Enter your answer"
-                    disabled={loading}
-                    className="pl-10 border-border focus:border-brand-blue focus:ring-brand-blue/20"
-                  />
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  This will be used to verify your identity if you forget your password
+                <label className="text-[0.6875rem] font-bold uppercase tracking-wider text-slate-400">
+                  Security Answer <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={securityAnswer}
+                  onChange={(e) => setSecurityAnswer(e.target.value)}
+                  placeholder="Enter your answer"
+                  disabled={loading}
+                  className="w-full px-4 py-3.5 bg-slate-50 dark:bg-slate-800 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 transition-all placeholder:text-slate-400 text-foreground"
+                />
+                <p className="text-xs text-slate-400">
+                  Used to verify your identity for password recovery
                 </p>
               </div>
             )}
 
-            <Button
+            {/* Submit */}
+            <button
               type="submit"
-              className="w-full bg-brand-purple hover:bg-brand-purple-dark text-white shadow-lg shadow-brand-purple/25"
               disabled={loading}
+              className="w-full py-4 bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-violet-500/20 hover:shadow-violet-500/30 active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-60"
             >
               {loading ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 className="h-4 w-4 animate-spin" />
                   Creating account...
                 </>
               ) : (
-                "Create account"
+                <>
+                  Create Account
+                  <ArrowRight className="h-4 w-4" />
+                </>
               )}
-            </Button>
+            </button>
 
-            <p className="text-xs text-center text-muted-foreground">
+            <p className="text-xs text-center text-slate-400">
               By creating an account, you agree to our{" "}
-              <Link href="#" className="text-brand-blue hover:text-brand-blue-600">
-                Terms of Service
+              <Link href="#" className="text-indigo-600 dark:text-indigo-400 hover:text-violet-600">
+                Terms
               </Link>{" "}
               and{" "}
-              <Link href="#" className="text-brand-blue hover:text-brand-blue-600">
+              <Link href="#" className="text-indigo-600 dark:text-indigo-400 hover:text-violet-600">
                 Privacy Policy
               </Link>
             </p>
 
-            <div className="relative my-6">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-border" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-white px-2 text-muted-foreground">
-                  Already have an account?
-                </span>
-              </div>
+            <div className="relative flex items-center py-2">
+              <div className="flex-grow border-t border-slate-200 dark:border-slate-700" />
+              <span className="flex-shrink mx-4 text-[0.6875rem] font-bold uppercase tracking-widest text-slate-400">
+                Already have an account?
+              </span>
+              <div className="flex-grow border-t border-slate-200 dark:border-slate-700" />
             </div>
 
             <Link href="/auth/login" className="block">
-              <Button type="button" variant="outline" className="w-full border-brand-blue/30 text-brand-blue hover:bg-brand-blue/5 hover:border-brand-blue">
+              <button
+                type="button"
+                className="w-full py-3.5 border border-slate-200 dark:border-slate-700 text-indigo-600 dark:text-indigo-400 font-bold rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
+              >
                 Sign in instead
-              </Button>
+              </button>
             </Link>
           </form>
-        </Card>
-      </div>
-    </div>
+        </div>
+      </section>
+    </main>
   );
 }

@@ -24,6 +24,12 @@ export type SprintStatus = "planned" | "active" | "completed" | "cancelled";
 export type SprintEventType = "planning" | "daily_standup" | "review" | "retrospective" | "meeting" | "milestone" | "other";
 export type NotificationType = "info" | "success" | "warning" | "error" | "event";
 
+// AI Module Enum Types
+export type DecompositionStatus = "none" | "suggested" | "partially_accepted" | "fully_accepted";
+export type SkillLevel = "beginner" | "intermediate" | "expert";
+export type DecompositionReviewStatus = "pending" | "accepted" | "partially_accepted" | "rejected";
+export type RiskLevel = "low" | "medium" | "high" | "critical";
+
 // Database Tables
 export interface Database {
   public: {
@@ -191,6 +197,16 @@ export interface Database {
           updated_at: string;
           due_date: string | null;
           completed_at: string | null;
+          story_points: number | null;
+          estimated_days: number | null;
+          actual_days: number | null;
+          tags: string[];
+          complexity_score: number | null;
+          ai_suggested_assignee_id: string | null;
+          ai_assignee_confidence: number | null;
+          parent_task_id: string | null;
+          is_ai_generated: boolean;
+          decomposition_status: DecompositionStatus;
         };
         Insert: {
           id?: string;
@@ -206,6 +222,16 @@ export interface Database {
           updated_at?: string;
           due_date?: string | null;
           completed_at?: string | null;
+          story_points?: number | null;
+          estimated_days?: number | null;
+          actual_days?: number | null;
+          tags?: string[];
+          complexity_score?: number | null;
+          ai_suggested_assignee_id?: string | null;
+          ai_assignee_confidence?: number | null;
+          parent_task_id?: string | null;
+          is_ai_generated?: boolean;
+          decomposition_status?: DecompositionStatus;
         };
         Update: {
           id?: string;
@@ -221,6 +247,16 @@ export interface Database {
           updated_at?: string;
           due_date?: string | null;
           completed_at?: string | null;
+          story_points?: number | null;
+          estimated_days?: number | null;
+          actual_days?: number | null;
+          tags?: string[];
+          complexity_score?: number | null;
+          ai_suggested_assignee_id?: string | null;
+          ai_assignee_confidence?: number | null;
+          parent_task_id?: string | null;
+          is_ai_generated?: boolean;
+          decomposition_status?: DecompositionStatus;
         };
       };
       sprints: {
@@ -234,6 +270,11 @@ export interface Database {
           status: SprintStatus;
           created_at: string;
           updated_at: string;
+          velocity: number | null;
+          capacity: number | null;
+          ai_risk_score: number | null;
+          ai_risk_factors: Json | null;
+          ai_analyzed_at: string | null;
         };
         Insert: {
           id?: string;
@@ -245,6 +286,11 @@ export interface Database {
           status?: SprintStatus;
           created_at?: string;
           updated_at?: string;
+          velocity?: number | null;
+          capacity?: number | null;
+          ai_risk_score?: number | null;
+          ai_risk_factors?: Json | null;
+          ai_analyzed_at?: string | null;
         };
         Update: {
           id?: string;
@@ -256,6 +302,11 @@ export interface Database {
           status?: SprintStatus;
           created_at?: string;
           updated_at?: string;
+          velocity?: number | null;
+          capacity?: number | null;
+          ai_risk_score?: number | null;
+          ai_risk_factors?: Json | null;
+          ai_analyzed_at?: string | null;
         };
       };
       sprint_events: {
@@ -331,6 +382,134 @@ export interface Database {
           created_at?: string;
         };
       };
+      user_skills: {
+        Row: {
+          id: string;
+          user_id: string;
+          skill: string;
+          level: SkillLevel;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          skill: string;
+          level?: SkillLevel;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          skill?: string;
+          level?: SkillLevel;
+          created_at?: string;
+        };
+      };
+      ai_task_decompositions: {
+        Row: {
+          id: string;
+          parent_task_id: string;
+          suggested_subtasks: Json;
+          model_version: string;
+          confidence_score: number | null;
+          status: DecompositionReviewStatus;
+          created_at: string;
+          reviewed_at: string | null;
+          reviewed_by: string | null;
+        };
+        Insert: {
+          id?: string;
+          parent_task_id: string;
+          suggested_subtasks: Json;
+          model_version: string;
+          confidence_score?: number | null;
+          status?: DecompositionReviewStatus;
+          created_at?: string;
+          reviewed_at?: string | null;
+          reviewed_by?: string | null;
+        };
+        Update: {
+          id?: string;
+          parent_task_id?: string;
+          suggested_subtasks?: Json;
+          model_version?: string;
+          confidence_score?: number | null;
+          status?: DecompositionReviewStatus;
+          created_at?: string;
+          reviewed_at?: string | null;
+          reviewed_by?: string | null;
+        };
+      };
+      ai_assignment_logs: {
+        Row: {
+          id: string;
+          task_id: string;
+          suggested_assignee_id: string;
+          confidence_score: number | null;
+          scoring_breakdown: Json | null;
+          was_accepted: boolean | null;
+          final_assignee_id: string | null;
+          model_version: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          task_id: string;
+          suggested_assignee_id: string;
+          confidence_score?: number | null;
+          scoring_breakdown?: Json | null;
+          was_accepted?: boolean | null;
+          final_assignee_id?: string | null;
+          model_version: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          task_id?: string;
+          suggested_assignee_id?: string;
+          confidence_score?: number | null;
+          scoring_breakdown?: Json | null;
+          was_accepted?: boolean | null;
+          final_assignee_id?: string | null;
+          model_version?: string;
+          created_at?: string;
+        };
+      };
+      ai_bottleneck_reports: {
+        Row: {
+          id: string;
+          sprint_id: string;
+          project_id: string;
+          risk_level: RiskLevel;
+          risk_score: number | null;
+          bottlenecks: Json;
+          recommendations: Json | null;
+          model_version: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          sprint_id: string;
+          project_id: string;
+          risk_level: RiskLevel;
+          risk_score?: number | null;
+          bottlenecks: Json;
+          recommendations?: Json | null;
+          model_version: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          sprint_id?: string;
+          project_id?: string;
+          risk_level?: RiskLevel;
+          risk_score?: number | null;
+          bottlenecks?: Json;
+          recommendations?: Json | null;
+          model_version?: string;
+          created_at?: string;
+        };
+      };
     };
     Views: {
       [_ in never]: never;
@@ -365,6 +544,10 @@ export interface Database {
       task_status: TaskStatus;
       task_priority: TaskPriority;
       sprint_status: SprintStatus;
+      decomposition_status: DecompositionStatus;
+      skill_level: SkillLevel;
+      decomposition_review_status: DecompositionReviewStatus;
+      risk_level: RiskLevel;
     };
   };
 }
@@ -395,6 +578,18 @@ export type TaskInsert = Database["public"]["Tables"]["tasks"]["Insert"];
 export type SprintInsert = Database["public"]["Tables"]["sprints"]["Insert"];
 export type SprintEventInsert = Database["public"]["Tables"]["sprint_events"]["Insert"];
 export type NotificationInsert = Database["public"]["Tables"]["notifications"]["Insert"];
+export type UserSkill = Database["public"]["Tables"]["user_skills"]["Row"];
+export type UserSkillInsert = Database["public"]["Tables"]["user_skills"]["Insert"];
+export type UserSkillUpdate = Database["public"]["Tables"]["user_skills"]["Update"];
+export type AiTaskDecomposition = Database["public"]["Tables"]["ai_task_decompositions"]["Row"];
+export type AiTaskDecompositionInsert = Database["public"]["Tables"]["ai_task_decompositions"]["Insert"];
+export type AiTaskDecompositionUpdate = Database["public"]["Tables"]["ai_task_decompositions"]["Update"];
+export type AiAssignmentLog = Database["public"]["Tables"]["ai_assignment_logs"]["Row"];
+export type AiAssignmentLogInsert = Database["public"]["Tables"]["ai_assignment_logs"]["Insert"];
+export type AiAssignmentLogUpdate = Database["public"]["Tables"]["ai_assignment_logs"]["Update"];
+export type AiBottleneckReport = Database["public"]["Tables"]["ai_bottleneck_reports"]["Row"];
+export type AiBottleneckReportInsert = Database["public"]["Tables"]["ai_bottleneck_reports"]["Insert"];
+export type AiBottleneckReportUpdate = Database["public"]["Tables"]["ai_bottleneck_reports"]["Update"];
 
 // Update types for updating existing records
 export type UserUpdate = Database["public"]["Tables"]["users"]["Update"];
@@ -437,6 +632,9 @@ export interface TaskWithDetails extends Task {
   assignee?: User;
   created_by_user?: User;
   sprints?: Sprint;
+  subtasks?: Task[];
+  parent_task?: Task | null;
+  ai_suggested_assignee?: User | null;
 }
 
 export interface SprintWithTasks extends Sprint {
@@ -453,10 +651,72 @@ export interface SprintWithDetails extends Sprint {
   projects?: Project;
   tasks?: TaskWithDetails[];
   sprint_events?: SprintEvent[];
+  ai_bottleneck_reports?: AiBottleneckReport[];
 }
 
 export interface NotificationWithDetails extends Notification {
   users?: User;
+}
+
+// =====================================================
+// AI Module Extended Types (for joins)
+// =====================================================
+
+export interface UserWithSkills extends User {
+  user_skills?: UserSkill[];
+}
+
+export interface AiTaskDecompositionWithDetails extends AiTaskDecomposition {
+  parent_task?: Task;
+  reviewer?: User | null;
+}
+
+export interface AiAssignmentLogWithDetails extends AiAssignmentLog {
+  task?: Task;
+  suggested_assignee?: User;
+  final_assignee?: User | null;
+}
+
+export interface AiBottleneckReportWithDetails extends AiBottleneckReport {
+  sprint?: Sprint;
+  project?: Project;
+}
+
+// JSON structure types for AI module JSONB columns
+export interface AiScoringBreakdown {
+  skill_match: number;
+  workload: number;
+  role_match: number;
+  availability: number;
+  [key: string]: number;
+}
+
+export interface AiBottleneckItem {
+  type: string;
+  description: string;
+  affected_tasks: string[];
+  severity: string;
+}
+
+export interface AiRecommendation {
+  action: string;
+  reason: string;
+  priority: string;
+}
+
+export interface AiRiskFactors {
+  overloaded_members?: string[];
+  blockers?: string[];
+  [key: string]: unknown;
+}
+
+export interface AiSuggestedSubtask {
+  title: string;
+  description: string;
+  priority: TaskPriority;
+  story_points: number | null;
+  tags: string[];
+  estimated_days: number | null;
 }
 
 // =====================================================
