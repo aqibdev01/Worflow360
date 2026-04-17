@@ -51,12 +51,12 @@ export default function NotFound() {
                 <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity" />
                 Go to Dashboard
               </Link>
-              <button
-                onClick={() => typeof window !== "undefined" && window.history.back()}
+              <Link
+                href="/"
                 className="px-8 py-4 bg-slate-100 dark:bg-slate-800 text-foreground rounded-lg font-bold tracking-tight hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors active:scale-95 flex items-center gap-2"
               >
-                Back to Previous
-              </button>
+                Back to Home
+              </Link>
             </div>
           </div>
 
