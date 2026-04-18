@@ -295,7 +295,7 @@ export function ProjectFilesTab({ orgId, projectId }: ProjectFilesTabProps) {
   };
 
   return (
-    <div className="flex h-[calc(100vh-14rem)] bg-white rounded-xl border shadow-sm overflow-hidden">
+    <div className="flex h-[calc(100vh-14rem)] bg-white dark:bg-slate-950 rounded-xl border dark:border-slate-800 shadow-sm overflow-hidden">
       {/* Sidebar */}
       <FolderSidebar
         orgId={orgId}

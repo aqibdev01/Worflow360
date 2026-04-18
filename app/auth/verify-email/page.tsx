@@ -166,8 +166,8 @@ function VerifyEmailContent() {
 
   if (success) {
     return (
-      <div className="min-h-screen bg-white">
-        <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100">
+      <div className="min-h-screen bg-white dark:bg-slate-950">
+        <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md border-b border-gray-100 dark:border-slate-800">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between items-center h-16">
               <Link href="/" className="flex items-center space-x-3">
@@ -181,7 +181,7 @@ function VerifyEmailContent() {
         </nav>
 
         <div className="flex items-center justify-center min-h-screen pt-16">
-          <Card className="w-full max-w-md bg-white border-gray-100 shadow-lg p-8">
+          <Card className="w-full max-w-md bg-white dark:bg-slate-800 border-gray-100 dark:border-slate-700 shadow-lg p-8">
             <div className="text-center space-y-4">
               <div className="mx-auto w-16 h-16 bg-green-50 rounded-full flex items-center justify-center border border-green-100">
                 <CheckCircle2 className="h-8 w-8 text-green-600" />
@@ -201,8 +201,8 @@ function VerifyEmailContent() {
 
   if (!email) {
     return (
-      <div className="min-h-screen bg-white">
-        <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100">
+      <div className="min-h-screen bg-white dark:bg-slate-950">
+        <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md border-b border-gray-100 dark:border-slate-800">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between items-center h-16">
               <Link href="/" className="flex items-center space-x-3">
@@ -216,7 +216,7 @@ function VerifyEmailContent() {
         </nav>
 
         <div className="flex items-center justify-center min-h-screen pt-16">
-          <Card className="w-full max-w-md bg-white border-gray-100 shadow-lg p-8">
+          <Card className="w-full max-w-md bg-white dark:bg-slate-800 border-gray-100 dark:border-slate-700 shadow-lg p-8">
             <div className="text-center space-y-4">
               <div className="mx-auto w-16 h-16 bg-red-50 rounded-full flex items-center justify-center border border-red-100">
                 <AlertCircle className="h-8 w-8 text-red-600" />
@@ -240,9 +240,9 @@ function VerifyEmailContent() {
   }
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white dark:bg-slate-950">
       {/* Header */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100">
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md border-b border-gray-100 dark:border-slate-800">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <Link href="/" className="flex items-center space-x-3">
@@ -257,7 +257,7 @@ function VerifyEmailContent() {
 
       {/* Verification Form */}
       <div className="flex items-center justify-center min-h-screen pt-16 pb-12 px-4 sm:px-6 lg:px-8">
-        <Card className="w-full max-w-md bg-white border-gray-100 shadow-lg p-8 space-y-6">
+        <Card className="w-full max-w-md bg-white dark:bg-slate-800 border-gray-100 dark:border-slate-700 shadow-lg p-8 space-y-6">
           <div className="text-center space-y-2">
             <div className="mx-auto w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center border border-blue-100 mb-4">
               <Mail className="h-8 w-8 text-blue-600" />
@@ -368,8 +368,8 @@ function VerifyEmailContent() {
 
 function VerifyEmailLoading() {
   return (
-    <div className="min-h-screen bg-white">
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100">
+    <div className="min-h-screen bg-white dark:bg-slate-950">
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md border-b border-gray-100 dark:border-slate-800">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <Link href="/" className="flex items-center space-x-3">
@@ -383,7 +383,7 @@ function VerifyEmailLoading() {
       </nav>
 
       <div className="flex items-center justify-center min-h-screen pt-16">
-        <Card className="w-full max-w-md bg-white border-gray-100 shadow-lg p-8">
+        <Card className="w-full max-w-md bg-white dark:bg-slate-800 border-gray-100 dark:border-slate-700 shadow-lg p-8">
           <div className="text-center space-y-4">
             <div className="mx-auto w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center border border-blue-100">
               <Loader2 className="h-8 w-8 text-blue-600 animate-spin" />

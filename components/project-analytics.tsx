@@ -130,7 +130,7 @@ function MiniBar({ value, max, color }: { value: number; max: number; color: str
   const pct = max > 0 ? Math.round((value / max) * 100) : 0;
   return (
     <div className="flex items-center gap-2">
-      <div className="h-2 flex-1 bg-secondary rounded-full overflow-hidden">
+      <div className="h-2 flex-1 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
         <div className={`h-full ${color} rounded-full transition-all duration-500`} style={{ width: `${pct}%` }} />
       </div>
       <span className="text-xs font-medium w-6 text-right">{value}</span>
@@ -631,7 +631,7 @@ export function ProjectAnalytics({ projectId, currentUserId, isProjectManager }:
                           <span className="font-medium">Overall Completion</span>
                           <span className="font-bold text-green-600">{myCompletionRate}%</span>
                         </div>
-                        <div className="h-3 bg-secondary rounded-full overflow-hidden">
+                        <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
                           <div
                             className="h-full bg-gradient-to-r from-green-500 to-emerald-400 rounded-full transition-all duration-700"
                             style={{ width: `${myCompletionRate}%` }}
@@ -921,7 +921,7 @@ export function ProjectAnalytics({ projectId, currentUserId, isProjectManager }:
                     {statusDist.map((s) => (
                       <div key={s.key} className="flex items-center gap-3 text-sm">
                         <span className="w-24 text-muted-foreground text-xs">{s.label}</span>
-                        <div className="flex-1 h-2 bg-secondary rounded-full overflow-hidden">
+                        <div className="flex-1 h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
                           <div className={`h-full ${s.color} rounded-full transition-all duration-500`} style={{ width: `${s.pct}%` }} />
                         </div>
                         <span className="w-8 text-right text-xs font-medium">{s.count}</span>
@@ -976,7 +976,7 @@ export function ProjectAnalytics({ projectId, currentUserId, isProjectManager }:
                     {priorityDist.map((p) => (
                       <div key={p.key} className="flex items-center gap-3 text-sm">
                         <span className="w-16 text-muted-foreground text-xs">{p.label}</span>
-                        <div className="flex-1 h-2 bg-secondary rounded-full overflow-hidden">
+                        <div className="flex-1 h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
                           <div className={`h-full ${p.color} rounded-full transition-all duration-500`} style={{ width: `${p.pct}%` }} />
                         </div>
                         <span className="w-8 text-right text-xs font-medium">{p.count}</span>
@@ -1113,7 +1113,7 @@ export function ProjectAnalytics({ projectId, currentUserId, isProjectManager }:
                                       </span>
                                     )}
                                   </div>
-                                  <div className="h-2 bg-secondary rounded-full overflow-hidden">
+                                  <div className="h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
                                     <div className="h-full bg-green-500 rounded-full transition-all duration-500" style={{ width: `${m.completionRate}%` }} />
                                   </div>
                                 </div>

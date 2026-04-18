@@ -137,7 +137,7 @@ export async function getStarredMails(
     )
     .eq("recipient_id", user.id)
     .eq("is_starred", true)
-    .eq("is_trashed", false)
+    .neq("folder", "trash")
     .eq("mail.is_draft", false)
     .eq("mail.organization_id", orgId)
     .order("received_at", { ascending: false })
@@ -690,6 +690,37 @@ export async function deletePermanently(mailId: string): Promise<void> {
   }
 }
 
+/**
+ * Delete a sent mail. Only the sender can delete their own sent mail.
+ * This permanently removes the mail message and cascades to recipients/attachments.
+ */
+export async function deleteSentMail(mailId: string): Promise<void> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
+  // Clean up storage attachments first
+  const { data: attachments } = await (supabase as any)
+    .from("mail_attachments")
+    .select("storage_path")
+    .eq("mail_id", mailId);
+
+  if (attachments && attachments.length > 0) {
+    const paths = attachments.map((a: any) => a.storage_path);
+    await supabase.storage.from("mail-attachments").remove(paths);
+  }
+
+  // Delete the mail message (cascades to recipients and attachments)
+  const { error } = await (supabase as any)
+    .from("mail_messages")
+    .delete()
+    .eq("id", mailId)
+    .eq("sender_id", user.id);
+
+  if (error) throw error;
+}
+
 // =====================================================
 // Unread Count
 // =====================================================
@@ -703,30 +734,23 @@ export async function getUnreadMailCount(orgId: string): Promise<number> {
   } = await supabase.auth.getUser();
   if (!user) return 0;
 
-  const { data, error } = await (supabase as any)
+  // Fetch unread inbox recipient rows with their mail's org, filter by org client-side
+  // (Supabase PostgREST cannot filter by joined-table columns in a count query)
+  const { data: rows, error } = await (supabase as any)
     .from("mail_recipients")
-    .select(
-      "id, mail:mail_messages!mail_id(organization_id)",
-      { count: "exact", head: true }
-    )
+    .select("id, mail:mail_messages!mail_id(organization_id, is_draft)")
     .eq("recipient_id", user.id)
     .eq("is_read", false)
     .eq("folder", "inbox");
 
-  if (error) return 0;
+  if (error) {
+    console.error("Error fetching unread mail count:", error);
+    return 0;
+  }
 
-  // Since we can't filter by joined column in count, do a manual count
-  // For efficiency, we fetch just IDs and filter
-  const { data: rows, error: fetchErr } = await (supabase as any)
-    .from("mail_recipients")
-    .select("id, mail:mail_messages!mail_id(organization_id)")
-    .eq("recipient_id", user.id)
-    .eq("is_read", false)
-    .eq("folder", "inbox");
-
-  if (fetchErr) return 0;
-
-  return (rows || []).filter((r: any) => r.mail?.organization_id === orgId).length;
+  return (rows || []).filter(
+    (r: any) => r.mail?.organization_id === orgId && r.mail?.is_draft === false
+  ).length;
 }
 
 // =====================================================

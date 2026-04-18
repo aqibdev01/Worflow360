@@ -313,7 +313,7 @@ export default function OrgFilesPage() {
   };
 
   return (
-    <div className="flex h-[calc(100vh-5rem)] -mx-4 lg:-mx-6 -mb-4 lg:-mb-6 bg-white rounded-t-xl border shadow-sm overflow-hidden">
+    <div className="flex h-[calc(100vh-5rem)] -mx-4 lg:-mx-6 -mb-4 lg:-mb-6 bg-white dark:bg-slate-950 rounded-t-xl border dark:border-slate-800 shadow-sm overflow-hidden">
       {/* Sidebar */}
       <FolderSidebar
         orgId={orgId}

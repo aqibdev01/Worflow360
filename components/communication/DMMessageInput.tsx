@@ -218,7 +218,7 @@ export function DMMessageInput({
   };
 
   return (
-    <div className="relative border-t bg-white">
+    <div className="relative border-t bg-white dark:bg-slate-950">
       {/* Staged files */}
       {stagedFiles.length > 0 && (
         <div className="flex flex-wrap gap-2 px-4 pt-3">
@@ -321,7 +321,7 @@ export function DMMessageInput({
             onKeyDown={handleKeyDown}
             placeholder={placeholder}
             rows={1}
-            className="w-full resize-none rounded-lg border bg-muted/30 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 placeholder:text-muted-foreground"
+            className="w-full resize-none rounded-lg border dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 text-foreground px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 placeholder:text-muted-foreground"
             style={{ maxHeight: 150 }}
             disabled={sending}
           />

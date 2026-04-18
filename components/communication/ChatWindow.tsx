@@ -213,7 +213,7 @@ export function ChatWindow({ channelId, currentUserId, orgId }: ChatWindowProps)
       {/* Main message area */}
       <div className="flex-1 flex flex-col min-w-0 relative">
         {/* Channel header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b bg-white">
+        <div className="flex items-center justify-between px-4 py-3 border-b bg-white dark:bg-slate-950">
           <div className="flex items-center gap-2 min-w-0">
             {channelIcon()}
             <h3 className="text-sm font-semibold text-foreground truncate">
@@ -317,7 +317,7 @@ export function ChatWindow({ channelId, currentUserId, orgId }: ChatWindowProps)
 
       {/* Members panel — right panel */}
       {showMembers && (
-        <div className="w-[280px] border-l bg-white flex flex-col h-full">
+        <div className="w-[280px] border-l bg-white dark:bg-slate-950 flex flex-col h-full">
           <div className="flex items-center justify-between px-4 py-3 border-b">
             <h3 className="text-sm font-semibold text-foreground">Members</h3>
             <div className="flex items-center gap-2">

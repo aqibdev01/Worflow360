@@ -224,7 +224,7 @@ export default function ForgotPasswordPage() {
         </nav>
 
         <div className="flex items-center justify-center min-h-screen pt-16 pb-12 px-4">
-          <Card className="w-full max-w-md bg-white border-0 shadow-2xl p-8">
+          <Card className="w-full max-w-md bg-white dark:bg-slate-800 border-0 shadow-2xl p-8">
             <div className="text-center space-y-4">
               <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
                 <CheckCircle2 className="h-8 w-8 text-green-600" />
@@ -271,7 +271,7 @@ export default function ForgotPasswordPage() {
       </nav>
 
       <div className="flex items-center justify-center min-h-screen pt-16 pb-12 px-4">
-        <Card className="w-full max-w-md bg-white border-0 shadow-2xl p-8">
+        <Card className="w-full max-w-md bg-white dark:bg-slate-800 border-0 shadow-2xl p-8">
           {/* Step Indicator */}
           <div className="flex items-center justify-center gap-2 mb-6">
             {steps.map((s, i) => (
@@ -581,7 +581,7 @@ export default function ForgotPasswordPage() {
                         value={newSecurityQuestion}
                         onChange={(e) => setNewSecurityQuestion(e.target.value)}
                         disabled={loading}
-                        className="flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                        className="flex h-10 w-full rounded-md border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                       >
                         <option value="">Select a security question...</option>
                         {SECURITY_QUESTIONS.map((q) => (

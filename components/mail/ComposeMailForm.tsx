@@ -83,7 +83,7 @@ function MemberPicker({
   return (
     <div className="relative">
       <div
-        className="flex flex-wrap items-center gap-1.5 min-h-[40px] rounded-md border px-3 py-1.5 cursor-text"
+        className="flex flex-wrap items-center gap-1.5 min-h-[40px] rounded-md border dark:border-slate-700 bg-white dark:bg-slate-800/50 px-3 py-1.5 cursor-text"
         onClick={() => inputRef.current?.focus()}
       >
         {selected.map((m) => (
@@ -121,7 +121,7 @@ function MemberPicker({
 
       {/* Dropdown */}
       {open && filtered.length > 0 && (
-        <div className="absolute top-full left-0 right-0 z-50 mt-1 max-h-48 overflow-y-auto rounded-md border bg-white shadow-lg">
+        <div className="absolute top-full left-0 right-0 z-50 mt-1 max-h-48 overflow-y-auto rounded-md border dark:border-slate-700 bg-white dark:bg-slate-800 shadow-lg">
           {filtered.slice(0, 10).map((m) => (
             <button
               key={m.id}
@@ -280,8 +280,10 @@ export function ComposeMailForm({
   const handleSend = async () => {
     const mailBody = bodyRef.current?.innerHTML || "";
 
-    if (!subject.trim()) {
-      toast.error("Subject is required");
+    // Subject is optional, but reject whitespace-only values
+    const trimmedSubject = subject.trim();
+    if (subject.length > 0 && trimmedSubject.length === 0) {
+      toast.error("Subject cannot be only spaces");
       return;
     }
 
@@ -303,7 +305,7 @@ export function ComposeMailForm({
       if (currentDraftId) {
         // Update draft then send it
         await updateDraft(currentDraftId, {
-          subject,
+          subject: trimmedSubject || "(no subject)",
           body: mailBody,
           type: mailType,
         });
@@ -314,7 +316,7 @@ export function ComposeMailForm({
         });
       } else {
         await composeMail(orgId, {
-          subject,
+          subject: trimmedSubject || "(no subject)",
           body: mailBody,
           to: toIds,
           cc: ccIds.length > 0 ? ccIds : undefined,
@@ -401,7 +403,7 @@ export function ComposeMailForm({
   return (
     <>
       {/* Header */}
-      <div className="flex items-center justify-between px-6 py-3 border-b bg-white shrink-0">
+      <div className="flex items-center justify-between px-6 py-3 border-b dark:border-slate-800 bg-white dark:bg-slate-950 shrink-0">
         <h2 className="text-lg font-semibold text-foreground">New Message</h2>
         <div className="flex items-center gap-2">
           <Button
@@ -440,7 +442,7 @@ export function ComposeMailForm({
           {/* Mail type toggle */}
           <div className="flex items-center gap-2">
             <Label className="text-sm text-muted-foreground w-12">Type:</Label>
-            <div className="flex gap-1 rounded-lg border p-0.5">
+            <div className="flex gap-1 rounded-lg border dark:border-slate-700 bg-white dark:bg-slate-800/50 p-0.5">
               {(["direct", "announcement", "newsletter"] as const).map((t) => (
                 <button
                   key={t}
@@ -462,7 +464,7 @@ export function ComposeMailForm({
             <Label className="text-sm text-muted-foreground w-12 mt-2.5">To:</Label>
             <div className="flex-1">
               {mailType === "announcement" ? (
-                <div className="flex items-center h-10 rounded-md border px-3 bg-muted/30">
+                <div className="flex items-center h-10 rounded-md border dark:border-slate-700 px-3 bg-slate-50 dark:bg-slate-800/50">
                   <span className="text-sm text-muted-foreground">All organization members ({orgMembers.length})</span>
                 </div>
               ) : (
@@ -515,7 +517,7 @@ export function ComposeMailForm({
           <Separator />
 
           {/* Rich text toolbar */}
-          <div className="flex items-center gap-1 border rounded-lg p-1 bg-muted/20">
+          <div className="flex items-center gap-1 border dark:border-slate-700 rounded-lg p-1 bg-slate-50 dark:bg-slate-800/50">
             <button
               type="button"
               onClick={() => execCommand("bold")}
@@ -575,11 +577,8 @@ export function ComposeMailForm({
             onInput={() => {
               setBody(bodyRef.current?.innerHTML || "");
             }}
-            className="min-h-[300px] rounded-md border px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 prose prose-sm max-w-none"
+            className="mail-body-editor min-h-[300px] rounded-md border dark:border-slate-700 bg-white dark:bg-slate-800/50 px-4 py-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 max-w-none"
             data-placeholder="Write your message..."
-            style={{
-              // Placeholder via CSS
-            }}
           />
 
           {/* Attachments */}
@@ -592,7 +591,7 @@ export function ComposeMailForm({
                 {attachments.map((file, idx) => (
                   <div
                     key={idx}
-                    className="flex items-center gap-2 rounded-lg border px-3 py-2 bg-muted/20"
+                    className="flex items-center gap-2 rounded-lg border dark:border-slate-700 px-3 py-2 bg-slate-50 dark:bg-slate-800/50"
                   >
                     <FileText className="h-4 w-4 text-muted-foreground" />
                     <span className="text-sm truncate max-w-[150px]">{file.name}</span>
@@ -611,12 +610,29 @@ export function ComposeMailForm({
         </div>
       </div>
 
-      {/* Placeholder style for contentEditable */}
+      {/* Placeholder + list styling for the rich text editor */}
       <style jsx>{`
-        [contenteditable]:empty:before {
+        :global(.mail-body-editor:empty:before) {
           content: attr(data-placeholder);
           color: hsl(var(--muted-foreground));
           pointer-events: none;
+        }
+        :global(.mail-body-editor ul) {
+          list-style-type: disc;
+          padding-left: 1.5rem;
+          margin: 0.5rem 0;
+        }
+        :global(.mail-body-editor ol) {
+          list-style-type: decimal;
+          padding-left: 1.5rem;
+          margin: 0.5rem 0;
+        }
+        :global(.mail-body-editor li) {
+          margin: 0.25rem 0;
+        }
+        :global(.mail-body-editor a) {
+          color: hsl(var(--primary));
+          text-decoration: underline;
         }
       `}</style>
     </>

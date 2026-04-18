@@ -133,7 +133,7 @@ const EVENT_TYPE_CONFIG: Record<string, { icon: any; color: string; bg: string; 
   retrospective: { icon: Clock, color: "text-orange-600", bg: "bg-orange-100 border-orange-200", label: "Retro" },
   meeting: { icon: Users, color: "text-indigo-600", bg: "bg-indigo-100 border-indigo-200", label: "Meeting" },
   milestone: { icon: Flag, color: "text-red-600", bg: "bg-red-100 border-red-200", label: "Milestone" },
-  other: { icon: CalendarIconSolid, color: "text-gray-600", bg: "bg-gray-100 border-gray-200", label: "Event" },
+  other: { icon: CalendarIconSolid, color: "text-gray-600", bg: "bg-gray-100 dark:bg-slate-700 border-gray-200 dark:border-slate-600", label: "Event" },
 };
 
 const SPRINT_COLORS = [
@@ -613,7 +613,7 @@ export function ProjectCalendar({
         </div>
 
         <Select value={filterType} onValueChange={setFilterType}>
-          <SelectTrigger className="h-8 w-32 text-sm bg-white">
+          <SelectTrigger className="h-8 w-32 text-sm bg-white dark:bg-slate-800">
             <SelectValue placeholder="All items" />
           </SelectTrigger>
           <SelectContent>
@@ -625,7 +625,7 @@ export function ProjectCalendar({
 
         {isProjectManager && (
           <Select value={filterMember} onValueChange={setFilterMember}>
-            <SelectTrigger className="h-8 w-44 text-sm bg-white">
+            <SelectTrigger className="h-8 w-44 text-sm bg-white dark:bg-slate-800">
               <SelectValue placeholder="All members" />
             </SelectTrigger>
             <SelectContent>
@@ -640,7 +640,7 @@ export function ProjectCalendar({
         )}
 
         <Select value={filterPriority} onValueChange={setFilterPriority}>
-          <SelectTrigger className="h-8 w-36 text-sm bg-white">
+          <SelectTrigger className="h-8 w-36 text-sm bg-white dark:bg-slate-800">
             <SelectValue placeholder="All priorities" />
           </SelectTrigger>
           <SelectContent>
@@ -677,7 +677,7 @@ export function ProjectCalendar({
       )}
 
       {/* Calendar Grid */}
-      <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
+      <div className="bg-white dark:bg-slate-800/50 rounded-xl border dark:border-slate-700 shadow-sm overflow-hidden">
         {/* Weekday headers */}
         <div className="grid grid-cols-7 border-b">
           {WEEKDAYS.map((day) => (
@@ -721,7 +721,7 @@ export function ProjectCalendar({
                   key={idx}
                   onClick={() => handleDayClick(day)}
                   className={`min-h-[100px] p-1.5 flex flex-col gap-1 cursor-pointer transition-colors hover:bg-muted/20 ${
-                    !isCurrentMonth ? "bg-muted/30" : sprintBg ? sprintBg : "bg-white"
+                    !isCurrentMonth ? "bg-muted/30" : sprintBg ? sprintBg : "bg-white dark:bg-slate-900"
                   }`}
                 >
                   <div className="flex justify-end">

@@ -234,7 +234,7 @@ export default function OrganizationDashboardPage() {
             {stats.map((stat) => (
               <div
                 key={stat.label}
-                className="bg-white dark:bg-slate-900 rounded-xl p-6 shadow-sm hover:shadow-ambient transition-all"
+                className="bg-white dark:bg-slate-800/50 rounded-xl p-6 shadow-sm hover:shadow-ambient transition-all"
                 onClick={stat.isCode ? copyInviteCode : undefined}
                 style={stat.isCode ? { cursor: "pointer" } : undefined}
               >
@@ -262,79 +262,9 @@ export default function OrganizationDashboardPage() {
             ))}
           </div>
 
-          {/* Team Members */}
-          <div className="bg-white dark:bg-slate-900 rounded-xl p-6 shadow-sm">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="h-10 w-10 bg-violet-50 dark:bg-violet-950/30 rounded-xl flex items-center justify-center">
-                <Users className="h-5 w-5 text-violet-500" />
-              </div>
-              <div>
-                <h2 className="text-lg font-bold text-foreground">Team Members</h2>
-                <p className="text-sm text-slate-500 dark:text-slate-400">
-                  Members of {organization?.name}
-                </p>
-              </div>
-            </div>
-
-            {members.length === 0 ? (
-              <p className="text-sm text-slate-400">No team members yet</p>
-            ) : (
-              <div className="space-y-2">
-                {members.map((member: any) => {
-                  const displayName =
-                    member.users?.full_name ||
-                    member.users?.email?.split("@")[0] ||
-                    "Unknown User";
-                  const initials = member.users?.full_name
-                    ? member.users.full_name
-                        .split(" ")
-                        .map((n: string) => n[0])
-                        .join("")
-                        .toUpperCase()
-                        .slice(0, 2)
-                    : member.users?.email?.charAt(0)?.toUpperCase() || "?";
-
-                  return (
-                    <div
-                      key={member.id}
-                      className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center">
-                          <span className="text-sm font-bold text-white">
-                            {initials}
-                          </span>
-                        </div>
-                        <div>
-                          <p className="text-sm font-bold text-foreground">
-                            {displayName}
-                          </p>
-                          <p className="text-xs text-slate-400">
-                            {member.users?.email}
-                          </p>
-                        </div>
-                      </div>
-                      <span
-                        className={`text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full ${
-                          member.role === "admin"
-                            ? "bg-violet-50 dark:bg-violet-950/30 text-violet-600 dark:text-violet-400"
-                            : member.role === "manager"
-                            ? "bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400"
-                            : "bg-slate-100 dark:bg-slate-800 text-slate-500"
-                        }`}
-                      >
-                        {member.role}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
           {/* Projects */}
           {projects.length === 0 ? (
-            <div className="bg-white dark:bg-slate-900 rounded-xl p-8 shadow-sm">
+            <div className="bg-white dark:bg-slate-800/50 rounded-xl p-8 shadow-sm">
               <div className="flex gap-6">
                 <div className="h-14 w-14 bg-indigo-50 dark:bg-indigo-950/30 rounded-xl flex items-center justify-center shrink-0">
                   <FolderKanban className="h-7 w-7 text-indigo-500" />
@@ -382,7 +312,7 @@ export default function OrganizationDashboardPage() {
                     key={project.id}
                     href={`/dashboard/projects/${project.id}`}
                   >
-                    <div className="bg-white dark:bg-slate-900 rounded-xl p-6 shadow-sm hover:shadow-ambient transition-all cursor-pointer group h-full">
+                    <div className="bg-white dark:bg-slate-800/50 rounded-xl p-6 shadow-sm hover:shadow-ambient transition-all cursor-pointer group h-full">
                       <div className="flex items-start justify-between mb-3">
                         <h3 className="text-lg font-bold text-foreground group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors tracking-tight">
                           {project.name}
@@ -419,7 +349,7 @@ export default function OrganizationDashboardPage() {
 
       {/* Members Tab */}
       {activeTab === "members" && isOrgAdmin && (
-        <div className="bg-white dark:bg-slate-900 rounded-xl p-6 shadow-sm">
+        <div className="bg-white dark:bg-slate-800/50 rounded-xl p-6 shadow-sm">
           <OrgMemberTable
             members={members}
             currentUserId={currentUserId}

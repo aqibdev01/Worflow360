@@ -233,7 +233,7 @@ export function UploadProgressPanel({
                   </p>
                 )}
                 {item.status === "uploading" && (
-                  <div className="mt-1 h-1 bg-muted rounded-full overflow-hidden">
+                  <div className="mt-1 h-1 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
                     <div
                       className="h-full bg-primary rounded-full transition-all duration-300"
                       style={{ width: `${item.progress}%` }}

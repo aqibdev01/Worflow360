@@ -398,8 +398,8 @@ const roleIcons: { [key: string]: any } = {
   project_manager: Briefcase,
 };
 
-  // Check if user is project owner
-  const isProjectManager = userRole?.role === "owner";
+  // Check user's project role
+  const isProjectManager = userRole?.role === "owner" || userRole?.role === "lead";
   const isProjectOwner = userRole?.role === "owner";
 
   // Members see only their own tasks; owners see all
@@ -407,14 +407,38 @@ const roleIcons: { [key: string]: any } = {
     ? tasks
     : tasks.filter((t: any) => t.assignee_id === currentUserId || t.assignee?.id === currentUserId || t.created_by === currentUserId);
 
-  useBreadcrumbs([
+  // Build breadcrumbs — include active tab name when not on overview
+  const tabLabels: Record<string, string> = {
+    kanban: "Kanban Board",
+    sprints: "Sprints",
+    team: "Team",
+    settings: "Settings",
+    analytics: "Analytics",
+    calendar: "Calendar",
+    files: "Files",
+    "ai-optimizer": "AI Optimizer",
+  };
+
+  const breadcrumbs = [
     { label: "Organizations", href: "/dashboard/organizations" },
     {
       label: project?.organizations?.name || "…",
       href: project?.organizations?.id ? `/dashboard/organizations/${project.organizations.id}` : undefined,
     },
-    { label: project?.name || "…" },
-  ]);
+  ];
+
+  if (activeTab && activeTab !== "overview" && tabLabels[activeTab]) {
+    // Project name is clickable, links back to overview
+    breadcrumbs.push({
+      label: project?.name || "…",
+      href: `/dashboard/projects/${projectId}`,
+    });
+    breadcrumbs.push({ label: tabLabels[activeTab] });
+  } else {
+    breadcrumbs.push({ label: project?.name || "…" });
+  }
+
+  useBreadcrumbs(breadcrumbs);
 
   const handleCalendarTaskClick = (taskId: string) => {
     setActiveTab("kanban");
@@ -503,7 +527,7 @@ const roleIcons: { [key: string]: any } = {
           },
           newStatus,
           { id: currentUserId, name: changedByName },
-          project.organizations.id
+          project.organizations?.id || ""
         ).catch(() => {});
       }
 
@@ -724,7 +748,7 @@ const roleIcons: { [key: string]: any } = {
               <FolderKanban className="h-8 w-8 text-primary" />
               <div>
                 <p className="text-sm text-muted-foreground">
-                  {project.organizations.name}
+                  {project.organizations?.name || "Organization"}
                 </p>
                 <div className="flex items-center gap-2">
                   <h1 className="text-3xl font-bold tracking-tight">{project.name}</h1>
@@ -781,9 +805,9 @@ const roleIcons: { [key: string]: any } = {
               <span className="font-medium">Overall Progress</span>
               <span className="text-muted-foreground">{completionPercentage}% complete</span>
             </div>
-            <div className="h-3 bg-secondary rounded-full overflow-hidden">
+            <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
               <div
-                className="h-full bg-gradient-to-r from-primary to-primary/80 transition-all duration-500"
+                className="h-full bg-emerald-500 rounded-full transition-all duration-500"
                 style={{ width: `${completionPercentage}%` }}
               />
             </div>
@@ -1026,7 +1050,7 @@ const roleIcons: { [key: string]: any } = {
                     <div className="flex justify-between text-sm items-center">
                       <span className="text-muted-foreground">To Do</span>
                       <div className="flex items-center gap-2">
-                        <div className="h-2 bg-secondary rounded-full w-24">
+                        <div className="h-2 bg-slate-200 dark:bg-slate-700 rounded-full w-24">
                           <div
                             className="h-full bg-orange-500 rounded-full"
                             style={{ width: `${(taskStats.byStatus.todo / taskStats.total) * 100}%` }}
@@ -1038,7 +1062,7 @@ const roleIcons: { [key: string]: any } = {
                     <div className="flex justify-between text-sm items-center">
                       <span className="text-muted-foreground">In Progress</span>
                       <div className="flex items-center gap-2">
-                        <div className="h-2 bg-secondary rounded-full w-24">
+                        <div className="h-2 bg-slate-200 dark:bg-slate-700 rounded-full w-24">
                           <div
                             className="h-full bg-blue-500 rounded-full"
                             style={{ width: `${(taskStats.byStatus.in_progress / taskStats.total) * 100}%` }}
@@ -1050,7 +1074,7 @@ const roleIcons: { [key: string]: any } = {
                     <div className="flex justify-between text-sm items-center">
                       <span className="text-muted-foreground">In Review</span>
                       <div className="flex items-center gap-2">
-                        <div className="h-2 bg-secondary rounded-full w-24">
+                        <div className="h-2 bg-slate-200 dark:bg-slate-700 rounded-full w-24">
                           <div
                             className="h-full bg-purple-500 rounded-full"
                             style={{ width: `${(taskStats.byStatus.review / taskStats.total) * 100}%` }}
@@ -1062,7 +1086,7 @@ const roleIcons: { [key: string]: any } = {
                     <div className="flex justify-between text-sm items-center">
                       <span className="text-muted-foreground">Done</span>
                       <div className="flex items-center gap-2">
-                        <div className="h-2 bg-secondary rounded-full w-24">
+                        <div className="h-2 bg-slate-200 dark:bg-slate-700 rounded-full w-24">
                           <div
                             className="h-full bg-green-500 rounded-full"
                             style={{ width: `${(taskStats.byStatus.done / taskStats.total) * 100}%` }}
@@ -1074,7 +1098,7 @@ const roleIcons: { [key: string]: any } = {
                     <div className="flex justify-between text-sm items-center">
                       <span className="text-muted-foreground">Blocked</span>
                       <div className="flex items-center gap-2">
-                        <div className="h-2 bg-secondary rounded-full w-24">
+                        <div className="h-2 bg-slate-200 dark:bg-slate-700 rounded-full w-24">
                           <div
                             className="h-full bg-red-500 rounded-full"
                             style={{ width: `${(taskStats.byStatus.blocked / taskStats.total) * 100}%` }}
@@ -1188,8 +1212,8 @@ const roleIcons: { [key: string]: any } = {
               }}
             >
               {/* Priority Card Tray */}
-              <div className={`bg-white border-2 border-dashed rounded-xl p-4 shadow-sm transition-all ${
-                activeDragPriority ? "border-indigo-500/40 bg-indigo-500/[0.02]" : "border-gray-200"
+              <div className={`bg-white dark:bg-slate-800/50 border-2 border-dashed rounded-xl p-4 shadow-sm transition-all ${
+                activeDragPriority ? "border-indigo-500/40 bg-indigo-500/[0.02]" : "border-gray-200 dark:border-slate-700"
               }`}>
                 <div className="flex items-center gap-3 mb-3">
                   <div className="h-8 w-8 rounded-lg bg-indigo-500/10 flex items-center justify-center">
@@ -1201,9 +1225,9 @@ const roleIcons: { [key: string]: any } = {
                   </div>
                 </div>
                 <div className="flex items-center gap-4">
-                  <PriorityDragCard priority="low" color="#6b7280" bgColor="bg-gray-50" borderColor="#d1d5db" label="Low" icon="🟢" />
-                  <PriorityDragCard priority="medium" color="#3b82f6" bgColor="bg-blue-50" borderColor="#93c5fd" label="Medium" icon="🟡" />
-                  <PriorityDragCard priority="high" color="#f97316" bgColor="bg-orange-50" borderColor="#fdba74" label="High" icon="🔴" />
+                  <PriorityDragCard priority="low" color="#6b7280" bgColor="bg-gray-50 dark:bg-slate-700" borderColor="#d1d5db" label="Low" icon="🟢" />
+                  <PriorityDragCard priority="medium" color="#3b82f6" bgColor="bg-blue-50 dark:bg-blue-950/30" borderColor="#93c5fd" label="Medium" icon="🟡" />
+                  <PriorityDragCard priority="high" color="#f97316" bgColor="bg-orange-50 dark:bg-orange-950/30" borderColor="#fdba74" label="High" icon="🔴" />
                 </div>
               </div>
 
@@ -1354,8 +1378,8 @@ const roleIcons: { [key: string]: any } = {
                                             const pct = Math.round((doneCount / childTasks.length) * 100);
                                             return (
                                               <div className="flex items-center gap-2 pt-1">
-                                                <div className="h-1.5 flex-1 bg-muted rounded-full overflow-hidden">
-                                                  <div className="h-full bg-green-500 rounded-full transition-all" style={{ width: `${pct}%` }} />
+                                                <div className="h-1.5 flex-1 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                                                  <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${pct}%` }} />
                                                 </div>
                                                 <span className="text-[10px] text-muted-foreground whitespace-nowrap">
                                                   {doneCount}/{childTasks.length} subtasks
@@ -1937,7 +1961,7 @@ const roleIcons: { [key: string]: any } = {
                                   )}
                                 </span>
                               </div>
-                              <div className="h-2 bg-secondary rounded-full overflow-hidden">
+                              <div className="h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
                                 <div
                                   className="h-full bg-primary"
                                   style={{

@@ -98,7 +98,7 @@ export default function OrganizationsPage() {
 
       {/* Organizations Grid */}
       {organizations.length === 0 ? (
-        <div className="bg-white dark:bg-slate-900 rounded-xl p-16 text-center shadow-sm">
+        <div className="bg-white dark:bg-slate-800/50 rounded-xl p-16 text-center shadow-sm">
           <div className="max-w-md mx-auto space-y-6">
             <div className="w-20 h-20 bg-indigo-50 dark:bg-indigo-950/30 rounded-2xl flex items-center justify-center mx-auto">
               <Building2 className="h-10 w-10 text-indigo-500" />
@@ -139,7 +139,7 @@ export default function OrganizationsPage() {
             return (
               <div
                 key={org.id}
-                className="bg-white dark:bg-slate-900 rounded-xl p-6 shadow-sm hover:shadow-ambient transition-all cursor-pointer group"
+                className="bg-white dark:bg-slate-800/50 rounded-xl p-6 shadow-sm hover:shadow-ambient transition-all cursor-pointer group"
                 onClick={() =>
                   router.push(`/dashboard/organizations/${org.id}`)
                 }

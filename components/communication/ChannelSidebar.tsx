@@ -110,6 +110,32 @@ export function CommunicationSidebar({
     );
   }, [orgId, currentUserId, loadChannels, loadDMThreads]);
 
+  // Refresh channels when navigating back to communication root (e.g. after channel deletion)
+  useEffect(() => {
+    if (pathname.endsWith("/communication")) {
+      loadChannels();
+    }
+  }, [pathname, loadChannels]);
+
+  // Real-time subscription: auto-refresh sidebar on channel changes (create/delete/update)
+  useEffect(() => {
+    if (!orgId) return;
+    const subscription = supabase
+      .channel(`sidebar-channels-${orgId}`)
+      .on(
+        "postgres_changes" as any,
+        { event: "*", schema: "public", table: "channels", filter: `organization_id=eq.${orgId}` },
+        () => {
+          loadChannels();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(subscription);
+    };
+  }, [orgId, loadChannels]);
+
   // Unread counts for channels
   const channelIds = useMemo(
     () => channels.map((c) => c.id),
@@ -190,7 +216,7 @@ export function CommunicationSidebar({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search channels & DMs..."
-              className="h-8 pl-8 text-xs bg-white"
+              className="h-8 pl-8 text-xs bg-white dark:bg-slate-800"
             />
           </div>
         </div>

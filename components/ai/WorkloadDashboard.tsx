@@ -152,7 +152,7 @@ export function WorkloadDashboard({ projectId, trigger }: WorkloadDashboardProps
                             {member.active_task_count} active tasks
                           </span>
                         </div>
-                        <div className="h-2 bg-muted rounded-full overflow-hidden">
+                        <div className="h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
                           <div
                             className={`h-full rounded-full transition-all ${workloadColor(
                               member.active_story_points,

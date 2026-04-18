@@ -512,7 +512,7 @@ function GridView(props: {
                 onDelete={props.onDelete}
                 trigger={
                   <button
-                    className="p-1.5 rounded-md bg-white/90 hover:bg-white shadow-sm transition-colors"
+                    className="p-1.5 rounded-md bg-white/90 dark:bg-slate-700/90 hover:bg-white dark:hover:bg-slate-700 shadow-sm transition-colors"
                     onClick={(e) => e.stopPropagation()}
                   >
                     <MoreHorizontal className="h-3.5 w-3.5" />
@@ -588,9 +588,9 @@ function ListView(props: {
   onDelete: (file: FileRecord) => void;
 }) {
   return (
-    <div className="border rounded-lg divide-y">
+    <div className="border dark:border-slate-800 rounded-lg divide-y divide-slate-200 dark:divide-slate-800">
       {/* Header */}
-      <div className="grid grid-cols-[1fr_100px_80px_100px_80px_40px] gap-2 px-3 py-2 bg-muted/30 text-xs font-semibold text-muted-foreground">
+      <div className="grid grid-cols-[1fr_100px_80px_100px_80px_40px] gap-2 px-3 py-2 bg-muted/30 dark:bg-slate-800/30 text-xs font-semibold text-muted-foreground">
         <span>Name</span>
         <span>Size</span>
         <span>Type</span>

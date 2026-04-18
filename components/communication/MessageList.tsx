@@ -397,7 +397,7 @@ function MessageRow({
 
       {/* Hover action toolbar */}
       {showActions && !isEditing && (
-        <div className="absolute right-4 -top-3 flex items-center gap-0.5 bg-white border rounded-lg shadow-sm px-1 py-0.5 z-10">
+        <div className="absolute right-4 -top-3 flex items-center gap-0.5 bg-white dark:bg-slate-900 border dark:border-slate-700 rounded-lg shadow-sm px-1 py-0.5 z-10">
           <Button
             variant="ghost"
             size="sm"
@@ -611,7 +611,7 @@ export function CommunicationMessageList({
               {/* Date divider */}
               <div className="flex items-center gap-4 px-4 py-2 my-2">
                 <div className="flex-1 h-px bg-border" />
-                <span className="text-[11px] font-semibold text-muted-foreground px-2 bg-white">
+                <span className="text-[11px] font-semibold text-muted-foreground px-2 bg-white dark:bg-slate-950">
                   {formatDateDivider(group.date)}
                 </span>
                 <div className="flex-1 h-px bg-border" />
