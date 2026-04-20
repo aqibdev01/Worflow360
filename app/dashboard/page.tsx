@@ -291,7 +291,7 @@ export default function DashboardPage() {
 
           {/* Recent Activity */}
           <div className="grid gap-4 md:grid-cols-2">
-            <Card className="bg-white">
+            <Card className="bg-white dark:bg-slate-900">
               <CardHeader>
                 <CardTitle className="text-foreground">Your Organizations</CardTitle>
                 <CardDescription>
@@ -327,7 +327,7 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
 
-            <Card className="bg-white">
+            <Card className="bg-white dark:bg-slate-900">
               <CardHeader>
                 <CardTitle className="text-foreground">Quick Actions</CardTitle>
                 <CardDescription>
