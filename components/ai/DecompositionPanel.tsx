@@ -280,7 +280,7 @@ export function DecompositionPanel({
 
                 {/* Confidence bar */}
                 <div className="pl-6 flex items-center gap-2">
-                  <div className="h-1 flex-1 bg-muted rounded-full overflow-hidden">
+                  <div className="h-1 flex-1 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
                     <div
                       className={`h-full rounded-full transition-all ${confidenceBarColor(
                         subtask.confidence

@@ -225,7 +225,7 @@ export function AssigneeSuggestionPanel({
 
                 {/* Confidence bar */}
                 <div className="flex items-center gap-2">
-                  <div className="h-1.5 flex-1 bg-muted rounded-full overflow-hidden">
+                  <div className="h-1.5 flex-1 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
                     <div
                       className={`h-full rounded-full transition-all ${confidenceColor(suggestion.confidence)}`}
                       style={{ width: `${suggestion.confidence * 100}%` }}

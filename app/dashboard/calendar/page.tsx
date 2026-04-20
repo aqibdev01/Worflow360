@@ -145,7 +145,7 @@ const EVENT_TYPE_CONFIG: Record<string, { icon: any; color: string; bg: string; 
   retrospective: { icon: Clock, color: "text-orange-600", bg: "bg-orange-100 border-orange-200", label: "Retro" },
   meeting: { icon: Users, color: "text-indigo-600", bg: "bg-indigo-100 border-indigo-200", label: "Meeting" },
   milestone: { icon: Flag, color: "text-red-600", bg: "bg-red-100 border-red-200", label: "Milestone" },
-  other: { icon: CalendarIconSolid, color: "text-gray-600", bg: "bg-gray-100 border-gray-200", label: "Event" },
+  other: { icon: CalendarIconSolid, color: "text-gray-600", bg: "bg-gray-100 dark:bg-slate-700 border-gray-200 dark:border-slate-600", label: "Event" },
 };
 
 const SPRINT_COLORS = [
@@ -663,7 +663,7 @@ export default function CalendarPage() {
                   <button
                     key={t.id}
                     onClick={() => openTask(t)}
-                    className="w-full text-left text-xs px-2 py-1.5 rounded bg-white/60 hover:bg-white transition-colors border border-red-100"
+                    className="w-full text-left text-xs px-2 py-1.5 rounded bg-white/60 dark:bg-slate-700/60 hover:bg-white dark:hover:bg-slate-700 transition-colors border border-red-100"
                   >
                     <div className="flex items-center gap-1.5">
                       <span className={`h-1.5 w-1.5 rounded-full ${PRIORITY_DOT[t.priority]}`} />
@@ -693,7 +693,7 @@ export default function CalendarPage() {
                   <button
                     key={t.id}
                     onClick={() => openTask(t)}
-                    className="w-full text-left text-xs px-2 py-1.5 rounded bg-white/60 hover:bg-white transition-colors border border-amber-100"
+                    className="w-full text-left text-xs px-2 py-1.5 rounded bg-white/60 dark:bg-slate-700/60 hover:bg-white dark:hover:bg-slate-700 transition-colors border border-amber-100"
                   >
                     <div className="flex items-center gap-1.5">
                       <span className={`h-1.5 w-1.5 rounded-full ${PRIORITY_DOT[t.priority]}`} />
@@ -726,7 +726,7 @@ export default function CalendarPage() {
                     <button
                       key={ev.id}
                       onClick={() => openEvent(ev)}
-                      className="w-full text-left text-xs px-2 py-1.5 rounded bg-white/60 hover:bg-white transition-colors border border-blue-100"
+                      className="w-full text-left text-xs px-2 py-1.5 rounded bg-white/60 dark:bg-slate-700/60 hover:bg-white dark:hover:bg-slate-700 transition-colors border border-blue-100"
                     >
                       <div className="flex items-center gap-1.5">
                         <Icon className={`h-3 w-3 ${config.color}`} />
@@ -757,7 +757,7 @@ export default function CalendarPage() {
       </div>
 
       {/* Filters */}
-      <div className="flex items-center gap-3 flex-wrap bg-white border rounded-xl px-4 py-3 shadow-sm">
+      <div className="flex items-center gap-3 flex-wrap bg-white dark:bg-slate-800/50 border dark:border-slate-700 rounded-xl px-4 py-3 shadow-sm">
         <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
           <Filter className="h-4 w-4" />
           <span className="font-medium">Filter:</span>
@@ -818,7 +818,7 @@ export default function CalendarPage() {
 
       {/* Sprint Range Legend */}
       {sprints.length > 0 && (
-        <div className="flex items-center gap-3 flex-wrap text-xs bg-white border rounded-xl px-4 py-2.5 shadow-sm">
+        <div className="flex items-center gap-3 flex-wrap text-xs bg-white dark:bg-slate-800/50 border dark:border-slate-700 rounded-xl px-4 py-2.5 shadow-sm">
           <span className="font-medium text-foreground">Sprints:</span>
           {sprints.map((s, idx) => (
             <div key={s.id} className="flex items-center gap-1.5">
@@ -835,7 +835,7 @@ export default function CalendarPage() {
       )}
 
       {/* Calendar Grid */}
-      <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
+      <div className="bg-white dark:bg-slate-800/50 rounded-xl border dark:border-slate-700 shadow-sm overflow-hidden">
         {/* Weekday headers */}
         <div className="grid grid-cols-7 border-b">
           {WEEKDAYS.map((day) => (
@@ -880,7 +880,7 @@ export default function CalendarPage() {
                   key={idx}
                   onClick={() => handleDayClick(day)}
                   className={`min-h-[110px] p-1.5 flex flex-col gap-1 cursor-pointer transition-colors hover:bg-muted/20 ${
-                    !isCurrentMonth ? "bg-muted/30" : sprintBg ? sprintBg : "bg-white"
+                    !isCurrentMonth ? "bg-muted/30" : sprintBg ? sprintBg : "bg-white dark:bg-slate-900"
                   }`}
                 >
                   {/* Date number */}
@@ -940,7 +940,7 @@ export default function CalendarPage() {
       </div>
 
       {/* Legend */}
-      <div className="flex items-center gap-4 flex-wrap text-xs text-muted-foreground bg-white border rounded-xl px-4 py-3 shadow-sm">
+      <div className="flex items-center gap-4 flex-wrap text-xs text-muted-foreground bg-white dark:bg-slate-800/50 border dark:border-slate-700 rounded-xl px-4 py-3 shadow-sm">
         <span className="font-medium text-foreground">Priority:</span>
         {[
           { label: "Urgent", dot: "bg-red-500" },

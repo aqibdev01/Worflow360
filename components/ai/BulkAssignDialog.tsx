@@ -253,7 +253,7 @@ export function BulkAssignDialog({
               <p className="text-sm font-medium">
                 Analyzing task {progress}/{unassignedTasks.length}...
               </p>
-              <div className="h-2 bg-muted rounded-full overflow-hidden max-w-xs mx-auto">
+              <div className="h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden max-w-xs mx-auto">
                 <div
                   className="h-full bg-purple-500 rounded-full transition-all"
                   style={{

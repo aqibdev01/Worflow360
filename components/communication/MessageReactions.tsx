@@ -102,7 +102,7 @@ export function MessageReactions({
           </button>
 
           {showPicker && (
-            <div className="absolute bottom-full left-0 mb-1 flex items-center gap-1 bg-white border rounded-lg shadow-lg px-2 py-1.5 z-30">
+            <div className="absolute bottom-full left-0 mb-1 flex items-center gap-1 bg-white dark:bg-slate-900 border dark:border-slate-700 rounded-lg shadow-lg px-2 py-1.5 z-30">
               {QUICK_EMOJIS.map((emoji) => (
                 <button
                   key={emoji}
@@ -141,7 +141,7 @@ export function ReactionPicker({
   };
 
   return (
-    <div className="flex items-center gap-1 bg-white border rounded-lg shadow-lg px-2 py-1.5 z-30">
+    <div className="flex items-center gap-1 bg-white dark:bg-slate-900 border dark:border-slate-700 rounded-lg shadow-lg px-2 py-1.5 z-30">
       {QUICK_EMOJIS.map((emoji) => (
         <button
           key={emoji}

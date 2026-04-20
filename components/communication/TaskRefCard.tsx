@@ -75,7 +75,7 @@ export function TaskRefCard({ metadata }: TaskRefCardProps) {
     <div className="mt-1.5 max-w-[400px]">
       <Link
         href={metadata.url}
-        className="group block rounded-lg border border-border/80 bg-white hover:border-indigo-500/40 hover:shadow-sm transition-all overflow-hidden"
+        className="group block rounded-lg border border-border/80 bg-white dark:bg-slate-900 hover:border-indigo-500/40 hover:shadow-sm transition-all overflow-hidden"
       >
         {/* Top accent bar */}
         <div className="h-0.5 bg-gradient-to-r from-indigo-500 to-cyan-400" />

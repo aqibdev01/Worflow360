@@ -31,6 +31,7 @@ import {
   archiveMail,
   trashMail,
   deletePermanently,
+  deleteSentMail,
   type MailRecipient,
   type MailMessage,
   type MailFolder,
@@ -299,6 +300,15 @@ export default function MailFolderPage() {
     toast.success("Deleted permanently");
   };
 
+  const handleBulkDeleteSent = async () => {
+    for (const id of selected) {
+      await deleteSentMail(id).catch(() => {});
+    }
+    setRows((prev) => prev.filter((r) => !selected.has(r.id)));
+    setSelected(new Set());
+    toast.success("Sent mails deleted");
+  };
+
   const handleMarkAllRead = async () => {
     await markAllAsRead(orgId).catch(() => {});
     setRows((prev) => prev.map((r) => ({ ...r, isRead: true })));
@@ -310,7 +320,7 @@ export default function MailFolderPage() {
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex items-center justify-between px-6 py-4 border-b bg-white shrink-0">
+      <div className="flex items-center justify-between px-6 py-4 border-b dark:border-slate-800 bg-white dark:bg-slate-950 shrink-0">
         <div className="flex items-center gap-3">
           <FolderIcon className="h-5 w-5 text-muted-foreground" />
           <h2 className="text-lg font-semibold text-foreground">{config.label}</h2>
@@ -342,6 +352,12 @@ export default function MailFolderPage() {
               Delete Forever
             </Button>
           )}
+          {folder === "sent" && (
+            <Button variant="ghost" size="sm" className="text-destructive" onClick={handleBulkDeleteSent}>
+              <Trash2 className="h-3.5 w-3.5 mr-1" />
+              Delete
+            </Button>
+          )}
           <button onClick={() => setSelected(new Set())} className="ml-auto text-xs text-muted-foreground hover:text-foreground">
             Clear
           </button>
@@ -350,7 +366,7 @@ export default function MailFolderPage() {
 
       {/* Select all checkbox */}
       {rows.length > 0 && (
-        <div className="flex items-center px-6 py-2 border-b bg-gray-50/50 shrink-0">
+        <div className="flex items-center px-6 py-2 border-b dark:border-slate-800 bg-gray-50/50 dark:bg-slate-900/50 shrink-0">
           <Checkbox
             checked={selected.size === rows.length && rows.length > 0}
             onCheckedChange={toggleSelectAll}

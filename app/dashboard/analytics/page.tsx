@@ -395,7 +395,7 @@ export default function AnalyticsPage() {
                 <span className="text-muted-foreground">My completion rate</span>
                 <span className="font-bold text-green-600">{myCompletionRate}%</span>
               </div>
-              <div className="h-3 bg-secondary rounded-full overflow-hidden">
+              <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
                 <div
                   className="h-full bg-gradient-to-r from-green-500 to-emerald-400 rounded-full transition-all duration-700"
                   style={{ width: `${myCompletionRate}%` }}
@@ -622,7 +622,7 @@ export default function AnalyticsPage() {
                         <span className="text-muted-foreground">Completion</span>
                         <span className="font-semibold">{p.completionRate}%</span>
                       </div>
-                      <div className="h-2 bg-secondary rounded-full overflow-hidden">
+                      <div className="h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
                         <div
                           className="h-full bg-green-500 rounded-full transition-all duration-500"
                           style={{ width: `${p.completionRate}%` }}

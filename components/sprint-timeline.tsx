@@ -175,7 +175,7 @@ export function SprintTimeline({
 
           <div className="relative">
             {/* Background bar */}
-            <div className="h-3 bg-secondary rounded-full overflow-hidden">
+            <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
               {/* Progress fill */}
               <div
                 className={cn(

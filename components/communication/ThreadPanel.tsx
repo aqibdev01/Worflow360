@@ -147,7 +147,7 @@ export function CommunicationThreadPanel({
   }));
 
   return (
-    <div className="w-[350px] border-l bg-white flex flex-col h-full">
+    <div className="w-[350px] border-l bg-white dark:bg-slate-950 flex flex-col h-full">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b">
         <div>

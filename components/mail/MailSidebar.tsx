@@ -59,7 +59,7 @@ export function MailSidebar({ orgId, currentUserId }: MailSidebarProps) {
   };
 
   return (
-    <div className="w-[220px] shrink-0 flex flex-col bg-gray-50/50 overflow-y-auto">
+    <div className="w-[220px] shrink-0 flex flex-col bg-gray-50/50 dark:bg-slate-900/40 overflow-y-auto">
       {/* Compose button */}
       <div className="p-3">
         <Button

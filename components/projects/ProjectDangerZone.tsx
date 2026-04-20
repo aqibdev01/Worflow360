@@ -124,8 +124,9 @@ export function ProjectDangerZone({
           </Button>
         </div>
 
-        {/* Delete */}
-        <div className="flex items-center justify-between p-4">
+        {/* Delete — only project owners can delete */}
+        {isOwner && (
+          <div className="flex items-center justify-between p-4">
             <div>
               <p className="text-sm font-medium text-foreground">Delete Project</p>
               <p className="text-xs text-muted-foreground mt-0.5">
@@ -135,13 +136,14 @@ export function ProjectDangerZone({
             <Button
               variant="outline"
               size="sm"
-              className="gap-1.5 border-red-500 text-red-600 hover:bg-red-50"
+              className="gap-1.5 border-red-500 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20"
               onClick={() => setDeleteDialogOpen(true)}
             >
               <Trash2 className="h-3.5 w-3.5" />
               Delete
             </Button>
           </div>
+        )}
       </div>
 
       {/* Delete confirmation dialog */}

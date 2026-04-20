@@ -8,11 +8,11 @@ export function useMailUnread(orgId: string | null) {
   const [unreadMailCount, setUnreadMailCount] = useState(0);
   const channelRef = useRef<any>(null);
 
-  // ── Fetch initial count ─────────────────────────────────────────────────
-
   const refresh = useCallback(async () => {
-    if (!orgId) return;
-
+    if (!orgId) {
+      setUnreadMailCount(0);
+      return;
+    }
     try {
       const count = await getUnreadMailCount(orgId);
       setUnreadMailCount(count);
@@ -21,68 +21,32 @@ export function useMailUnread(orgId: string | null) {
     }
   }, [orgId]);
 
-  // ── Realtime subscription ───────────────────────────────────────────────
-
   useEffect(() => {
-    if (!orgId) return;
+    if (!orgId) {
+      setUnreadMailCount(0);
+      return;
+    }
 
     refresh();
 
+    let cancelled = false;
+
     supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) return;
+      if (!user || cancelled) return;
 
       const channel = (supabase as any)
-        .channel(`mail-unread:${user.id}`)
+        .channel(`mail-unread:${user.id}:${orgId}`)
         .on(
           "postgres_changes",
           {
-            event: "INSERT",
+            event: "*",
             schema: "public",
             table: "mail_recipients",
             filter: `recipient_id=eq.${user.id}`,
           },
           () => {
-            // New mail received — increment
-            setUnreadMailCount((prev) => prev + 1);
-          }
-        )
-        .on(
-          "postgres_changes",
-          {
-            event: "UPDATE",
-            schema: "public",
-            table: "mail_recipients",
-            filter: `recipient_id=eq.${user.id}`,
-          },
-          (payload: any) => {
-            const oldRow = payload.old;
-            const newRow = payload.new;
-
-            // Detect read status change
-            if (oldRow && newRow) {
-              if (!oldRow.is_read && newRow.is_read) {
-                // Marked as read — decrement
-                setUnreadMailCount((prev) => Math.max(0, prev - 1));
-              } else if (oldRow.is_read && !newRow.is_read) {
-                // Marked as unread — increment
-                setUnreadMailCount((prev) => prev + 1);
-              }
-            }
-          }
-        )
-        .on(
-          "postgres_changes",
-          {
-            event: "DELETE",
-            schema: "public",
-            table: "mail_recipients",
-            filter: `recipient_id=eq.${user.id}`,
-          },
-          (payload: any) => {
-            const deleted = payload.old;
-            if (deleted && !deleted.is_read) {
-              setUnreadMailCount((prev) => Math.max(0, prev - 1));
-            }
+            // Any change to recipient rows — refetch accurate count
+            refresh();
           }
         )
         .subscribe();
@@ -91,6 +55,7 @@ export function useMailUnread(orgId: string | null) {
     });
 
     return () => {
+      cancelled = true;
       if (channelRef.current) {
         supabase.removeChannel(channelRef.current);
         channelRef.current = null;

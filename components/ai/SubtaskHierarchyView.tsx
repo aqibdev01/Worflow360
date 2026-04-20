@@ -98,7 +98,7 @@ export function SubtaskHierarchyView({
       </div>
 
       {/* Progress bar */}
-      <div className="h-2 bg-muted rounded-full overflow-hidden">
+      <div className="h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
         <div
           className="h-full bg-green-500 rounded-full transition-all duration-500"
           style={{ width: `${progressPercent}%` }}

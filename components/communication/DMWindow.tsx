@@ -449,7 +449,7 @@ export function DMWindow({ threadId, currentUserId, orgId }: DMWindowProps) {
   return (
     <div className="flex-1 flex flex-col min-w-0 relative">
       {/* Header */}
-      <div className="flex items-center gap-3 px-4 py-3 border-b bg-white">
+      <div className="flex items-center gap-3 px-4 py-3 border-b bg-white dark:bg-slate-950">
         <div className="relative">
           <div className="h-9 w-9 rounded-full bg-gradient-to-br from-indigo-500 to-cyan-400 flex items-center justify-center flex-shrink-0">
             <span className="text-xs font-medium text-white">{otherInitials}</span>

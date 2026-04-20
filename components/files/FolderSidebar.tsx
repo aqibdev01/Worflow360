@@ -246,9 +246,9 @@ export function FolderSidebar({
   }, []);
 
   return (
-    <div className="w-[240px] flex-shrink-0 border-r bg-muted/30 flex flex-col h-full">
+    <div className="w-[240px] flex-shrink-0 border-r border-slate-200 dark:border-slate-800 bg-muted/30 dark:bg-slate-900/50 flex flex-col h-full">
       {/* Header */}
-      <div className="px-4 py-3 border-b">
+      <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-800">
         <h3 className="font-semibold text-sm text-foreground">
           {projectId ? "Project Files" : "File Manager"}
         </h3>

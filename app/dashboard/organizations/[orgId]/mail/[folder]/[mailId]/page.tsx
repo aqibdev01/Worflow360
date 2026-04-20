@@ -28,6 +28,7 @@ import {
   unstarMail,
   archiveMail,
   trashMail,
+  deleteSentMail,
   getAttachmentUrl,
   type MailMessage,
 } from "@/lib/mail/mail";
@@ -130,8 +131,13 @@ export default function MailDetailPage() {
   };
 
   const handleTrash = async () => {
-    await trashMail(mailId);
-    toast.success("Moved to trash");
+    if (folder === "sent") {
+      await deleteSentMail(mailId);
+      toast.success("Sent mail deleted");
+    } else {
+      await trashMail(mailId);
+      toast.success("Moved to trash");
+    }
     router.push(`/dashboard/organizations/${orgId}/mail/${folder}`);
   };
 
@@ -201,7 +207,7 @@ export default function MailDetailPage() {
   return (
     <div className="flex flex-col h-full">
       {/* Top bar */}
-      <div className="flex items-center gap-3 px-6 py-3 border-b bg-white shrink-0">
+      <div className="flex items-center gap-3 px-6 py-3 border-b dark:border-slate-800 bg-white dark:bg-slate-950 shrink-0">
         <Button
           variant="ghost"
           size="sm"
@@ -291,9 +297,31 @@ export default function MailDetailPage() {
 
           {/* Body */}
           <div
-            className="prose prose-sm max-w-none text-foreground"
+            className="mail-body-content max-w-none text-foreground text-sm leading-relaxed"
             dangerouslySetInnerHTML={{ __html: sanitizeHtml(mail.body) }}
           />
+          <style jsx global>{`
+            .mail-body-content ul {
+              list-style-type: disc;
+              padding-left: 1.5rem;
+              margin: 0.5rem 0;
+            }
+            .mail-body-content ol {
+              list-style-type: decimal;
+              padding-left: 1.5rem;
+              margin: 0.5rem 0;
+            }
+            .mail-body-content li {
+              margin: 0.25rem 0;
+            }
+            .mail-body-content a {
+              color: hsl(var(--primary));
+              text-decoration: underline;
+            }
+            .mail-body-content p {
+              margin: 0.5rem 0;
+            }
+          `}</style>
 
           {/* Attachments */}
           {attachments.length > 0 && (
