@@ -4,7 +4,7 @@ import { Hash, MessageSquare } from "lucide-react";
 
 export default function CommunicationPage() {
   return (
-    <div className="flex-1 flex items-center justify-center text-center px-4 bg-[#FAFBFD]">
+    <div className="flex-1 flex items-center justify-center text-center px-4 bg-[#FAFBFD] dark:bg-slate-950">
       <div>
         <div className="h-20 w-20 bg-muted rounded-full flex items-center justify-center mx-auto mb-5">
           <MessageSquare className="h-10 w-10 text-muted-foreground" />
