@@ -53,18 +53,6 @@ const baseNavigation = [
     comingSoon: false,
   },
   {
-    name: "Calendar",
-    href: "/dashboard/calendar",
-    icon: CalendarDays,
-    comingSoon: false,
-  },
-  {
-    name: "Reports",
-    href: "/dashboard/analytics",
-    icon: BarChart3,
-    comingSoon: false,
-  },
-  {
     name: "Dashboard",
     href: "/dashboard/organizations",
     icon: Building2,
@@ -78,6 +66,18 @@ function getNavigation(pathname: string) {
 
   const orgNavItems = orgId
     ? [
+        {
+          name: "Calendar",
+          href: "/dashboard/calendar",
+          icon: CalendarDays,
+          comingSoon: false,
+        },
+        {
+          name: "Reports",
+          href: "/dashboard/analytics",
+          icon: BarChart3,
+          comingSoon: false,
+        },
         {
           name: "Messages",
           href: `/dashboard/organizations/${orgId}/communication`,

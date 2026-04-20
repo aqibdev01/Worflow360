@@ -244,7 +244,7 @@ function BacklogSection({ tasks, taskFileCounts, isProjectManager, onEditTask, o
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Archive className="h-4 w-4 text-amber-600" />
-            <h4 className="font-semibold text-amber-900">Backlog</h4>
+            <h4 className="font-semibold text-amber-900 dark:text-amber-200">Backlog</h4>
             <span className="text-xs text-amber-600">Tasks not assigned to any sprint</span>
           </div>
           <Badge variant="secondary" className="font-bold">{tasks.length}</Badge>
@@ -260,7 +260,7 @@ function BacklogSection({ tasks, taskFileCounts, isProjectManager, onEditTask, o
             {tasks.map((task: any) => (
               <Card
                 key={task.id}
-                className="cursor-pointer border-l-4 bg-white hover:shadow-md transition-shadow"
+                className="cursor-pointer border-l-4 bg-white dark:bg-slate-900 hover:shadow-md transition-shadow"
                 style={{
                   borderLeftColor:
                     task.priority === "urgent" ? "#ef4444"
@@ -339,7 +339,20 @@ function ProjectDashboardContent() {
   const [tasks, setTasks] = useState<any[]>([]);
   const [sprints, setSprints] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState(searchParams.get("tab") || "overview");
+  const [activeTab, _setActiveTabState] = useState(searchParams.get("tab") || "overview");
+
+  const setActiveTab = (tab: string) => {
+    _setActiveTabState(tab);
+    const url = tab === "overview"
+      ? `/dashboard/projects/${projectId}`
+      : `/dashboard/projects/${projectId}?tab=${tab}`;
+    router.replace(url, { scroll: false });
+  };
+
+  useEffect(() => {
+    const tabFromUrl = searchParams.get("tab") || "overview";
+    _setActiveTabState(tabFromUrl);
+  }, [searchParams]);
 
   // Task dialog state
   const [taskDialogOpen, setTaskDialogOpen] = useState(false);
@@ -2183,7 +2196,7 @@ const roleIcons: { [key: string]: any } = {
                 <CardContent className="p-6">
                   <ProjectDangerZone
                     project={project}
-                    isOwner={isProjectOwner}
+                    isOwner={isProjectManager}
                     onUpdated={() => loadProjectData(currentUserId)}
                   />
                 </CardContent>

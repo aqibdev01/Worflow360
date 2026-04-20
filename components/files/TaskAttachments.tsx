@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import Link from "next/link";
 import {
   Paperclip,
   Upload,
@@ -172,7 +173,13 @@ export function TaskAttachments({
               className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-muted/50 group"
             >
               <AttachmentIcon mimeType={file.mime_type} />
-              <span className="text-xs truncate flex-1">{file.name}</span>
+              <Link
+                href={`/dashboard/organizations/${orgId}/files?file=${file.id}`}
+                className="text-xs truncate flex-1 hover:text-indigo-600 hover:underline"
+                title="Open in Files"
+              >
+                {file.name}
+              </Link>
               <span className="text-[10px] text-muted-foreground">
                 {formatFileSize(file.size_bytes)}
               </span>

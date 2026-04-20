@@ -18,7 +18,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { getServerSupabase } from "@/lib/supabase-server";
 import { callAIServer } from "@/lib/ai/client";
 import type { AIMemberPayload } from "@/lib/ai/sanitize";
 
@@ -36,6 +36,7 @@ interface AIAssignResponse {
 export async function POST(req: NextRequest) {
   try {
     // 1. Authenticate user
+    const supabase = await getServerSupabase();
     const {
       data: { user },
       error: authError,

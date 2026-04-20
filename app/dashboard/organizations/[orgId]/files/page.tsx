@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
-import { useParams } from "next/navigation";
+import { useState, useCallback, useRef, useEffect } from "react";
+import { useParams, useSearchParams } from "next/navigation";
 import {
   Upload,
   LayoutGrid,
@@ -56,6 +56,7 @@ import { getFilesSharedWithMe } from "@/lib/files/sharing";
 
 export default function OrgFilesPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const orgId = params.orgId as string;
   const { user } = useAuth();
 
@@ -86,6 +87,14 @@ export default function OrgFilesPage() {
   // New dialogs
   const [previewFileId, setPreviewFileId] = useState<string | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
+
+  useEffect(() => {
+    const fileIdFromQuery = searchParams.get("file");
+    if (fileIdFromQuery) {
+      setPreviewFileId(fileIdFromQuery);
+      setPreviewOpen(true);
+    }
+  }, [searchParams]);
   const [shareFile, setShareFileTarget] = useState<FileRecord | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
   const [moveDialogOpen, setMoveDialogOpen] = useState(false);
