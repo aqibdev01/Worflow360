@@ -75,7 +75,7 @@ export default function DashboardPage() {
           {/* Empty State - Create/Join Organization Cards */}
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2">
             {/* Create Organization Card */}
-            <Card className="relative overflow-hidden border-2 border-indigo-500/20 hover:border-indigo-500/40 transition-all hover:shadow-xl hover:shadow-indigo-500/10 group bg-white">
+            <Card className="relative overflow-hidden border-2 border-indigo-500/20 hover:border-indigo-500/40 transition-all hover:shadow-xl hover:shadow-indigo-500/10 group bg-white dark:bg-slate-900">
               <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-br from-indigo-500/10 to-cyan-400/10 rounded-full -mr-20 -mt-20 group-hover:scale-110 transition-transform" />
               <CardHeader>
                 <div className="h-14 w-14 bg-gradient-to-br from-indigo-500 to-cyan-400 rounded-xl flex items-center justify-center mb-4 group-hover:scale-105 transition-transform shadow-lg shadow-indigo-500/25">
@@ -109,7 +109,7 @@ export default function DashboardPage() {
             </Card>
 
             {/* Join Organization Card */}
-            <Card className="relative overflow-hidden border-2 border-violet-500/20 hover:border-violet-500/40 transition-all hover:shadow-xl hover:shadow-violet-500/10 group bg-white">
+            <Card className="relative overflow-hidden border-2 border-violet-500/20 hover:border-violet-500/40 transition-all hover:shadow-xl hover:shadow-violet-500/10 group bg-white dark:bg-slate-900">
               <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-br from-violet-500-light/10 to-violet-500-dark/10 rounded-full -mr-20 -mt-20 group-hover:scale-110 transition-transform" />
               <CardHeader>
                 <div className="h-14 w-14 bg-gradient-to-br from-violet-500-light to-violet-500-dark rounded-xl flex items-center justify-center mb-4 group-hover:scale-105 transition-transform shadow-lg shadow-violet-500/25">
@@ -144,7 +144,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Getting Started Guide */}
-          <Card className="bg-gradient-to-br from-indigo-500/5 via-white to-violet-500/5 border-indigo-500/20">
+          <Card className="bg-gradient-to-br from-indigo-500/5 via-white to-violet-500/5 dark:from-indigo-500/10 dark:via-slate-900 dark:to-violet-500/10 border-indigo-500/20">
             <CardHeader>
               <div className="flex items-center gap-2">
                 <Sparkles className="h-5 w-5 text-indigo-600" />
@@ -198,7 +198,7 @@ export default function DashboardPage() {
 
           {/* Features Preview */}
           <div className="grid gap-4 md:grid-cols-3">
-            <Card className="group hover:shadow-lg hover:shadow-cyan-400/10 transition-all border-cyan-400/10 hover:border-cyan-400/30 bg-white">
+            <Card className="group hover:shadow-lg hover:shadow-cyan-400/10 transition-all border-cyan-400/10 hover:border-cyan-400/30 bg-white dark:bg-slate-900">
               <CardHeader>
                 <div className="h-12 w-12 bg-gradient-to-br from-cyan-400-light to-cyan-400-dark rounded-xl flex items-center justify-center mb-2 group-hover:scale-105 transition-transform shadow-md shadow-cyan-400/20">
                   <Zap className="h-6 w-6 text-white" />
@@ -209,7 +209,7 @@ export default function DashboardPage() {
                 </CardDescription>
               </CardHeader>
             </Card>
-            <Card className="group hover:shadow-lg hover:shadow-violet-500/10 transition-all border-violet-500/10 hover:border-violet-500/30 bg-white">
+            <Card className="group hover:shadow-lg hover:shadow-violet-500/10 transition-all border-violet-500/10 hover:border-violet-500/30 bg-white dark:bg-slate-900">
               <CardHeader>
                 <div className="h-12 w-12 bg-gradient-to-br from-violet-500-light to-violet-500-dark rounded-xl flex items-center justify-center mb-2 group-hover:scale-105 transition-transform shadow-md shadow-violet-500/20">
                   <Target className="h-6 w-6 text-white" />
@@ -220,7 +220,7 @@ export default function DashboardPage() {
                 </CardDescription>
               </CardHeader>
             </Card>
-            <Card className="group hover:shadow-lg hover:shadow-indigo-500/10 transition-all border-indigo-500/10 hover:border-indigo-500/30 bg-white">
+            <Card className="group hover:shadow-lg hover:shadow-indigo-500/10 transition-all border-indigo-500/10 hover:border-indigo-500/30 bg-white dark:bg-slate-900">
               <CardHeader>
                 <div className="h-12 w-12 bg-gradient-to-br from-indigo-500 to-indigo-500-600 rounded-xl flex items-center justify-center mb-2 group-hover:scale-105 transition-transform shadow-md shadow-indigo-500/20">
                   <ListChecks className="h-6 w-6 text-white" />
@@ -237,7 +237,7 @@ export default function DashboardPage() {
         <>
           {/* Stats Cards - Real data from organizations */}
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            <Card className="border-l-4 border-l-indigo-500 hover:shadow-lg hover:shadow-indigo-500/10 transition-all bg-white">
+            <Card className="border-l-4 border-l-indigo-500 hover:shadow-lg hover:shadow-indigo-500/10 transition-all bg-white dark:bg-slate-900">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium text-foreground">
                   Organizations
@@ -254,7 +254,7 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
 
-            <Card className="border-l-4 border-l-violet-500 hover:shadow-lg hover:shadow-violet-500/10 transition-all bg-white">
+            <Card className="border-l-4 border-l-violet-500 hover:shadow-lg hover:shadow-violet-500/10 transition-all bg-white dark:bg-slate-900">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium text-foreground">
                   Total Projects
@@ -271,7 +271,7 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
 
-            <Card className="border-l-4 border-l-cyan-400 hover:shadow-lg hover:shadow-cyan-400/10 transition-all bg-white">
+            <Card className="border-l-4 border-l-cyan-400 hover:shadow-lg hover:shadow-cyan-400/10 transition-all bg-white dark:bg-slate-900">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium text-foreground">
                   Team Members

@@ -906,6 +906,7 @@ DROP POLICY IF EXISTS "Users can view organization projects" ON public.projects;
 DROP POLICY IF EXISTS "Org members can create projects" ON public.projects;
 DROP POLICY IF EXISTS "Project creators can update" ON public.projects;
 DROP POLICY IF EXISTS "Project creators can delete" ON public.projects;
+DROP POLICY IF EXISTS "Project managers can delete" ON public.projects;
 
 CREATE POLICY "Users can view organization projects"
     ON public.projects FOR SELECT
@@ -925,10 +926,18 @@ CREATE POLICY "Project creators can update"
     TO authenticated
     USING (created_by = auth.uid());
 
-CREATE POLICY "Project creators can delete"
+CREATE POLICY "Project managers can delete"
     ON public.projects FOR DELETE
     TO authenticated
-    USING (created_by = auth.uid());
+    USING (
+        created_by = auth.uid()
+        OR EXISTS (
+            SELECT 1 FROM public.project_members
+            WHERE project_members.project_id = projects.id
+              AND project_members.user_id = auth.uid()
+              AND project_members.role IN ('owner', 'lead')
+        )
+    );
 
 -- =====================================================
 -- RLS POLICIES: PROJECT MEMBERS

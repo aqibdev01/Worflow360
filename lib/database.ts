@@ -371,8 +371,8 @@ export async function getProjectTasks(projectId: string) {
     .select(
       `
       *,
-      assignee:users!assignee_id(id, full_name, avatar_url),
-      created_by_user:users!created_by(id, full_name, avatar_url),
+      assignee:users!assignee_id(id, full_name, avatar_url, email),
+      created_by_user:users!created_by(id, full_name, avatar_url, email),
       sprints(id, name)
     `
     )
@@ -395,7 +395,7 @@ export async function getTasksByStatus(
     .select(
       `
       *,
-      assignee:users!assignee_id(id, full_name, avatar_url)
+      assignee:users!assignee_id(id, full_name, avatar_url, email)
     `
     )
     .eq("project_id", projectId)
