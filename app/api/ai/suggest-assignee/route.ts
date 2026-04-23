@@ -18,7 +18,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSupabase } from "@/lib/supabase-server";
+import { getServerSupabase, getSupabaseWithToken } from "@/lib/supabase-server";
 import { callAIServer } from "@/lib/ai/client";
 import type { AIMemberPayload } from "@/lib/ai/sanitize";
 
@@ -36,12 +36,13 @@ interface AIAssignResponse {
 export async function POST(req: NextRequest) {
   try {
     // 1. Authenticate user — prefer Authorization header (browser client uses localStorage)
-    const supabase = await getServerSupabase();
+    const cookieSupabase = await getServerSupabase();
     const authHeader = req.headers.get("authorization") || req.headers.get("Authorization");
     const bearerToken = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : undefined;
     const { data: { user }, error: authError } = bearerToken
-      ? await supabase.auth.getUser(bearerToken)
-      : await supabase.auth.getUser();
+      ? await cookieSupabase.auth.getUser(bearerToken)
+      : await cookieSupabase.auth.getUser();
+    const supabase = bearerToken ? getSupabaseWithToken(bearerToken) : cookieSupabase;
 
     if (authError || !user) {
       return NextResponse.json(

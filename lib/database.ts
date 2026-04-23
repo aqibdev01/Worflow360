@@ -1037,30 +1037,38 @@ export async function getUserByEmail(email: string) {
 /**
  * Get or create user profile
  */
-export async function getOrCreateUserProfile(userId: string, email: string) {
+export async function getOrCreateUserProfile(userId: string, email: string, fullName?: string) {
   console.log("👤 Getting or creating user profile for:", userId);
 
   // First try to get existing profile
-  const { data: existingUser, error: getError } = await supabase
+  const { data: existingUser } = await supabase
     .from("users")
     .select()
     .eq("id", userId)
     .single();
 
   if (existingUser) {
-    console.log("✅ Found existing user profile");
+    // Backfill full_name if we now have one but the row doesn't
+    if (fullName && fullName.trim() && !existingUser.full_name) {
+      const { data: updated } = await (supabase as any)
+        .from("users")
+        .update({ full_name: fullName.trim() })
+        .eq("id", userId)
+        .select()
+        .single();
+      return updated || existingUser;
+    }
     return existingUser;
   }
 
   console.log("📝 Creating new user profile");
 
-  // If not found, create new profile
+  const insertPayload: any = { id: userId, email };
+  if (fullName && fullName.trim()) insertPayload.full_name = fullName.trim();
+
   const { data: newUser, error: createError } = await supabase
     .from("users")
-    .insert({
-      id: userId,
-      email: email,
-    })
+    .insert(insertPayload)
     .select()
     .single();
 

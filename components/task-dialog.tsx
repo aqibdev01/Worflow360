@@ -50,8 +50,19 @@ import { notifyTaskAssigned } from "@/lib/notifications/triggers";
 import { TaskAttachments } from "@/components/files/TaskAttachments";
 
 const taskFormSchema = z.object({
-  title: z.string().min(1, "Title is required").max(200, "Title is too long"),
-  description: z.string().max(2000, "Description is too long").optional(),
+  title: z
+    .string()
+    .min(1, "Title is required")
+    .max(200, "Title is too long")
+    .refine((v) => v.trim().length > 0, "Title cannot be empty or only whitespace"),
+  description: z
+    .string()
+    .max(2000, "Description is too long")
+    .optional()
+    .refine(
+      (v) => !v || v.trim().length > 0,
+      "Description cannot be only whitespace",
+    ),
   assignee_id: z.string().optional(),
   sprint_id: z.string().optional(),
   due_date: z.date().optional(),
@@ -292,7 +303,7 @@ export function TaskDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {isEditing ? "Edit Task" : "Create New Task"}
@@ -449,23 +460,21 @@ export function TaskDialog({
                           selected={field.value}
                           onSelect={field.onChange}
                           disabled={(date) => {
-                            const today = new Date();
-                            today.setHours(0, 0, 0, 0);
-                            // Can't select dates before today
-                            if (date < today) return true;
-                            // Can't select dates after project end date
-                            if (projectEndDate) {
-                              const endDate = new Date(projectEndDate);
-                              endDate.setHours(23, 59, 59, 999);
-                              if (date > endDate) return true;
-                            }
-                            // If sprint selected, further constrain to sprint range
+                            // Sprint range is the authoritative constraint when a sprint is chosen.
                             if (selectedSprint?.start_date && selectedSprint?.end_date) {
                               const sprintStart = new Date(selectedSprint.start_date);
                               sprintStart.setHours(0, 0, 0, 0);
                               const sprintEnd = new Date(selectedSprint.end_date);
                               sprintEnd.setHours(23, 59, 59, 999);
                               return date < sprintStart || date > sprintEnd;
+                            }
+                            const today = new Date();
+                            today.setHours(0, 0, 0, 0);
+                            if (date < today) return true;
+                            if (projectEndDate) {
+                              const endDate = new Date(projectEndDate);
+                              endDate.setHours(23, 59, 59, 999);
+                              if (date > endDate) return true;
                             }
                             return false;
                           }}
