@@ -45,6 +45,7 @@ export async function callAIServer<T>(
           "Content-Type": "application/json",
           "X-API-Key": AI_API_KEY,
           Connection: "close",
+          "Accept-Encoding": "identity",
         },
         body,
         signal: controller.signal,
@@ -65,6 +66,7 @@ export async function callAIServer<T>(
       const isRetryable =
         err?.name === "AbortError" ||
         causeCode === "UND_ERR_SOCKET" ||
+        causeCode === "UND_ERR_RES_CONTENT_LENGTH_MISMATCH" ||
         causeCode === "ECONNRESET" ||
         causeCode === "ECONNREFUSED" ||
         causeCode === "ETIMEDOUT";
