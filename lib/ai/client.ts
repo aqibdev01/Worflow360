@@ -6,15 +6,63 @@
  */
 
 import { sanitizeForAI } from "./guards";
-import { Agent, request as undiciRequest } from "undici";
+import * as https from "node:https";
+import * as http from "node:http";
+import { URL as NodeURL } from "node:url";
 
-// HF Space's proxy sends a Content-Length that doesn't match the actual body.
-// Use an Agent that ignores that mismatch.
-const lenientAgent = new Agent({
-  strictContentLength: false,
-  bodyTimeout: 55_000,
-  headersTimeout: 55_000,
-});
+interface RawResponse {
+  statusCode: number;
+  body: string;
+}
+
+// Raw HTTPS request — bypasses undici/fetch entirely to avoid the
+// UND_ERR_RES_CONTENT_LENGTH_MISMATCH thrown by HF Space's proxy.
+function rawPost(urlStr: string, body: string, apiKey: string, timeoutMs: number): Promise<RawResponse> {
+  const u = new NodeURL(urlStr);
+  const mod: any = u.protocol === "https:" ? https : http;
+
+  return new Promise((resolve, reject) => {
+    const req = mod.request(
+      {
+        method: "POST",
+        hostname: u.hostname,
+        port: u.port || (u.protocol === "https:" ? 443 : 80),
+        path: u.pathname + u.search,
+        headers: {
+          "Content-Type": "application/json",
+          "Content-Length": Buffer.byteLength(body),
+          "X-API-Key": apiKey,
+          Connection: "close",
+          "Accept-Encoding": "identity",
+        },
+      },
+      (res: any) => {
+        const chunks: Buffer[] = [];
+        res.on("data", (chunk: Buffer) => chunks.push(chunk));
+        res.on("end", () =>
+          resolve({
+            statusCode: res.statusCode || 0,
+            body: Buffer.concat(chunks).toString("utf8"),
+          }),
+        );
+        res.on("error", (err: any) => {
+          // Partial body is fine — hand back what we have.
+          resolve({
+            statusCode: res.statusCode || 0,
+            body: Buffer.concat(chunks).toString("utf8"),
+          });
+        });
+      },
+    );
+
+    req.setTimeout(timeoutMs, () => {
+      req.destroy(Object.assign(new Error("Request timed out"), { name: "AbortError" }));
+    });
+    req.on("error", (err: any) => reject(err));
+    req.write(body);
+    req.end();
+  });
+}
 
 const AI_SERVER_URL = (
   process.env.AI_SERVER_URL || "http://localhost:8000"
@@ -44,33 +92,8 @@ export async function callAIServer<T>(
   let lastErr: any;
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 55_000);
-
     try {
-      const { statusCode, body: resBody } = await undiciRequest(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-API-Key": AI_API_KEY,
-          Connection: "close",
-          "Accept-Encoding": "identity",
-        },
-        body,
-        signal: controller.signal,
-        dispatcher: lenientAgent,
-      });
-
-      // Read the body tolerantly — accumulate chunks, ignore content-length mismatch.
-      const chunks: Buffer[] = [];
-      try {
-        for await (const chunk of resBody) {
-          chunks.push(chunk as Buffer);
-        }
-      } catch (streamErr: any) {
-        if (streamErr?.code !== "UND_ERR_RES_CONTENT_LENGTH_MISMATCH") throw streamErr;
-      }
-      const text = Buffer.concat(chunks).toString("utf8");
+      const { statusCode, body: text } = await rawPost(url, body, AI_API_KEY, 55_000);
 
       if (statusCode < 200 || statusCode >= 300) {
         throw new Error(
@@ -103,8 +126,6 @@ export async function callAIServer<T>(
       if (!isRetryable || attempt === maxAttempts) break;
 
       await new Promise((r) => setTimeout(r, 500 * attempt));
-    } finally {
-      clearTimeout(timeout);
     }
   }
 
