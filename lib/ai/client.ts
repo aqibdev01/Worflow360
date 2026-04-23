@@ -7,9 +7,10 @@
 
 import { sanitizeForAI } from "./guards";
 
-const AI_SERVER_URL =
-  process.env.AI_SERVER_URL || "http://localhost:8000";
-const AI_API_KEY = process.env.AI_API_KEY || "";
+const AI_SERVER_URL = (
+  process.env.AI_SERVER_URL || "http://localhost:8000"
+).trim().replace(/\/+$/, "");
+const AI_API_KEY = (process.env.AI_API_KEY || "").trim();
 
 /**
  * Send a sanitized POST request to the AI server.
@@ -26,38 +27,72 @@ export async function callAIServer<T>(
   const safePayload = sanitizeForAI(payload);
 
   const url = `${AI_SERVER_URL}${endpoint}`;
+  const body = JSON.stringify(safePayload);
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 55_000);
+  // HF Spaces occasionally closes keep-alive sockets mid-response on Node 24/undici.
+  // Retry on SocketError / connection-reset so the user doesn't see a hard failure.
+  const maxAttempts = 3;
+  let lastErr: any;
 
-  let res: Response;
-  try {
-    res = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-API-Key": AI_API_KEY,
-      },
-      body: JSON.stringify(safePayload),
-      signal: controller.signal,
-    });
-  } catch (err: any) {
-    if (err?.name === "AbortError") {
-      throw new Error(
-        `AI server timed out on ${endpoint} — the model may be warming up. Try again in a few seconds.`,
-      );
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 55_000);
+
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-API-Key": AI_API_KEY,
+          Connection: "close",
+        },
+        body,
+        signal: controller.signal,
+        keepalive: false,
+      });
+
+      if (!res.ok) {
+        const errorBody = await res.text();
+        throw new Error(
+          `AI server error ${res.status} on ${endpoint}: ${errorBody}`,
+        );
+      }
+
+      return (await res.json()) as T;
+    } catch (err: any) {
+      lastErr = err;
+      const causeCode = err?.cause?.code;
+      const isRetryable =
+        err?.name === "AbortError" ||
+        causeCode === "UND_ERR_SOCKET" ||
+        causeCode === "ECONNRESET" ||
+        causeCode === "ECONNREFUSED" ||
+        causeCode === "ETIMEDOUT";
+
+      console.error("[ai-client] fetch failed", {
+        url,
+        endpoint,
+        attempt,
+        errName: err?.name,
+        errMessage: err?.message,
+        errCause: causeCode || err?.cause?.message,
+        willRetry: isRetryable && attempt < maxAttempts,
+      });
+
+      if (!isRetryable || attempt === maxAttempts) break;
+
+      await new Promise((r) => setTimeout(r, 500 * attempt));
+    } finally {
+      clearTimeout(timeout);
     }
-    throw err;
-  } finally {
-    clearTimeout(timeout);
   }
 
-  if (!res.ok) {
-    const errorBody = await res.text();
+  if (lastErr?.name === "AbortError") {
     throw new Error(
-      `AI server error ${res.status} on ${endpoint}: ${errorBody}`
+      `AI server timed out on ${endpoint} — the model may be warming up. Try again in a few seconds.`,
     );
   }
-
-  return res.json() as Promise<T>;
+  throw new Error(
+    `AI server unreachable at ${url}: ${lastErr?.message || lastErr} (cause: ${lastErr?.cause?.code || "unknown"})`,
+  );
 }
