@@ -6,10 +6,10 @@
  */
 
 import { sanitizeForAI } from "./guards";
-import { Agent, fetch as undiciFetch } from "undici";
+import { Agent, request as undiciRequest } from "undici";
 
-// HF Space's proxy occasionally sends a wrong Content-Length header.
-// Use an Agent that tolerates that instead of failing the whole request.
+// HF Space's proxy sends a Content-Length that doesn't match the actual body.
+// Use an Agent that ignores that mismatch.
 const lenientAgent = new Agent({
   strictContentLength: false,
   bodyTimeout: 55_000,
@@ -48,7 +48,7 @@ export async function callAIServer<T>(
     const timeout = setTimeout(() => controller.abort(), 55_000);
 
     try {
-      const res = await undiciFetch(url, {
+      const { statusCode, body: resBody } = await undiciRequest(url, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -61,14 +61,24 @@ export async function callAIServer<T>(
         dispatcher: lenientAgent,
       });
 
-      if (!res.ok) {
-        const errorBody = await res.text();
+      // Read the body tolerantly — accumulate chunks, ignore content-length mismatch.
+      const chunks: Buffer[] = [];
+      try {
+        for await (const chunk of resBody) {
+          chunks.push(chunk as Buffer);
+        }
+      } catch (streamErr: any) {
+        if (streamErr?.code !== "UND_ERR_RES_CONTENT_LENGTH_MISMATCH") throw streamErr;
+      }
+      const text = Buffer.concat(chunks).toString("utf8");
+
+      if (statusCode < 200 || statusCode >= 300) {
         throw new Error(
-          `AI server error ${res.status} on ${endpoint}: ${errorBody}`,
+          `AI server error ${statusCode} on ${endpoint}: ${text}`,
         );
       }
 
-      return (await res.json()) as T;
+      return JSON.parse(text) as T;
     } catch (err: any) {
       lastErr = err;
       const causeCode = err?.cause?.code;
