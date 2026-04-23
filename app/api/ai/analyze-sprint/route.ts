@@ -41,12 +41,13 @@ interface AISprintAnalysisResponse {
 
 export async function POST(req: NextRequest) {
   try {
-    // 1. Authenticate user
+    // 1. Authenticate user — prefer Authorization header (browser client uses localStorage)
     const supabase = await getServerSupabase();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
+    const authHeader = req.headers.get("authorization") || req.headers.get("Authorization");
+    const bearerToken = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : undefined;
+    const { data: { user }, error: authError } = bearerToken
+      ? await supabase.auth.getUser(bearerToken)
+      : await supabase.auth.getUser();
 
     if (authError || !user) {
       return NextResponse.json(

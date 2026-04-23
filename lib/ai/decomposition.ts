@@ -49,9 +49,13 @@ export interface DecomposeResult {
 export async function requestDecomposition(
   taskId: string
 ): Promise<DecomposeResult> {
+  const { data: { session } } = await supabase.auth.getSession();
   const res = await fetch("/api/ai/decompose", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+    },
     body: JSON.stringify({ task_id: taskId }),
   });
 
