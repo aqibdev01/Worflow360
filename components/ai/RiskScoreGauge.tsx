@@ -64,10 +64,10 @@ export function RiskScoreGauge({
   const fillAngle = startAngle - animatedScore * totalArc;
   const fillEndX = cx + radius * Math.cos(fillAngle);
   const fillEndY = cy - radius * Math.sin(fillAngle);
-  const largeArc = animatedScore > 0.5 ? 1 : 0;
+  // Semicircle is always ≤ 180°, so we always take the short arc.
   const fillPath =
     animatedScore > 0.001
-      ? `M ${bgStartX} ${bgStartY} A ${radius} ${radius} 0 ${largeArc} 1 ${fillEndX} ${fillEndY}`
+      ? `M ${bgStartX} ${bgStartY} A ${radius} ${radius} 0 0 1 ${fillEndX} ${fillEndY}`
       : "";
 
   return (
