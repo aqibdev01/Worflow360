@@ -1706,8 +1706,8 @@ const roleIcons: { [key: string]: any } = {
                     )}
                   </div>
 
-                  {/* AI Assignee suggestion — shown when task has no assignee */}
-                  {!viewingTask.assignee_id && (
+                  {/* AI Assignee suggestion — always available (also for re-assignment) */}
+                  {(
                     <AssigneeSuggestionPanel
                       taskId={viewingTask.id}
                       hasAssignee={!!viewingTask.assignee_id}

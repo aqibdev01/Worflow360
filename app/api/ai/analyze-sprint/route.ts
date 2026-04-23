@@ -21,6 +21,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSupabase, getSupabaseWithToken } from "@/lib/supabase-server";
 import { callAIServer } from "@/lib/ai/client";
 
+export const maxDuration = 60;
+
 interface AISprintAnalysisResponse {
   sprint_id: string;
   risk_level: string;

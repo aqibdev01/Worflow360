@@ -22,6 +22,8 @@ import { getServerSupabase, getSupabaseWithToken } from "@/lib/supabase-server";
 import { callAIServer } from "@/lib/ai/client";
 import type { AIMemberPayload } from "@/lib/ai/sanitize";
 
+export const maxDuration = 60;
+
 interface AIAssignResponse {
   task_id: string;
   suggestions: Array<{

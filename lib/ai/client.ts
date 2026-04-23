@@ -27,14 +27,30 @@ export async function callAIServer<T>(
 
   const url = `${AI_SERVER_URL}${endpoint}`;
 
-  const res = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-API-Key": AI_API_KEY,
-    },
-    body: JSON.stringify(safePayload),
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 55_000);
+
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-API-Key": AI_API_KEY,
+      },
+      body: JSON.stringify(safePayload),
+      signal: controller.signal,
+    });
+  } catch (err: any) {
+    if (err?.name === "AbortError") {
+      throw new Error(
+        `AI server timed out on ${endpoint} — the model may be warming up. Try again in a few seconds.`,
+      );
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeout);
+  }
 
   if (!res.ok) {
     const errorBody = await res.text();
