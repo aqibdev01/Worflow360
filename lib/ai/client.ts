@@ -95,9 +95,24 @@ export async function callAIServer<T>(
     try {
       const { statusCode, body: text } = await rawPost(url, body, AI_API_KEY, 55_000);
 
+      console.log("[ai-client] response", {
+        endpoint,
+        attempt,
+        statusCode,
+        bodyLength: text.length,
+        bodyPreview: text.slice(0, 300),
+        bodyTail: text.slice(-100),
+      });
+
       if (statusCode < 200 || statusCode >= 300) {
         throw new Error(
           `AI server error ${statusCode} on ${endpoint}: ${text}`,
+        );
+      }
+
+      if (!text || !text.trim()) {
+        throw new Error(
+          `AI server returned empty body (status ${statusCode})`,
         );
       }
 
