@@ -22,6 +22,8 @@ import { getServerSupabase, getSupabaseWithToken } from "@/lib/supabase-server";
 import { callAIServer } from "@/lib/ai/client";
 import type { AITaskPayload } from "@/lib/ai/sanitize";
 
+export const maxDuration = 60;
+
 interface DecomposeAIResponse {
   task_id: string;
   subtasks: Array<{
