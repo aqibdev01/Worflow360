@@ -6,6 +6,15 @@
  */
 
 import { sanitizeForAI } from "./guards";
+import { Agent, fetch as undiciFetch } from "undici";
+
+// HF Space's proxy occasionally sends a wrong Content-Length header.
+// Use an Agent that tolerates that instead of failing the whole request.
+const lenientAgent = new Agent({
+  strictContentLength: false,
+  bodyTimeout: 55_000,
+  headersTimeout: 55_000,
+});
 
 const AI_SERVER_URL = (
   process.env.AI_SERVER_URL || "http://localhost:8000"
@@ -39,7 +48,7 @@ export async function callAIServer<T>(
     const timeout = setTimeout(() => controller.abort(), 55_000);
 
     try {
-      const res = await fetch(url, {
+      const res = await undiciFetch(url, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -49,7 +58,7 @@ export async function callAIServer<T>(
         },
         body,
         signal: controller.signal,
-        keepalive: false,
+        dispatcher: lenientAgent,
       });
 
       if (!res.ok) {

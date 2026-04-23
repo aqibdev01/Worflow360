@@ -39,6 +39,7 @@
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.4.0",
     "typescript": "^5.9.3",
+    "undici": "^7.25.0",
     "zod": "^4.1.13"
   },
   "devDependencies": {
