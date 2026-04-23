@@ -32,26 +32,28 @@ function rawPost(urlStr: string, body: string, apiKey: string, timeoutMs: number
           "Content-Type": "application/json",
           "Content-Length": Buffer.byteLength(body),
           "X-API-Key": apiKey,
-          Connection: "close",
           "Accept-Encoding": "identity",
         },
+        // HF Space terminates TLS abruptly (missing close_notify). Tolerate it.
+        rejectUnauthorized: true,
       },
       (res: any) => {
         const chunks: Buffer[] = [];
-        res.on("data", (chunk: Buffer) => chunks.push(chunk));
-        res.on("end", () =>
+        const status = res.statusCode || 0;
+        let settled = false;
+        const finish = () => {
+          if (settled) return;
+          settled = true;
           resolve({
-            statusCode: res.statusCode || 0,
-            body: Buffer.concat(chunks).toString("utf8"),
-          }),
-        );
-        res.on("error", (err: any) => {
-          // Partial body is fine — hand back what we have.
-          resolve({
-            statusCode: res.statusCode || 0,
+            statusCode: status,
             body: Buffer.concat(chunks).toString("utf8"),
           });
-        });
+        };
+        res.on("data", (chunk: Buffer) => chunks.push(chunk));
+        res.on("end", finish);
+        res.on("close", finish);
+        res.on("aborted", finish);
+        res.on("error", finish);
       },
     );
 
