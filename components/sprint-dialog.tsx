@@ -48,8 +48,16 @@ import {
 } from "@/lib/database";
 
 const sprintFormSchema = z.object({
-  name: z.string().min(1, "Sprint name is required").max(100, "Name is too long"),
-  goal: z.string().max(1000, "Goal is too long").optional(),
+  name: z
+    .string()
+    .min(1, "Sprint name is required")
+    .max(100, "Name is too long")
+    .refine((v) => v.trim().length > 0, "Name cannot be empty or only whitespace"),
+  goal: z
+    .string()
+    .max(1000, "Goal is too long")
+    .optional()
+    .refine((v) => !v || v.trim().length > 0, "Goal cannot be only whitespace"),
   start_date: z.date({ message: "Start date is required" }),
   end_date: z.date({ message: "End date is required" }),
   status: z.enum(["planned", "active", "completed", "cancelled"]).optional(),

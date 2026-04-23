@@ -2168,6 +2168,23 @@ const roleIcons: { [key: string]: any } = {
                       <p className="text-xs font-medium text-muted-foreground">End Date</p>
                       <p className="text-sm">{project.end_date ? new Date(project.end_date).toLocaleDateString() : "Not set"}</p>
                     </div>
+                    <div className="space-y-1">
+                      <p className="text-xs font-medium text-muted-foreground">Project Manager</p>
+                      <p className="text-sm font-medium text-foreground">
+                        {(() => {
+                          const pm = (project.project_members || []).find(
+                            (m: any) => m.role === "owner" || m.role === "lead",
+                          );
+                          return (
+                            pm?.users?.full_name ||
+                            pm?.users?.email ||
+                            project.created_by_user?.full_name ||
+                            project.created_by_user?.email ||
+                            "Unassigned"
+                          );
+                        })()}
+                      </p>
+                    </div>
                     <div className="space-y-1 md:col-span-2">
                       <p className="text-xs font-medium text-muted-foreground">Description</p>
                       <p className="text-sm text-muted-foreground">{project.description || "No description"}</p>

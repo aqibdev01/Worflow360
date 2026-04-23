@@ -38,7 +38,10 @@ import {
 
 // Validation schema
 const projectSchema = z.object({
-  name: z.string().min(3, "Project name must be at least 3 characters"),
+  name: z
+    .string()
+    .min(3, "Project name must be at least 3 characters")
+    .refine((v) => v.trim().length >= 3, "Project name cannot be empty or only whitespace"),
   description: z.string().optional(),
   start_date: z.string().optional(),
   end_date: z.string().optional(),

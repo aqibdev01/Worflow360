@@ -68,8 +68,16 @@ const eventTypes = [
 ];
 
 const sprintEventFormSchema = z.object({
-  title: z.string().min(1, "Title is required").max(200, "Title is too long"),
-  description: z.string().max(1000, "Description is too long").optional(),
+  title: z
+    .string()
+    .min(1, "Title is required")
+    .max(200, "Title is too long")
+    .refine((v) => v.trim().length > 0, "Title cannot be empty or only whitespace"),
+  description: z
+    .string()
+    .max(1000, "Description is too long")
+    .optional()
+    .refine((v) => !v || v.trim().length > 0, "Description cannot be only whitespace"),
   event_type: z.enum(["planning", "daily_standup", "review", "retrospective", "meeting", "milestone", "other"]),
   event_date: z.date({ message: "Date is required" }),
   start_time: z.string().optional(),

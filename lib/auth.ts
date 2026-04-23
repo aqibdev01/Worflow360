@@ -70,22 +70,11 @@ export async function signUp(
     console.log("✅ Auth user created:", authData.user.id);
     console.log("📧 Email confirmation required:", authData.user.email_confirmed_at === null);
 
-    // Create user profile in background — don't await, getOrCreateUserProfile
-    // can hang on slow connections. The profile is also created on first login.
-    getOrCreateUserProfile(authData.user.id, email)
-      .then(() => {
-        if (fullName) {
-          (supabase as any)
-            .from("users")
-            .update({ full_name: fullName })
-            .eq("id", authData.user.id)
-            .then(() => {})
-            .catch(() => {});
-        }
-      })
-      .catch((profileError) => {
-        console.error("Background profile creation error:", profileError);
-      });
+    // Create user profile with full_name. Fire-and-forget so slow networks
+    // don't block the signup flow — but full_name is now passed on creation.
+    getOrCreateUserProfile(authData.user.id, email, fullName).catch((profileError) => {
+      console.error("Background profile creation error:", profileError);
+    });
 
     return { data: authData.user };
   } catch (error) {
@@ -133,9 +122,10 @@ export async function signIn(
     console.log("✅ Sign in successful:", data.user.id);
     console.log("📧 Email confirmed:", data.user.email_confirmed_at !== null);
 
-    // Ensure user profile exists
+    // Ensure user profile exists — pass full_name from auth metadata as fallback
     try {
-      await getOrCreateUserProfile(data.user.id, email);
+      const metaFullName = (data.user.user_metadata as any)?.full_name;
+      await getOrCreateUserProfile(data.user.id, email, metaFullName);
     } catch (profileError) {
       console.error("Error ensuring user profile:", profileError);
     }
